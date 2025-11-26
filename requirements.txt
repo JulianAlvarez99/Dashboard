@@ -5,3 +5,8 @@ sqlalchemy
 flask
 flask-cors
 python-dotenv
+flask-login
+flask-wtf
+email_validator
+bcrypt
+mysql-connector-python

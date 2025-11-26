@@ -16,7 +16,18 @@
                 🏭 Central Norte <span class="badge bg-primary fw-normal small">Analytics v2.2</span>
             </a>
             <div class="d-flex text-secondary small fw-bold" id="last-update">Esperando actualización...</div>
-        </div>
+
+            <div class="dropdown">
+                <button class="btn btn-sm btn-dark border-secondary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                    <span class="small text-light">{{ user.username }}</span>
+                    <span class="badge bg-secondary" style="font-size: 0.6rem;">{{ user.privilege }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
+                    <li><a class="dropdown-item text-danger small" href="{{ url_for('auth.logout') }}">Cerrar Sesión</a></li>
+                </ul>
+            </div>
+
+        </div>  
     </nav>
 
     <div class="container-fluid px-4 py-4">

@@ -1,7 +1,9 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
+from flask_login import login_required, current_user 
 from db_manager import DataManager
 from data_processor import DataProcessor
+import security_logger
 
 api_bp = Blueprint('api', __name__)
 db_manager = DataManager()
@@ -54,6 +56,19 @@ def get_dashboard_data():
         if start_str: start_date = datetime.fromisoformat(start_str)
         else: start_date = end_date - timedelta(hours=24)
 
+        # --- AUDITORÍA DE SEGURIDAD (LOGGING) ---
+        # Registramos qué está consultando el usuario
+        security_logger.log_query(
+            username=current_user.username,
+            query_params=request.args.to_dict(), # Guardamos los filtros aplicados
+            start_date=start_date,
+            end_date=end_date,
+            linea=lines_param if lines_param else "ALL",
+            interval_type=interval,
+            ip_address=security_logger.get_user_ip(request)
+        )
+        # ----------------------------------------
+        
         # 3. Obtención de Datos Crudos (DB)
         selected_lines = lines_param.split(',') if lines_param and lines_param != 'ALL' else None
         df = db_manager.get_raw_production_data(start_date, end_date, selected_lines)
