@@ -19,7 +19,7 @@ class Config:
     SESSION_COOKIE_SAMESITE = 'Lax' # Previene CSRF en la mayoría de los casos
     # En producción con HTTPS, esto debe ser True
     SESSION_COOKIE_SECURE = ENV == 'production' 
-    PERMANENT_SESSION_LIFETIME = 1800 # 30 minutos de sesión 
+    PERMANENT_SESSION_LIFETIME = 900 # 15 minutos de sesión 
     
     DB_HOST = os.getenv('MYSQL_HOST')
     DB_USER = os.getenv('MYSQL_USER')

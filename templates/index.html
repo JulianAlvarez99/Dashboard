@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Central Norte</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/static/css/style.css" rel="stylesheet">
     <link href="/static/css/accessibility.css" rel="stylesheet">
@@ -15,23 +16,42 @@
             <a class="navbar-brand d-flex align-items-center gap-2" href="#">
                 🏭 Central Norte <span class="badge bg-primary fw-normal small">Analytics v2.2</span>
             </a>
-            <div class="d-flex text-secondary small fw-bold" id="last-update">Esperando actualización...</div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <div class="d-none d-md-block text-secondary small fw-bold" id="last-update">Esperando actualización...</div>
 
-            <div class="dropdown">
-                <button class="btn btn-sm btn-dark border-secondary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                    <span class="small text-light">{{ user.username }}</span>
-                    <span class="badge bg-secondary" style="font-size: 0.6rem;">{{ user.privilege }}</span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-                    <li><a class="dropdown-item text-danger small" href="{{ url_for('auth.logout') }}">Cerrar Sesión</a></li>
-                </ul>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-dark border-secondary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="small text-light">{{ user.username }}</span>
+                        <span class="badge bg-secondary" style="font-size: 0.6rem;">{{ user.name_business }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow">
+                        <li><span class="dropdown-item-text small text-white">Rol: {{ user.privilege }}</span></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-danger small fw-bold" href="{{ url_for('auth.logout') }}">🚪 Cerrar Sesión</a></li>
+                    </ul>
+                </div>
             </div>
-
-        </div>  
+        </div>
     </nav>
 
-    <div class="container-fluid px-4 py-4">
+    <div class="container-fluid px-4 py-4" id="dashboard-content">
         
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="row mb-3">
+                    <div class="col-12">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show py-2" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close py-2" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+
         <div class="filter-container">
             <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">Configuración de Visualización</h6>
             <div class="filter-grid">
@@ -51,6 +71,7 @@
                         <option value="code">Código del Producto</option>
                     </select>
                 </div>
+                
                 <div class="filter-group">
                     <label>Fecha Inicio</label>
                     <input type="date" id="date-start" class="form-control">
@@ -115,12 +136,12 @@
             
             <div class="row mt-4 g-2">
                 <div class="col-md-6">
-                    <button id="btn-filter" class="btn btn-primary fw-bold w-100 py-2 shadow-sm">
+                    <button id="btn-filter" class="btn btn-primary fw-bold w-100 py-2 shadow-sm" data-html2canvas-ignore="true">
                         🔄 Actualizar Dashboard
                     </button>
                 </div>
                 <div class="col-md-6">
-                    <button id="btn-pdf" class="btn btn-outline-danger fw-bold w-100 py-2 shadow-sm">
+                    <button id="btn-pdf" class="btn btn-outline-danger fw-bold w-100 py-2 shadow-sm" data-html2canvas-ignore="true">
                         📄 Generar Reporte PDF
                     </button>
                 </div>
@@ -177,7 +198,7 @@
                         <canvas id="productionChart"></canvas>
                     </div>
                     <div class="text-center mt-2">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="resetZoomChart()">Restablecer Vista</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="resetZoomChart()" data-html2canvas-ignore="true">Restablecer Vista</button>
                     </div>
                 </div>
             </div>
@@ -225,15 +246,79 @@
                     </table>
                 </div>
             </div>
-
         </div> 
+    </div>
+
+    <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl"> <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="pdfModalLabel">📄 Vista Previa del Reporte</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    
+                    <div class="card bg-secondary bg-opacity-10 border-secondary mb-3">
+                        <div class="card-body py-2">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-auto">
+                                    <label class="col-form-label fw-bold"><small>Formato:</small></label>
+                                </div>
+                                <div class="col-auto">
+                                    <select class="form-select form-select-sm bg-dark text-light border-secondary" id="pdf-format">
+                                        <option value="a4" selected>A4 (Estándar)</option>
+                                        <option value="letter">Carta (Letter)</option>
+                                        <option value="legal">Legal (Oficio)</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto">
+                                    <label class="col-form-label fw-bold"><small>Orientación:</small></label>
+                                </div>
+                                <div class="col-auto">
+                                    <select class="form-select form-select-sm bg-dark text-light border-secondary" id="pdf-orientation">
+                                        <option value="landscape" selected>Horizontal</option>
+                                        <option value="portrait">Vertical</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto ms-auto">
+                                    <button class="btn btn-sm btn-info text-white fw-bold" id="btn-refresh-preview">
+                                        🔄 Actualizar Vista
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ratio" style="--bs-aspect-ratio: 60%; min-height: 500px;">
+                        <iframe id="pdf-preview-frame" class="rounded border border-secondary w-100 h-100"></iframe>
+                    </div>
+                    
+                    <div id="pdf-loading-spinner" class="position-absolute top-50 start-50 translate-middle text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+                        <div class="mt-2 fw-bold">Generando vista previa...</div>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" id="btn-download-final">
+                        ⬇️ Descargar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <script type="module" src="/static/js/main.js"></script>
+    
     <script>
         function resetZoomChart() {
             document.dispatchEvent(new Event('reset-chart-zoom'));

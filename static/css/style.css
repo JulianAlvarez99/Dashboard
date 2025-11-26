@@ -119,3 +119,38 @@ body {
 .kpi-label {
     color: var(--text-secondary);
 }
+
+/* Ajustes para impresión/PDF */
+@media print {
+    .no-pdf {
+        display: none !important;
+    }
+    
+    /* Evitar que las tarjetas se corten entre páginas */
+    .card {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    
+    /* Asegurar que los gráficos se vean */
+    canvas {
+        max-width: 100% !important;
+    }
+}
+
+/* Oculta los iconos SVG de Bootstrap (flechas, checks) durante la generación del PDF
+   para evitar el error "Unsupported image type" */
+body.generating-pdf .form-select, 
+body.generating-pdf .form-check-input {
+    background-image: none !important; /* Elimina el SVG conflictivo */
+    background-color: #fff !important; /* Fondo plano */
+}
+
+/* Opcional: Simplificar apariencia de inputs en el PDF */
+body.generating-pdf .form-control,
+body.generating-pdf .form-select {
+    border: 1px solid #ccc !important;
+    box-shadow: none !important;
+    color: #000 !important; /* Texto negro para máxima legibilidad */
+}
+
