@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
-from flask_login import login_required, current_user # Importante
+from flask_login import login_required, current_user 
 from db_manager import DataManager
 from data_processor import DataProcessor
 import security_logger
+from settings_manager import SettingsManager 
 
 api_bp = Blueprint('api', __name__)
 db_manager = DataManager()
@@ -19,8 +20,40 @@ def _adjust_visualization_range_by_shift(start_dt, end_dt, shift):
         return datetime.combine(base_date, datetime.min.time()) + timedelta(hours=22), datetime.combine(base_date, datetime.min.time()) + timedelta(days=1, hours=6)
     return start_dt, end_dt
 
+# --- NUEVAS RUTAS DE CONFIGURACIÓN DE VISIBILIDAD ---
+
+@api_bp.route('/ui_settings', methods=['GET'])
+@login_required
+def get_ui_settings():
+    """
+    Cualquier usuario logueado puede LEER la configuración
+    para saber qué gráficos debe mostrar el frontend.
+    """
+    settings = SettingsManager.get_settings()
+    return jsonify(settings), 200
+
+@api_bp.route('/ui_settings', methods=['POST'])
+@login_required
+def update_ui_settings():
+    """
+    Solo el ADMINISTRADOR puede GUARDAR cambios en la configuración global.
+    """
+    if current_user.privilege != 'administrador':
+        return jsonify({'error': 'No autorizado. Se requieren permisos de administrador.'}), 403
+    
+    try:
+        new_settings = request.json
+        if SettingsManager.save_settings(new_settings):
+            return jsonify({'message': 'Configuración actualizada correctamente'}), 200
+        else:
+            return jsonify({'error': 'Error al escribir en el servidor'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ----------------------------------------------------
+
 @api_bp.route('/dashboard', methods=['GET'])
-@login_required # <--- CORRECCIÓN CRÍTICA: Necesario para usar current_user
+@login_required 
 def get_dashboard_data():
     try:
         # 1. Recepción de Parámetros
@@ -38,7 +71,6 @@ def get_dashboard_data():
         else: start_date = end_date - timedelta(hours=24)
 
         # --- AUDITORÍA DE SEGURIDAD ---
-        # Ahora es seguro acceder a current_user.username porque @login_required lo garantiza
         security_logger.log_query(
             username=current_user.username,
             query_params=request.args.to_dict(),
@@ -91,7 +123,7 @@ def get_dashboard_data():
         return jsonify({'error': str(e)}), 500
 
 @api_bp.route('/products_list', methods=['GET'])
-@login_required # <--- También protegemos esta ruta por seguridad
+@login_required
 def get_products_list():
     try:
         classes = db_manager.metadata_cache.get('classes', {})

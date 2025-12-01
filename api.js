@@ -16,7 +16,8 @@
 export async function fetchDashboardData(interval, startDate = null, endDate = null) {
     try {
         // Construcción de URL base
-        let url = `/centralnorte/api/dashboard?interval=${interval}`;
+        // let url = `/centralnorte/api/dashboard?interval=${interval}`; // Habilitar si se prueba hosting
+        let url = `/api/dashboard?interval=${interval}`; // Habilitar si se prueba local
         
         // Append de parámetros opcionales
         if (startDate) url += `&start=${startDate}`;

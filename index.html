@@ -6,16 +6,22 @@
     <title>Dashboard Central Norte</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='accessibility.css') }}" rel="stylesheet">
     
-    <link href="style.css" rel="stylesheet">
-    <link href="accessibility.css" rel="stylesheet">
+    <!-- Estilo extra para la tabla dentro del dropdown -->
+    <style>
+        .dropdown-table th { font-size: 0.75rem; text-transform: uppercase; color: #6c757d; padding-bottom: 8px; }
+        .dropdown-table td { padding: 8px 4px; border-bottom: 1px solid #eee; vertical-align: middle; }
+        .dropdown-table tr:last-child td { border-bottom: none; }
+    </style>
 </head>
 <body>
 
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container-fluid px-4">
             <a class="navbar-brand d-flex align-items-center gap-2" href="#">
-                🏭 Central Norte <span class="badge bg-primary fw-normal small">Analytics v2.2</span>
+                🏭 Central Norte <span class="badge bg-primary fw-normal small">Dashboard</span>
             </a>
             
             <div class="d-flex align-items-center gap-3">
@@ -29,7 +35,7 @@
                     <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow">
                         <li><span class="dropdown-item-text small text-white">Rol: {{ user.privilege }}</span></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger small fw-bold" href="{{ url_for('auth.logout') }}">🚪 Cerrar Sesión</a></li>
+                        <li><a class="dropdown-item text-danger small fw-bold" href="{{ url_for('auth.logout') }}"> Cerrar Sesión</a></li>
                     </ul>
                 </div>
             </div>
@@ -55,7 +61,55 @@
 
         <div class="filter-container">
             <h6 class="text-primary fw-bold mb-3 border-bottom pb-2">Configuración de Visualización</h6>
+            
             <div class="filter-grid">
+                
+                <!-- CONTROL DE VISIBILIDAD BIDIMENSIONAL (Solo Admin) -->
+                {% if user.privilege == 'administrador' %}
+                <div class="filter-group">
+                    <label>Gestión de Vistas</label>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary w-100 dropdown-toggle text-start d-flex justify-content-between align-items-center" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span>⚙️ Configurar Roles</span>
+                        </button>
+                        <div class="dropdown-menu p-3 shadow" style="min-width: 320px;">
+                            <table class="w-100 dropdown-table">
+                                <thead>
+                                    <tr>
+                                        <th class="w-50">Componente</th>
+                                        <th class="text-center">Admin</th>
+                                        <th class="text-center">Cliente</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>📈 Evolución</td>
+                                        <td class="text-center"><input class="form-check-input visibility-check" type="checkbox" data-target="card-evolution" data-role="admin"></td>
+                                        <td class="text-center"><input class="form-check-input visibility-check" type="checkbox" data-target="card-evolution" data-role="client"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>📊 Balance</td>
+                                        <td class="text-center"><input class="form-check-input visibility-check" type="checkbox" data-target="card-balance" data-role="admin"></td>
+                                        <td class="text-center"><input class="form-check-input visibility-check" type="checkbox" data-target="card-balance" data-role="client"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>🍩 Distribución</td>
+                                        <td class="text-center"><input class="form-check-input visibility-check" type="checkbox" data-target="card-distribution" data-role="admin"></td>
+                                        <td class="text-center"><input class="form-check-input visibility-check" type="checkbox" data-target="card-distribution" data-role="client"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>⚠️ Paradas</td>
+                                        <td class="text-center"><input class="form-check-input visibility-check" type="checkbox" data-target="card-downtime" data-role="admin"></td>
+                                        <td class="text-center"><input class="form-check-input visibility-check" type="checkbox" data-target="card-downtime" data-role="client"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="text-muted mt-2" style="font-size: 0.7rem;">* Desmarca para ocultar el gráfico al rol correspondiente.</div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
                 <div class="filter-group">
                     <label>Línea de Producción</label>
                     <select id="line-select" class="form-select">
@@ -72,6 +126,7 @@
                         <option value="code">Código del Producto</option>
                     </select>
                 </div>
+                
                 <div class="filter-group">
                     <label>Fecha Inicio</label>
                     <input type="date" id="date-start" class="form-control">
@@ -163,7 +218,9 @@
                     <small class="text-muted">Acumulado estimado</small>
                 </div>
             </div>
-            <div class="col-md-3 downtime-card-group">
+            
+            <!-- TARJETAS DE PARADAS (Controladas dinámicamente) -->
+            <div class="col-md-3 downtime-card-group" id="kpi-card-downtime-count">
                 <div class="card p-3 text-center h-100 border-0 border-bottom border-4 border-danger shadow-sm">
                     <div class="kpi-label mb-1">Paradas Registradas</div>
                     <div class="d-flex justify-content-center align-items-baseline gap-2">
@@ -172,7 +229,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 downtime-card-group">
+            <div class="col-md-3 downtime-card-group" id="kpi-card-downtime-time">
                  <div class="card p-3 text-center h-100 border-0 border-bottom border-4 border-danger shadow-sm">
                     <div class="kpi-label mb-1">Tiempo Perdido</div>
                     <div class="fw-bold text-danger mt-1 fs-4" id="kpi-downtime-time">00:00:00</div>
@@ -188,7 +245,7 @@
 
         <div id="charts-container" style="display: none;">
             
-            <div class="card mb-4 shadow-sm">
+            <div id="card-evolution" class="card mb-4 shadow-sm" style="display: none;">
                 <div class="card-header d-flex justify-content-between align-items-center bg-light">
                     <span class="fw-bold text-primary">📈 Evolución de Producción</span>
                     <small class="text-muted">Zoom: Rueda del mouse | Pan: Click + Arrastre</small>
@@ -203,7 +260,7 @@
                 </div>
             </div>
 
-            <div class="card mb-4 shadow-sm">
+            <div id="card-balance" class="card mb-4 shadow-sm" style="display: none;">
                 <div class="card-header fw-bold text-primary">📊 Balance de Línea (Entrada vs Salida)</div>
                 <div class="card-body">
                     <div style="height: 350px;">
@@ -212,7 +269,7 @@
                 </div>
             </div>
             
-            <div class="card mb-4 shadow-sm">
+            <div id="card-distribution" class="card mb-4 shadow-sm" style="display: none;">
                 <div class="card-header fw-bold text-primary">Distribución de Productos</div>
                 <div class="card-body">
                     <div class="row align-items-center">
@@ -233,7 +290,7 @@
                 </div>
             </div>
 
-            <div class="card mb-5 shadow-sm downtime-list-section">
+            <div id="card-downtime" class="card mb-5 shadow-sm downtime-list-section" style="display: none;">
                 <div class="card-header d-flex justify-content-between bg-danger text-white">
                     <span class="fw-bold">⚠️ Registro Detallado de Paradas</span>
                 </div>
@@ -249,6 +306,7 @@
         </div> 
     </div>
 
+    <!-- Modals PDF ... -->
     <div class="modal fade" id="pdfModal" tabindex="-1" aria-labelledby="pdfModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl"> 
             <div class="modal-content bg-dark text-light border-secondary">
@@ -257,13 +315,10 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    
                     <div class="card bg-secondary bg-opacity-10 border-secondary mb-3">
                         <div class="card-body py-2">
                             <div class="row g-3 align-items-center">
-                                <div class="col-auto">
-                                    <label class="col-form-label fw-bold"><small>Formato:</small></label>
-                                </div>
+                                <div class="col-auto"><label class="col-form-label fw-bold"><small>Formato:</small></label></div>
                                 <div class="col-auto">
                                     <select class="form-select form-select-sm bg-dark text-light border-secondary" id="pdf-format">
                                         <option value="a4" selected>A4 (Estándar)</option>
@@ -271,9 +326,7 @@
                                         <option value="legal">Legal (Oficio)</option>
                                     </select>
                                 </div>
-                                <div class="col-auto">
-                                    <label class="col-form-label fw-bold"><small>Orientación:</small></label>
-                                </div>
+                                <div class="col-auto"><label class="col-form-label fw-bold"><small>Orientación:</small></label></div>
                                 <div class="col-auto">
                                     <select class="form-select form-select-sm bg-dark text-light border-secondary" id="pdf-orientation">
                                         <option value="landscape" selected>Horizontal</option>
@@ -288,16 +341,13 @@
                             </div>
                         </div>
                     </div>
-
                     <div class="ratio" style="--bs-aspect-ratio: 60%; min-height: 500px;">
                         <iframe id="pdf-preview-frame" class="rounded border border-secondary w-100 h-100"></iframe>
                     </div>
-                    
                     <div id="pdf-loading-spinner" class="position-absolute top-50 start-50 translate-middle text-center" style="display: none;">
                         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
                         <div class="mt-2 fw-bold">Generando vista previa...</div>
                     </div>
-
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cerrar</button>
@@ -309,6 +359,18 @@
         </div>
     </div>
 
+    <script>
+        window.API_URLS = {
+            dashboard: "{{ url_for('api.get_dashboard_data') }}",
+            settings: "{{ url_for('api.get_ui_settings') }}",
+            products: "{{ url_for('api.get_products_list') }}"
+        };
+        
+        // INYECCIÓN DE ROL: Fundamental para la lógica de visibilidad en JS
+        // Usamos 'admin' si es administrador, o 'client' para cualquier otro
+        window.CURRENT_USER_ROLE = "{{ 'admin' if user.privilege == 'administrador' else 'client' }}";
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
@@ -317,7 +379,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
-    <script type="module" src="main.js"></script>
+    <script type="module" src="{{ url_for('static', filename='main.js') }}"></script>
     
     <script>
         function resetZoomChart() {
