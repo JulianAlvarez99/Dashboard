@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadProducts(); 
     setupEventListeners();
     setInitialDefaults();
+    setupDateConstraints();
     fetchAndApplySettings();
 
     const modalEl = document.getElementById('pdfModal');
@@ -315,4 +316,50 @@ async function applyFilters() {
     } finally {
         showLoading(false);
     }
+}
+
+/**
+ * Configura las restricciones lógicas entre los selectores de fecha.
+ * - La fecha de fin no puede ser menor a la de inicio.
+ * - La fecha de inicio no puede ser mayor a la de fin.
+ */
+function setupDateConstraints() {
+    const startInput = document.getElementById('date-start');
+    const endInput = document.getElementById('date-end');
+
+    const syncDates = () => {
+        const startVal = startInput.value;
+        const endVal = endInput.value;
+
+        // 1. Configurar el mínimo de la fecha fin = fecha inicio seleccionada
+        if (startVal) {
+            endInput.min = startVal;
+            
+            // Corrección automática: si la fecha fin actual quedó "atrás", la empujamos
+            if (endVal && endVal < startVal) {
+                endInput.value = startVal;
+            }
+        } else {
+            endInput.removeAttribute('min');
+        }
+
+        // 2. Configurar el máximo de la fecha inicio = fecha fin seleccionada
+        if (endVal) {
+            startInput.max = endVal;
+            
+            // Corrección automática: si la fecha inicio actual quedó "adelante", la empujamos
+            if (startVal && startVal > endVal) {
+                startInput.value = endVal;
+            }
+        } else {
+            startInput.removeAttribute('max');
+        }
+    };
+
+    // Escuchar cambios en ambos inputs
+    startInput.addEventListener('change', syncDates);
+    endInput.addEventListener('change', syncDates);
+
+    // Ejecutar validación inicial inmediatamente (para aplicar a los valores por defecto)
+    syncDates();
 }
