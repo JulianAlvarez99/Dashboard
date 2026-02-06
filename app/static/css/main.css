@@ -1,0 +1,204 @@
+/**
+ * Main CSS - Estilos globales del Dashboard
+ * Incluye utilidades, animaciones y estilos base
+ */
+
+/* ========================================
+   UTILIDADES GENERALES
+   ======================================== */
+
+/* Ocultar elementos con Alpine.js x-cloak */
+[x-cloak] {
+    display: none !important;
+}
+
+/* ========================================
+   INDICADORES HTMX
+   ======================================== */
+
+/* Loading indicators */
+.htmx-indicator {
+    opacity: 0;
+    transition: opacity 200ms ease-in;
+}
+
+.htmx-request .htmx-indicator {
+    opacity: 1;
+}
+
+.htmx-request.htmx-indicator {
+    opacity: 1;
+}
+
+/* ========================================
+   ANIMACIONES
+   ======================================== */
+
+/* Loading spinner */
+.spinner {
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #3b82f6;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Widget skeleton loader */
+.widget-skeleton {
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+.dark .widget-skeleton {
+    background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+    background-size: 200% 100%;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* Pulse animation para loading */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ========================================
+   TRANSICIONES
+   ======================================== */
+
+.transition-colors {
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.transition-transform {
+    transition-property: transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+}
+
+/* ========================================
+   SCROLLBAR PERSONALIZADO
+   ======================================== */
+
+/* Para navegadores WebKit */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.dark ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* ========================================
+   TOAST NOTIFICATIONS
+   ======================================== */
+
+#toast-container {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.toast {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    color: white;
+    min-width: 250px;
+}
+
+.toast.error {
+    background-color: #ef4444;
+}
+
+.toast.success {
+    background-color: #10b981;
+}
+
+.toast.warning {
+    background-color: #f59e0b;
+}
+
+.toast.info {
+    background-color: #3b82f6;
+}
+
+/* ========================================
+   FOCUS STATES
+   ======================================== */
+
+/* Mejorar accesibilidad con focus visible */
+*:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* ========================================
+   RESPONSIVE UTILITIES
+   ======================================== */
+
+/* Ocultar en móviles */
+@media (max-width: 768px) {
+    .hidden-mobile {
+        display: none !important;
+    }
+}
+
+/* Ocultar en desktop */
+@media (min-width: 769px) {
+    .hidden-desktop {
+        display: none !important;
+    }
+}

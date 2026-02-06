@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %} | {{ config.APP_NAME }}</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://unpkg.com/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Chart.js Zoom plugin (depends on hammerjs for touch) -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen" x-data="{ sidebarOpen: true, darkMode: true }">
+    
+    {% block body %}
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        {% block sidebar %}
+        <aside 
+            class="sidebar"
+            :class="sidebarOpen ? '' : 'closed'"
+        >
+            {% include 'components/sidebar.html' %}
+        </aside>
+        {% endblock %}
+        
+        <!-- Main content -->
+        <div class="dashboard-main" :class="sidebarOpen ? 'sidebar-open' : 'sidebar-closed'">
+            <!-- Header -->
+            {% block header %}
+            <header class="header">
+                {% include 'components/header.html' %}
+            </header>
+            {% endblock %}
+            
+            <!-- Page content -->
+            <main class="dashboard-content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+    {% endblock %}
+    
+    <!-- Toast notifications -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="px-4 py-3 rounded-lg shadow-lg 
+                    {% if category == 'error' %}bg-red-500{% elif category == 'success' %}bg-green-500{% elif category == 'warning' %}bg-yellow-500{% else %}bg-blue-500{% endif %} 
+                    text-white" 
+                    x-data="{ show: true }" 
+                    x-show="show" 
+                    x-init="setTimeout(() => show = false, 5000)"
+                    x-transition>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,451 @@
+{
+  "audit_log": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "log_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "user_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "action",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "ip_address",
+        "COLUMN_TYPE": "varchar(45)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "details",
+        "COLUMN_TYPE": "longtext",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      }
+    ]
+  },
+  "dashboard_template": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "template_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "tenant_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "role_access",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "layout_config",
+        "COLUMN_TYPE": "longtext",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      }
+    ]
+  },
+  "tenant": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "tenant_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "company_name",
+        "COLUMN_TYPE": "varchar(100)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "associated_since",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "is_active",
+        "COLUMN_TYPE": "tinyint(1)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "1",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "config_tenant",
+        "COLUMN_TYPE": "longtext",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      }
+    ]
+  },
+  "user": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "user_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "tenant_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "username",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "UNI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "email",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "UNI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "password",
+        "COLUMN_TYPE": "varchar(255)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "role",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "permissions",
+        "COLUMN_TYPE": "longtext",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      }
+    ]
+  },
+  "user_login": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "login_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "user_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "username",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "ip_address",
+        "COLUMN_TYPE": "varchar(45)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "user_agent",
+        "COLUMN_TYPE": "varchar(255)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "login_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "logout_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      }
+    ]
+  },
+  "user_query": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "query_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "user_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "username",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "slq_query",
+        "COLUMN_TYPE": "text",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "query_parameters",
+        "COLUMN_TYPE": "text",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "start_date",
+        "COLUMN_TYPE": "date",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "start_time",
+        "COLUMN_TYPE": "time",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "end_date",
+        "COLUMN_TYPE": "date",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "end_time",
+        "COLUMN_TYPE": "time",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
+      },
+      {
+        "COLUMN_NAME": "line",
+        "COLUMN_TYPE": "varchar(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 10
+      },
+      {
+        "COLUMN_NAME": "interval_type",
+        "COLUMN_TYPE": "varchar(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 11
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 12
+      }
+    ]
+  },
+  "widget_catalog": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "widget_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "widget_name",
+        "COLUMN_TYPE": "varchar(100)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "description",
+        "COLUMN_TYPE": "varchar(255)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      }
+    ]
+  }
+}

@@ -1,0 +1,131 @@
+# ============================================================================
+# Dashboard SaaS Industrial - Requirements
+# Target: Python 3.12 (Stable)
+# ============================================================================
+
+# ============================================================================
+# CORE FRAMEWORK
+# ============================================================================
+fastapi==0.110.0         # Actualizado: Mejoras de rendimiento y validación
+uvicorn[standard]==0.29.0
+python-multipart>=0.0.9  # CRÍTICO: Versión mínima para evitar warnings en 3.12
+
+# Nota: Tienes Flask y FastAPI juntos. Si es una migración, está bien.
+# Si es un proyecto nuevo, elige uno para no inflar la imagen de Docker.
+flask==3.0.2
+
+# ============================================================================
+# DATABASE
+# ============================================================================
+sqlalchemy[asyncio]>=2.0.36  # Actualizado para compatibilidad con Python 3.14
+aiomysql==0.2.0
+alembic>=1.14.0  # Actualizado para Python 3.14
+asyncmy==0.2.9
+
+# ============================================================================
+# DATA PROCESSING
+# ============================================================================
+# Estas versiones compilan nativamente (wheels) en 3.12 sin problemas
+pandas>=2.2.1
+numpy>=1.26.4
+
+# ============================================================================
+# SECURITY & AUTHENTICATION
+# ============================================================================
+# Passlib funciona en 3.12, pero está "quieto".
+# Si puedes, migra a pwdlib en el futuro.
+passlib[argon2]==1.7.4
+argon2-cffi==23.1.0
+
+# REEMPLAZO: Se eliminó python-jose (abandonado).
+# PyJWT maneja todo lo necesario para JWT de forma segura.
+pyjwt==2.8.0
+cryptography>=42.0.5
+
+# ============================================================================
+# VALIDATION & SERIALIZATION
+# ============================================================================
+pydantic>=2.7.0          # Pydantic v2 es mucho más rápido en 3.12
+pydantic-settings>=2.2.1
+email-validator==2.1.1
+jsonschema==4.21.1
+
+# ============================================================================
+# CSRF & FORMS (Solo si usas Flask/Jinja2)
+# ============================================================================
+flask-wtf==1.2.1
+wtforms==3.1.2
+
+# ============================================================================
+# RATE LIMITING
+# ============================================================================
+slowapi==0.1.9
+
+# ============================================================================
+# BACKGROUND TASKS
+# ============================================================================
+apscheduler==3.10.4
+
+# ============================================================================
+# MONITORING & SYSTEM
+# ============================================================================
+psutil==5.9.8            # Versión estable para 3.12
+
+# ============================================================================
+# HTTP CLIENT
+# ============================================================================
+httpx==0.27.0            # Actualización recomendada para async
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+python-dotenv==1.0.1
+pytz==2024.1
+
+# ============================================================================
+# SANITIZATION
+# ============================================================================
+bleach==6.1.0
+
+# ============================================================================
+# DEVELOPMENT & TESTING
+# ============================================================================
+pytest==8.1.1
+pytest-asyncio==0.23.6
+pytest-cov==5.0.0
+black==24.3.0
+flake8==7.0.0
+mypy==1.9.0
+aiosqlite==0.20.0
+
+# ============================================================================
+# PRODUCTION SERVER
+# ============================================================================
+gunicorn==21.2.0
+
+# ============================================================================
+# OPTIONAL - Si necesitas características adicionales
+# ============================================================================
+
+# Redis (si decides usar cache distribuido en el futuro)
+# redis==5.0.1
+# aioredis==2.0.1
+
+# Celery (si decides usar para background tasks más complejos)
+# celery==5.3.4
+
+# Excel/CSV avanzado
+# openpyxl==3.1.2
+# xlsxwriter==3.1.9
+
+# PDF generation
+# reportlab==4.0.9
+# weasyprint==60.2
+
+# Logging avanzado
+# python-json-logger==2.0.7
+
+# Sentry para error tracking
+# sentry-sdk==1.39.2
+
+

@@ -1,0 +1,35 @@
+{
+    "_comment": "Widget Layout Configuration — Controls the grid placement and sizing of each widget in the dashboard.",
+    "_grid_info": "The dashboard uses CSS Grid with 4 columns. Each widget can span 1-4 columns and have a fixed row height.",
+
+    "grid": {
+        "columns": 4,
+        "row_height": "auto",
+        "gap": "1.5rem"
+    },
+
+    "widgets": {
+        "kpi_oee":              { "col_span": 1, "size": "small",  "order": 1,  "chart_height": null },
+        "kpi_total_production": { "col_span": 1, "size": "small",  "order": 2,  "chart_height": null },
+        "kpi_total_weight":     { "col_span": 1, "size": "small",  "order": 3,  "chart_height": null },
+        "kpi_downtime_count":   { "col_span": 1, "size": "small",  "order": 4,  "chart_height": null },
+        "kpi_availability":     { "col_span": 1, "size": "small",  "order": 5,  "chart_height": null },
+        "kpi_performance":      { "col_span": 1, "size": "small",  "order": 6,  "chart_height": null },
+        "kpi_quality":          { "col_span": 1, "size": "small",  "order": 7,  "chart_height": null },
+
+        "line_chart":           { "col_span": 4, "size": "large",  "order": 8,  "chart_height": "400px" },
+        "comparison_bar":       { "col_span": 2, "size": "medium", "order": 9,  "chart_height": "400px" },
+        "bar_chart":            { "col_span": 2, "size": "medium", "order": 10, "chart_height": "400px" },
+        "pie_chart":            { "col_span": 2, "size": "medium", "order": 11, "chart_height": "400px" },
+        "downtime_table":       { "col_span": 4, "size": "large",  "order": 12, "chart_height": null },
+
+        "unknown":              { "col_span": 1, "size": "small",  "order": 99, "chart_height": null }
+    },
+
+    "size_css_classes": {
+        "_comment": "Map the 'size' key to the CSS class applied to the widget wrapper.",
+        "small":  "widget-sm",
+        "medium": "widget-md",
+        "large":  "widget-lg"
+    }
+}

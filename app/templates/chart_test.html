@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Chart Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .chart-wrap {
+            position: relative;
+            width: 600px;
+            height: 300px;
+            border: 2px solid red;
+            background: #1f2937;
+        }
+        .chart-wrap canvas {
+            position: absolute;
+            inset: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+    </style>
+</head>
+<body style="background:#111; color:#fff; padding: 20px;">
+    <h2>Chart.js Test - Direct</h2>
+    <div class="chart-wrap">
+        <canvas id="test-chart"></canvas>
+    </div>
+    <hr>
+    <h2>API Data Test</h2>
+    <div id="api-result" style="margin: 10px 0; font-size: 12px; max-height: 200px; overflow-y: auto;"></div>
+    <div class="chart-wrap">
+        <canvas id="api-chart"></canvas>
+    </div>
+
+    <script>
+        // Test 1: Direct chart creation
+        const ctx = document.getElementById('test-chart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['10:00', '11:00', '12:00', '13:00', '14:00'],
+                datasets: [{
+                    label: 'Test',
+                    data: [10, 20, 15, 30, 25],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' } },
+                    y: { ticks: { color: '#94a3b8' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // Test 2: Fetch from API and render
+        fetch('http://127.0.0.1:8000/api/v1/dashboard/data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                widget_ids: [1, 2, 3, 4],
+                start_date: '2026-01-28',
+                end_date: '2026-01-28',
+                start_time: '00:00',
+                end_time: '23:59',
+                interval: 'hour'
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('api-result').textContent = JSON.stringify(data.widgets['1'], null, 2);
+            const wd = data.widgets['1'];
+            if (wd && wd.data) {
+                const ctx2 = document.getElementById('api-chart').getContext('2d');
+                new Chart(ctx2, {
+                    type: 'line',
+                    data: wd.data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 } },
+                            y: { ticks: { color: '#94a3b8' }, beginAtZero: true }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(err => {
+            document.getElementById('api-result').textContent = 'Error: ' + err.message;
+        });
+    </script>
+</body>
+</html>

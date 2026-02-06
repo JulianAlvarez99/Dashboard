@@ -1,0 +1,1285 @@
+{
+  "area": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "area_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "line_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "area_name",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "area_type",
+        "COLUMN_TYPE": "varchar(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "area_order",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "coord_x1",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "coord_y1",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "coord_x2",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "coord_y2",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 10
+      }
+    ]
+  },
+  "camera_area": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "camera_area_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "camara_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "area_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "status",
+        "COLUMN_TYPE": "tinyint(1)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "updated_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "on update current_timestamp()",
+        "ORDINAL_POSITION": 6
+      }
+    ]
+  },
+  "camera_control_event": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "event_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "camera_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "reason",
+        "COLUMN_TYPE": "varchar(255)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "action",
+        "COLUMN_TYPE": "varchar(255)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "gpu_usage_percent",
+        "COLUMN_TYPE": "decimal(5,2)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      }
+    ]
+  },
+  "detection_line_bolsa25kg": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "detection_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "detected_at",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "area_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "product_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      }
+    ]
+  },
+  "detection_line_tecmar1": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "detection_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "detected_at",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "area_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "product_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      }
+    ]
+  },
+  "detection_line_tecmar2": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "detection_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "detected_at",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "area_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "product_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      }
+    ]
+  },
+  "detection_line_volpak": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "detection_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "detected_at",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "area_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "product_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      }
+    ]
+  },
+  "downtime_events_bolsa25kg": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "event_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "last_detection_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "start_time",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "end_time",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "duration",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "reason_code",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "reason",
+        "COLUMN_TYPE": "text",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "is_manual",
+        "COLUMN_TYPE": "tinyint(4)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "0",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
+      }
+    ]
+  },
+  "downtime_events_tecmar1": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "event_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "last_detection_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "start_time",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "end_time",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "duration",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "reason_code",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "reason",
+        "COLUMN_TYPE": "text",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "is_manual",
+        "COLUMN_TYPE": "tinyint(4)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "0",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
+      }
+    ]
+  },
+  "downtime_events_tecmar2": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "event_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "last_detection_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "start_time",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "end_time",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "duration",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "reason_code",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "reason",
+        "COLUMN_TYPE": "text",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "is_manual",
+        "COLUMN_TYPE": "tinyint(4)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "0",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
+      }
+    ]
+  },
+  "downtime_events_volpak": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "event_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "last_detection_id",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "start_time",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "end_time",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "duration",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "reason_code",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "reason",
+        "COLUMN_TYPE": "text",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "is_manual",
+        "COLUMN_TYPE": "tinyint(4)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "0",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "datetime",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
+      }
+    ]
+  },
+  "failure": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "failure_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "type_failure",
+        "COLUMN_TYPE": "varchar(100)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "description",
+        "COLUMN_TYPE": "varchar(100)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      }
+    ]
+  },
+  "filter": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "filter_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "filter_name",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "description",
+        "COLUMN_TYPE": "varchar(255)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "filter_status",
+        "COLUMN_TYPE": "tinyint(1)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "1",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "display_order",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "additional_filter",
+        "COLUMN_TYPE": "longtext",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "updated_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "on update current_timestamp()",
+        "ORDINAL_POSITION": 8
+      }
+    ]
+  },
+  "incident": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "incident_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "failure_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "MUL",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "incident_code",
+        "COLUMN_TYPE": "varchar(10)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "description",
+        "COLUMN_TYPE": "varchar(255)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "has_solution",
+        "COLUMN_TYPE": "tinyint(1)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "solution",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "YES",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "NULL",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      }
+    ]
+  },
+  "product": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "product_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "product_name",
+        "COLUMN_TYPE": "varchar(100)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "product_code",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "product_weight",
+        "COLUMN_TYPE": "decimal(5,2)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "product_color",
+        "COLUMN_TYPE": "varchar(10)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "production_std",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "product_per_batch",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      }
+    ]
+  },
+  "production_line": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "line_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "line_name",
+        "COLUMN_TYPE": "varchar(100)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "line_code",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "UNI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "is_active",
+        "COLUMN_TYPE": "tinyint(1)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "1",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "availability",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "0",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "performance",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "0",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "downtime_threshold",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      }
+    ]
+  },
+  "shift": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "shift_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "shift_name",
+        "COLUMN_TYPE": "varchar(50)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "description",
+        "COLUMN_TYPE": "varchar(255)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "shift_status",
+        "COLUMN_TYPE": "tinyint(1)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "1",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "days_implemented",
+        "COLUMN_TYPE": "longtext",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "start_time",
+        "COLUMN_TYPE": "time",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "end_time",
+        "COLUMN_TYPE": "time",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "is_overnight",
+        "COLUMN_TYPE": "tinyint(1)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "0",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
+      },
+      {
+        "COLUMN_NAME": "updated_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "on update current_timestamp()",
+        "ORDINAL_POSITION": 10
+      }
+    ]
+  },
+  "system_config": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "config_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "key",
+        "COLUMN_TYPE": "varchar(100)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "value",
+        "COLUMN_TYPE": "longtext",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      }
+    ]
+  },
+  "system_monitor": {
+    "type": "BASE TABLE",
+    "columns": [
+      {
+        "COLUMN_NAME": "system_monitor_id",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "PRI",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "auto_increment",
+        "ORDINAL_POSITION": 1
+      },
+      {
+        "COLUMN_NAME": "created_at",
+        "COLUMN_TYPE": "timestamp",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "current_timestamp()",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 2
+      },
+      {
+        "COLUMN_NAME": "cpu_usage",
+        "COLUMN_TYPE": "decimal(5,2)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 3
+      },
+      {
+        "COLUMN_NAME": "cpu_freq",
+        "COLUMN_TYPE": "int(11)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 4
+      },
+      {
+        "COLUMN_NAME": "ram_usage",
+        "COLUMN_TYPE": "decimal(5,2)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 5
+      },
+      {
+        "COLUMN_NAME": "ram_used_bytes",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 6
+      },
+      {
+        "COLUMN_NAME": "cpu_temp",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 7
+      },
+      {
+        "COLUMN_NAME": "cpu_temp_sensor",
+        "COLUMN_TYPE": "decimal(5,2)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "gpu_name",
+        "COLUMN_TYPE": "varchar(100)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
+      },
+      {
+        "COLUMN_NAME": "gpu_temp",
+        "COLUMN_TYPE": "decimal(5,2)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 10
+      },
+      {
+        "COLUMN_NAME": "gpu_usage",
+        "COLUMN_TYPE": "decimal(5,2)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 11
+      },
+      {
+        "COLUMN_NAME": "gpu_mem_used_bytes",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 12
+      },
+      {
+        "COLUMN_NAME": "gpu_mem_total_bytes",
+        "COLUMN_TYPE": "bigint(20)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": null,
+        "EXTRA": "",
+        "ORDINAL_POSITION": 13
+      }
+    ]
+  }
+}

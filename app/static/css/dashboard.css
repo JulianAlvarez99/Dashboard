@@ -1,0 +1,646 @@
+/**
+ * Dashboard CSS - Estilos específicos para el dashboard principal
+ * Incluye filtros, widgets, grids y componentes del dashboard
+ */
+
+/* Hide elements with x-cloak until Alpine.js initializes */
+[x-cloak] { display: none !important; }
+
+/* ========================================
+   LAYOUT DEL DASHBOARD
+   ======================================== */
+
+.dashboard-container {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.dashboard-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dashboard-main.sidebar-open {
+    margin-left: 16rem; /* ml-64 */
+}
+
+.dashboard-main.sidebar-closed {
+    margin-left: 0;
+}
+
+.dashboard-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.dashboard-content-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ========================================
+   PANEL DE FILTROS
+   ======================================== */
+
+.filters-panel {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.dark .filters-panel {
+    background-color: #1f2937; /* dark:bg-gray-800 */
+}
+
+.filters-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.filters-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.dark .filters-title {
+    color: white;
+}
+
+.filters-apply-btn {
+    padding: 0.5rem 1rem;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 0.5rem;
+    transition: background-color 150ms;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+}
+
+.filters-apply-btn:hover {
+    background-color: #2563eb;
+}
+
+.filters-apply-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.filters-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+/* ========================================
+   FILTROS INDIVIDUALES
+   ======================================== */
+
+.filter-item {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-item.filter-daterange {
+    flex: 3;
+    min-width: 600px;
+}
+
+.filter-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+.dark .filter-label {
+    color: #d1d5db; /* dark:text-gray-300 */
+}
+
+/* Daterange filter */
+.filter-daterange-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.filter-daterange-input {
+    flex: 1;
+}
+
+.filter-daterange-time {
+    width: 8rem;
+}
+
+.filter-daterange-separator {
+    padding: 0 0.25rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.dark .filter-daterange-separator {
+    color: #9ca3af;
+}
+
+/* Dropdown filter */
+.filter-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+    cursor: pointer;
+}
+
+.dark .filter-select {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.filter-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* Multiselect filter */
+.filter-multiselect {
+    position: relative;
+}
+
+.filter-multiselect-button {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.dark .filter-multiselect-button {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.filter-multiselect-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.filter-multiselect-button svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.filter-multiselect-dropdown {
+    position: absolute;
+    z-index: 10;
+    margin-top: 0.25rem;
+    width: 100%;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    max-height: 15rem;
+    overflow-y: auto;
+}
+
+.dark .filter-multiselect-dropdown {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+.filter-multiselect-option {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 150ms;
+}
+
+.filter-multiselect-option:hover {
+    background-color: #f3f4f6;
+}
+
+.dark .filter-multiselect-option:hover {
+    background-color: #4b5563;
+}
+
+.filter-multiselect-checkbox {
+    width: 1rem;
+    height: 1rem;
+    color: #3b82f6;
+    border-radius: 0.25rem;
+}
+
+.filter-multiselect-checkbox:focus {
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.filter-multiselect-label {
+    margin-left: 0.5rem;
+    color: #374151;
+}
+
+.dark .filter-multiselect-label {
+    color: #e5e7eb;
+}
+
+/* Toggle filter */
+.filter-toggle-container {
+    display: flex;
+    align-items: center;
+    height: 42px;
+}
+
+/* Text filter */
+.filter-text-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+}
+
+.dark .filter-text-input {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.filter-text-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.filter-text-input::placeholder {
+    color: #9ca3af;
+}
+
+.dark .filter-text-input::placeholder {
+    color: #6b7280;
+}
+
+/* Select buttons filter */
+.filter-select-buttons {
+    display: flex;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid #d1d5db;
+}
+
+.dark .filter-select-buttons {
+    border-color: #4b5563;
+}
+
+.filter-select-button {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 150ms;
+    border-right: 1px solid #d1d5db;
+    background-color: white;
+    color: #374151;
+    cursor: pointer;
+    border: none;
+}
+
+.dark .filter-select-button {
+    border-right-color: #4b5563;
+    background-color: #374151;
+    color: #d1d5db;
+}
+
+.filter-select-button:last-child {
+    border-right: none;
+}
+
+.filter-select-button.active {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.filter-select-button:not(.active):hover {
+    background-color: #f3f4f6;
+}
+
+.dark .filter-select-button:not(.active):hover {
+    background-color: #4b5563;
+}
+
+/* Number filter */
+.filter-number-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+}
+
+.dark .filter-number-input {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.filter-number-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* ========================================
+   GRID DE WIDGETS
+   ======================================== */
+
+.widgets-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .widgets-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* ── Size classes (mapped from widget_layout.json) ── */
+
+/* Grid item wrappers — flex container so .widget height:100% fills correctly */
+.widget-sm,
+.widget-md,
+.widget-lg {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Small: 1 column — KPI cards */
+.widget-sm {
+    grid-column: span 1;
+}
+
+/* Medium: 2 columns — charts side by side */
+.widget-md {
+    grid-column: span 1;
+}
+
+@media (min-width: 1024px) {
+    .widget-md {
+        grid-column: span 2;
+    }
+}
+
+/* Large: full width — timeline, tables */
+.widget-lg {
+    grid-column: 1 / -1;
+}
+
+/* ========================================
+   WIDGETS
+   ======================================== */
+
+.widget {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.dark .widget {
+    background-color: #1f2937;
+}
+
+.widget-body {
+    padding: 1.25rem;
+    flex: 1;
+    /* NOTE: do NOT add min-height:0 here — it collapses chart widgets
+       because the flex child shrinks below its 400px chart-wrap content.
+       The automatic content-based minimum keeps charts sized correctly. */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Chart container — height is set via inline style from widget_layout.json */
+.widget-chart-wrap {
+    position: relative;
+    width: 100%;
+    min-height: 200px;         /* safety floor */
+}
+
+.widget-chart-wrap canvas {
+    position: absolute;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.widget-header {
+    padding: 1.25rem 1.25rem 0;
+}
+
+.widget-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.dark .widget-title {
+    color: #9ca3af;
+}
+
+.widget-subtitle {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 0.25rem;
+}
+
+.dark .widget-subtitle {
+    color: #6b7280;
+}
+
+/* Widget loading state */
+.widget-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.25rem;
+    gap: 0.75rem;
+    min-height: 120px;
+}
+
+.widget-skeleton-bar {
+    height: 1rem;
+    background-color: #e5e7eb;
+    border-radius: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+.dark .widget-skeleton-bar {
+    background-color: #374151;
+}
+
+.widget-skeleton-bar:nth-child(1) {
+    width: 33%;
+}
+
+.widget-skeleton-bar:nth-child(2) {
+    width: 100%;
+    height: 6rem;
+}
+
+/* ========================================
+   MENSAJES VACÍOS
+   ======================================== */
+
+.empty-state {
+    background-color: #f3f4f6;
+    border-radius: 0.5rem;
+    padding: 3rem;
+    text-align: center;
+}
+
+.dark .empty-state {
+    background-color: #1f2937;
+}
+
+.empty-state-icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+}
+
+.empty-state-title {
+    color: #6b7280;
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+}
+
+.dark .empty-state-title {
+    color: #9ca3af;
+}
+
+.empty-state-description {
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+.dark .empty-state-description {
+    color: #6b7280;
+}
+
+.empty-state-code {
+    background-color: #fef3c7;
+    padding: 0 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.dark .empty-state-code {
+    background-color: #78350f;
+}
+
+/* ========================================
+   ERROR ALERT
+   ======================================== */
+
+.dashboard-error-alert {
+    background-color: #fffbeb;
+    border: 1px solid #fde68a;
+    color: #78350f;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.dark .dashboard-error-alert {
+    background-color: rgba(245, 158, 11, 0.3);
+    border-color: #f59e0b;
+    color: #fcd34d;
+}
+
+.dashboard-error-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+}
+
+.dashboard-error-title {
+    font-weight: 500;
+}
+
+.dashboard-error-message {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.dashboard-error-code {
+    background-color: #fef3c7;
+    padding: 0 0.25rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.dark .dashboard-error-code {
+    background-color: #78350f;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+    .dashboard-content {
+        padding: 1rem;
+    }
+    
+    .filters-panel {
+        padding: 1rem;
+    }
+    
+    .filter-item.filter-daterange {
+        min-width: 100%;
+    }
+    
+    .filter-daterange-container {
+        flex-direction: column;
+    }
+    
+    .filter-daterange-input,
+    .filter-daterange-time {
+        width: 100%;
+    }
+    
+    .widget {
+        padding: 1rem;
+    }
+}

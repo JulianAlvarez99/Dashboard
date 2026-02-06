@@ -1,0 +1,335 @@
+/**
+ * Login CSS - Estilos específicos para la página de login
+ */
+
+/* ========================================
+   LAYOUT DE LOGIN
+   ======================================== */
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background-color: #f3f4f6;
+}
+
+.dark .login-container {
+    background-color: #111827; /* dark:bg-gray-900 */
+}
+
+.login-wrapper {
+    width: 100%;
+    max-width: 28rem; /* max-w-md */
+}
+
+/* ========================================
+   BRANDING
+   ======================================== */
+
+.login-brand {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-brand-title {
+    font-size: 1.875rem; /* text-3xl */
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.dark .login-brand-title {
+    color: white;
+}
+
+.login-brand-subtitle {
+    margin-top: 0.5rem;
+    color: #4b5563;
+}
+
+.dark .login-brand-subtitle {
+    color: #9ca3af; /* dark:text-gray-400 */
+}
+
+/* ========================================
+   TARJETA DE LOGIN
+   ======================================== */
+
+.login-card {
+    background-color: white;
+    border-radius: 0.75rem; /* rounded-xl */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    padding: 2rem;
+}
+
+.dark .login-card {
+    background-color: #1f2937; /* dark:bg-gray-800 */
+}
+
+.login-card-title {
+    font-size: 1.5rem; /* text-2xl */
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+}
+
+.dark .login-card-title {
+    color: white;
+}
+
+/* ========================================
+   CAMPOS DE FORMULARIO
+   ======================================== */
+
+.login-input-wrapper {
+    margin-bottom: 1rem;
+}
+
+.login-input-wrapper:last-of-type {
+    margin-bottom: 1.5rem;
+}
+
+.login-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.dark .login-label {
+    color: #d1d5db; /* dark:text-gray-300 */
+}
+
+.login-input-container {
+    position: relative;
+}
+
+.login-input-icon {
+    position: absolute;
+    top: 50%;
+    left: 0.75rem;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    color: #9ca3af;
+}
+
+.login-input-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.login-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    padding-left: 2.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+}
+
+.dark .login-input {
+    border-color: #4b5563; /* dark:border-gray-600 */
+    background-color: #374151; /* dark:bg-gray-700 */
+    color: white;
+}
+
+.login-input:focus {
+    outline: none;
+    border-color: transparent;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.login-input::placeholder {
+    color: #9ca3af;
+}
+
+.dark .login-input::placeholder {
+    color: #6b7280; /* dark:placeholder-gray-500 */
+}
+
+/* Input con botón de toggle (password) */
+.login-input-with-toggle {
+    padding-right: 3rem;
+}
+
+.login-input-toggle {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: color 150ms;
+}
+
+.login-input-toggle:hover {
+    color: #4b5563;
+}
+
+.login-input-toggle svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* ========================================
+   BOTÓN DE SUBMIT
+   ======================================== */
+
+.login-submit-btn {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background-color: #3b82f6;
+    color: white;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: background-color 150ms;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+}
+
+.login-submit-btn:hover {
+    background-color: #2563eb;
+}
+
+.login-submit-btn:disabled {
+    background-color: #93c5fd;
+    cursor: not-allowed;
+}
+
+.login-submit-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.5);
+}
+
+.dark .login-submit-btn:focus {
+    box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59, 130, 246, 0.3);
+}
+
+/* Loading spinner en botón */
+.login-btn-spinner {
+    animation: spin 1s linear infinite;
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.login-btn-spinner circle {
+    opacity: 0.25;
+}
+
+.login-btn-spinner path {
+    opacity: 0.75;
+}
+
+/* ========================================
+   MENSAJES FLASH
+   ======================================== */
+
+.login-flash-message {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+}
+
+.login-flash-error {
+    background-color: #fef2f2;
+    color: #991b1b;
+}
+
+.dark .login-flash-error {
+    background-color: rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+}
+
+.login-flash-success {
+    background-color: #f0fdf4;
+    color: #14532d;
+}
+
+.dark .login-flash-success {
+    background-color: rgba(16, 185, 129, 0.3);
+    color: #86efac;
+}
+
+.login-flash-warning {
+    background-color: #fffbeb;
+    color: #78350f;
+}
+
+.dark .login-flash-warning {
+    background-color: rgba(245, 158, 11, 0.3);
+    color: #fcd34d;
+}
+
+.login-flash-info {
+    background-color: #eff6ff;
+    color: #1e3a8a;
+}
+
+.dark .login-flash-info {
+    background-color: rgba(59, 130, 246, 0.3);
+    color: #93c5fd;
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+
+.login-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.dark .login-footer {
+    color: #9ca3af; /* dark:text-gray-400 */
+}
+
+/* Dev hint */
+.login-dev-hint {
+    margin-top: 1rem;
+    padding: 1rem;
+    background-color: #fffbeb;
+    border-radius: 0.5rem;
+}
+
+.dark .login-dev-hint {
+    background-color: rgba(245, 158, 11, 0.3);
+}
+
+.login-dev-hint p {
+    font-size: 0.875rem;
+    color: #78350f;
+}
+
+.dark .login-dev-hint p {
+    color: #fcd34d;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 640px) {
+    .login-card {
+        padding: 1.5rem;
+    }
+    
+    .login-brand-title {
+        font-size: 1.5rem;
+    }
+    
+    .login-card-title {
+        font-size: 1.25rem;
+    }
+}
