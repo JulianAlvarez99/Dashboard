@@ -16,6 +16,7 @@ from app.services.processors.helpers import (
     format_time_labels,
     get_lines_with_input_output,
 )
+from app.core.cache import metadata_cache
 
 if TYPE_CHECKING:
     from app.services.dashboard_data_service import DashboardData
@@ -55,6 +56,8 @@ def process_line_chart(
     - ``curve_type`` so the frontend knows how to style the line
     - ``class_details`` — per-time-point breakdown of detected classes
       keyed by label string, used for rich tooltips
+    - ``downtime_events`` — list of downtime periods for annotation overlay
+      (only when show_downtime=True and downtime data is available)
     """
     df = data.detections
     if df.empty:
@@ -62,6 +65,7 @@ def process_line_chart(
 
     interval = data.params.interval
     curve_type = getattr(data.params, "curve_type", "smooth")
+    show_downtime = getattr(data.params, "show_downtime", False)
 
     # Ensure datetime
     if "detected_at" in df.columns:
@@ -75,10 +79,21 @@ def process_line_chart(
     }
     freq = interval_map.get(interval, "1h")
 
-    # Build a full time index from the global resampled series
+    # Build a FULL time index covering the entire queried range
+    # so gaps with zero detections are visible on the chart.
+    effective_start, effective_end = data.params.get_effective_datetimes()
+    if effective_start and effective_end:
+        full_index = pd.date_range(start=effective_start, end=effective_end, freq=freq)
+    else:
+        full_index = None
+
     global_series = df.set_index("detected_at").resample(freq).size()
     if global_series.empty:
         return empty_widget(widget_id, name, wtype)
+
+    # Reindex to full range if available — fills leading/trailing gaps with 0
+    if full_index is not None and len(full_index) > 0:
+        global_series = global_series.reindex(full_index, fill_value=0)
 
     labels = format_time_labels(global_series.index, interval)
 
@@ -88,7 +103,6 @@ def process_line_chart(
     if len(products) > 1:
         for idx, prod in enumerate(sorted(products)):
             prod_df = df[df["product_name"] == prod]
-            # Get the product colour from the first row (already enriched)
             color = (
                 prod_df["product_color"].iloc[0]
                 if "product_color" in prod_df.columns
@@ -108,7 +122,6 @@ def process_line_chart(
                 "fill": stacked,
             })
     else:
-        # Single product (or no product column) — one dataset
         color = "#3b82f6"
         if "product_color" in df.columns and not df["product_color"].empty:
             color = df["product_color"].iloc[0]
@@ -144,21 +157,80 @@ def process_line_chart(
             if breakdown:
                 class_details[label_key] = breakdown
 
+    # ── Downtime events for chart annotation overlay ─────────────
+    downtime_events: List[Dict[str, Any]] = []
+    if show_downtime and data.has_downtime:
+        dt_df = data.downtime
+        _label_list = list(global_series.index)
+        _incidents = metadata_cache.get_incidents()
+
+        for _, evt in dt_df.iterrows():
+            evt_start = pd.to_datetime(evt.get("start_time"))
+            evt_end = pd.to_datetime(evt.get("end_time"))
+            if pd.isna(evt_start) or pd.isna(evt_end):
+                continue
+
+            # Map downtime start/end to nearest label indices
+            start_idx = _find_nearest_label_index(_label_list, evt_start)
+            end_idx = _find_nearest_label_index(_label_list, evt_end)
+
+            duration_min = round(evt.get("duration", 0) / 60.0, 1)
+
+            # reason_code → incident_id → description
+            reason_code = evt.get("reason_code")
+            has_incident = pd.notna(reason_code) and reason_code
+            _incident = _incidents.get(int(reason_code)) if has_incident else None
+            desc = _incident["description"] if _incident else ""
+
+            downtime_events.append({
+                "xMin": start_idx,
+                "xMax": end_idx,
+                "start_time": evt_start.strftime("%H:%M"),
+                "end_time": evt_end.strftime("%H:%M"),
+                "duration_min": duration_min,
+                "reason": desc,
+                "has_incident": bool(has_incident),
+                "source": evt.get("source", "db"),
+                "line_name": evt.get("line_name", ""),
+            })
+
+    response_data = {
+        "labels": labels,
+        "datasets": datasets,
+        "curve_type": curve_type,
+        "class_details": class_details,
+    }
+    if downtime_events:
+        response_data["downtime_events"] = downtime_events
+
     return {
         "widget_id": widget_id,
         "widget_name": name,
         "widget_type": wtype,
-        "data": {
-            "labels": labels,
-            "datasets": datasets,
-            "curve_type": curve_type,
-            "class_details": class_details,
-        },
+        "data": response_data,
         "metadata": {
             "widget_category": "chart",
             "total_points": len(global_series),
+            "show_downtime": show_downtime,
+            "downtime_count": len(downtime_events),
         },
     }
+
+
+def _find_nearest_label_index(
+    label_list: List[pd.Timestamp], target: pd.Timestamp
+) -> int:
+    """Find the index of the nearest timestamp in label_list to target."""
+    if not label_list:
+        return 0
+    # Clamp to range
+    if target <= label_list[0]:
+        return 0
+    if target >= label_list[-1]:
+        return len(label_list) - 1
+    # Binary search for closest
+    idx = pd.Index(label_list).get_indexer([target], method="nearest")[0]
+    return int(idx)
 
 
 # ─── Bar Chart (distribution by area) ───────────────────────────────
@@ -302,6 +374,13 @@ def process_comparison_bar(
         input_series = pd.Series(dtype=int)
         output_dual_series = pd.Series(dtype=int)
 
+    # Build full time index covering the entire queried range
+    effective_start, effective_end = data.params.get_effective_datetimes()
+    if effective_start and effective_end:
+        full_index = pd.date_range(start=effective_start, end=effective_end, freq=freq)
+    else:
+        full_index = None
+
     # Unify index
     all_idx = output_series.index
     if not input_series.empty:
@@ -309,6 +388,10 @@ def process_comparison_bar(
     if not output_dual_series.empty:
         all_idx = all_idx.union(output_dual_series.index)
     all_idx = all_idx.sort_values()
+
+    # Reindex to full temporal window so chart spans the entire filter range
+    if full_index is not None and len(full_index) > 0:
+        all_idx = full_index
 
     if all_idx.empty:
         return empty_widget(widget_id, name, wtype)

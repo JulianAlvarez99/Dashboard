@@ -5,7 +5,7 @@ Base classes and interfaces for widget system
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -50,6 +50,8 @@ class FilterParams:
     shift_id: Optional[int] = None
     interval: str = "hour"
     curve_type: str = "smooth"          # stepped | smooth | linear | stacked
+    downtime_threshold: Optional[int] = None  # seconds; per-line default from DB
+    show_downtime: bool = False               # overlay downtime on line chart
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FilterParams":
@@ -106,20 +108,60 @@ class FilterParams:
             shift_id=shift_id,
             interval=data.get("interval", "hour") or "hour",
             curve_type=data.get("curve_type", "smooth") or "smooth",
+            downtime_threshold=data.get("downtime_threshold"),
+            show_downtime=bool(data.get("show_downtime", False)),
         )
     
     def get_effective_datetimes(self) -> tuple:
         """
         Resolve the effective start/end datetimes.
-        Combines date + time if both are present, or uses datetime fields.
+
+        Priority:
+        1. If a shift is selected, use the shift's start/end time
+           combined with the selected date range.
+        2. Otherwise, combine date + time from filters.
+        3. Fall back to datetime fields.
         
         Returns:
             Tuple of (start_datetime, end_datetime) - either can be None
         """
         start_dt = self.start_datetime
         end_dt = self.end_datetime
+
+        # ── Shift override ──────────────────────────────────────
+        if self.shift_id:
+            from app.core.cache import metadata_cache
+            shift = metadata_cache.get_shift(self.shift_id)
+            if shift:
+                s_time = shift.get("start_time")
+                e_time = shift.get("end_time")
+                is_overnight = shift.get("is_overnight", False)
+
+                def _to_hm(v):
+                    if isinstance(v, timedelta):
+                        total = int(v.total_seconds())
+                        return divmod(total // 60, 60)   # (hour, minute)
+                    if hasattr(v, "hour"):
+                        return v.hour, v.minute
+                    return None, None
+
+                sh, sm = _to_hm(s_time)
+                eh, em = _to_hm(e_time)
+                if sh is not None and eh is not None and self.start_date:
+                    start_dt = datetime.combine(
+                        self.start_date, datetime.min.time()
+                    ).replace(hour=sh, minute=sm)
+
+                    end_base = self.end_date or self.start_date
+                    if is_overnight:
+                        end_base = end_base + timedelta(days=1)
+                    end_dt = datetime.combine(
+                        end_base, datetime.min.time()
+                    ).replace(hour=eh, minute=em, second=59)
+
+                    return start_dt, end_dt
         
-        # Combine date + time if datetime is not already set
+        # ── Standard date + time combination ─────────────────────
         if not start_dt and self.start_date:
             hour, minute = 0, 0
             if self.start_time:

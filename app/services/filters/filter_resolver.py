@@ -139,6 +139,79 @@ class FilterResolver:
             }
             for line_id, data in lines.items()
         ]
+
+    @staticmethod
+    def get_production_line_options_with_groups() -> List[Dict[str, Any]]:
+        """
+        Get production line options including line groups from filter additional_filter.
+        
+        Groups come from the filter table where the additional_filter JSON contains
+        {"alias": "...", "line_ids": [...]}
+        """
+        lines = metadata_cache.get_production_lines()
+        options: List[Dict[str, Any]] = []
+
+        # First: add an "All lines" option
+        all_ids = list(lines.keys())
+        if len(all_ids) > 1:
+            options.append({
+                "value": f"all",
+                "label": "Todas las líneas",
+                "line_code": None,
+                "downtime_threshold": None,
+                "is_group": True,
+                "line_ids": all_ids,
+            })
+
+        # Second: add line groups from filters' additional_filter
+        filters = metadata_cache.get_filters()
+        for fid, fdata in filters.items():
+            af = fdata.get("additional_filter")
+            if not af:
+                continue
+            # Parse JSON string if needed
+            if isinstance(af, str):
+                import json
+                try:
+                    af = json.loads(af)
+                except Exception:
+                    continue
+            # Single group format: {"alias": "...", "line_ids": [...]}
+            if isinstance(af, dict) and "alias" in af and "line_ids" in af:
+                group_line_ids = af["line_ids"]
+                options.append({
+                    "value": f"group_{fid}",
+                    "label": af["alias"],
+                    "line_code": None,
+                    "downtime_threshold": None,
+                    "is_group": True,
+                    "line_ids": group_line_ids,
+                })
+            # Multiple groups format: {"groups": [{"alias": "...", "line_ids": [...]}, ...]}
+            elif isinstance(af, dict) and "groups" in af:
+                for idx, grp in enumerate(af["groups"]):
+                    if "alias" in grp and "line_ids" in grp:
+                        options.append({
+                            "value": f"group_{fid}_{idx}",
+                            "label": grp["alias"],
+                            "line_code": None,
+                            "downtime_threshold": None,
+                            "is_group": True,
+                            "line_ids": grp["line_ids"],
+                        })
+
+        # Third: add individual lines
+        for line_id, data in lines.items():
+            options.append({
+                "value": line_id,
+                "label": data["line_name"],
+                "line_code": data["line_code"],
+                "downtime_threshold": data["downtime_threshold"],
+                "is_group": False,
+                "line_ids": None,
+            })
+
+        return options
     
     @staticmethod
     def get_areas_for_line(line_id: int) -> List[Dict[str, Any]]:

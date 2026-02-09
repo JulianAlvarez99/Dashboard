@@ -57,6 +57,48 @@ const ChartRenderer = {
         };
     },
 
+    // ─── Downtime annotation builder ────────────────────────────
+
+    /**
+     * Build Chart.js annotation plugin config from downtime_events.
+     * Each event becomes a translucent red box spanning its time range.
+     */
+    _buildDowntimeAnnotations(downtimeEvents) {
+        if (!downtimeEvents || !downtimeEvents.length) return {};
+
+        const annotations = {};
+        downtimeEvents.forEach((evt, i) => {
+            // Orange for registered incidents, red for gap-detected stops
+            const incident = !!evt.has_incident;
+            const bg   = incident ? 'rgba(249,115,22,0.15)' : 'rgba(239,68,68,0.15)';
+            const bdr  = incident ? 'rgba(249,115,22,0.6)'  : 'rgba(239,68,68,0.6)';
+            const lclr = incident ? '#fdba74' : '#fca5a5';
+            const lbg  = incident ? 'rgba(124,45,18,0.85)'  : 'rgba(127,29,29,0.85)';
+
+            annotations[`downtime_${i}`] = {
+                type: 'box',
+                xMin: evt.xMin,
+                xMax: Math.max(evt.xMax, evt.xMin + 0.5),
+                yMin: 0,
+                backgroundColor: bg,
+                borderColor: bdr,
+                borderWidth: 1,
+                borderDash: [4, 2],
+                label: {
+                    display: true,
+                    content: `⏸ ${evt.duration_min}min`,
+                    position: 'start',
+                    font: { size: 9, weight: 'bold' },
+                    color: lclr,
+                    backgroundColor: lbg,
+                    padding: { top: 2, bottom: 2, left: 4, right: 4 },
+                    borderRadius: 3,
+                },
+            };
+        });
+        return annotations;
+    },
+
     // ─── Line Chart Config Builder ───────────────────────────────
 
     buildLineConfig(data) {
@@ -65,6 +107,8 @@ const ChartRenderer = {
         const stacked = curveType === 'stacked';
         const classDetails = data.class_details || {};
         const multiDataset = (data.datasets || []).length > 1;
+        const downtimeEvents = data.downtime_events || [];
+        const downtimeAnnotations = this._buildDowntimeAnnotations(downtimeEvents);
 
         return {
             type: 'line',
@@ -86,7 +130,7 @@ const ChartRenderer = {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: { mode: 'index', intersect: false },
+                interaction: { mode: 'nearest', intersect: true },
                 plugins: {
                     legend: {
                         display: multiDataset,
@@ -122,6 +166,9 @@ const ChartRenderer = {
                             },
                         },
                     },
+                    annotation: Object.keys(downtimeAnnotations).length > 0
+                        ? { annotations: downtimeAnnotations }
+                        : false,
                     zoom: this._zoomOptions(),
                 },
                 scales: {

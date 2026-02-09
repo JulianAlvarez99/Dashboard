@@ -18,20 +18,27 @@ class DataAggregator:
     Eliminates duplication across widget types.
     """
     
+    # Safety limit to prevent unbounded queries
+    MAX_DETECTION_ROWS = 500_000
+    MAX_DOWNTIME_ROWS = 10_000
+    
     def __init__(self, session: AsyncSession):
         self.session = session
     
     async def fetch_detections(
         self,
         line_id: int,
-        params: FilterParams
+        params: FilterParams,
+        max_rows: int = 2_000_000,
     ) -> pd.DataFrame:
         """
         Fetch raw detection data for a single production line.
+        Uses cursor-based pagination to handle large datasets efficiently.
         
         Args:
             line_id: Production line ID
             params: Filter parameters
+            max_rows: Absolute safety cap across all batches
             
         Returns:
             DataFrame with detection data
@@ -41,15 +48,32 @@ class DataAggregator:
             return pd.DataFrame()
         
         table_name = f"detection_line_{line['line_name'].lower()}"
+        batch_size = DataAggregator.MAX_DETECTION_ROWS
+        all_frames: list[pd.DataFrame] = []
+        cursor_id = 0
+        total_fetched = 0
         
-        query, bind_params = self._build_detection_query(table_name, params)
+        while total_fetched < max_rows:
+            query, bind_params = self._build_detection_query(
+                table_name, params, cursor_id=cursor_id
+            )
+            try:
+                result = await self.session.execute(text(query), bind_params)
+                rows = result.mappings().all()
+                if not rows:
+                    break
+                df = pd.DataFrame([dict(row) for row in rows])
+                all_frames.append(df)
+                cursor_id = int(df["detection_id"].max())
+                total_fetched += len(rows)
+                if len(rows) < batch_size:
+                    break  # last page
+            except Exception:
+                break
         
-        try:
-            result = await self.session.execute(text(query), bind_params)
-            rows = result.mappings().all()
-            return pd.DataFrame([dict(row) for row in rows])
-        except Exception:
+        if not all_frames:
             return pd.DataFrame()
+        return pd.concat(all_frames, ignore_index=True)
     
     async def fetch_detections_multi_line(
         self,
@@ -82,11 +106,13 @@ class DataAggregator:
     def _build_detection_query(
         self,
         table_name: str,
-        params: FilterParams
+        params: FilterParams,
+        cursor_id: int = 0,
     ) -> tuple[str, Dict]:
         """
         Build SQL query for detection data with filters.
-        Uses partition pruning hints when date filters are present.
+        Uses cursor-based pagination (detection_id > cursor_id) for
+        efficient iteration over large partitioned tables.
         
         Returns:
             Tuple of (query_string, bind_params)
@@ -94,10 +120,10 @@ class DataAggregator:
         query = f"""
             SELECT detection_id, detected_at, area_id, product_id
             FROM {table_name}
-            WHERE 1=1
+            WHERE detection_id > :cursor_id
         """
         
-        bind_params = {}
+        bind_params = {"cursor_id": cursor_id}
         
         # Resolve effective start/end datetimes
         effective_start, effective_end = params.get_effective_datetimes()
@@ -147,7 +173,8 @@ class DataAggregator:
                     bind_params["shift_start"] = s_str
                     bind_params["shift_end"] = e_str
         
-        query += " ORDER BY detected_at"
+        query += " ORDER BY detection_id"
+        query += f" LIMIT {DataAggregator.MAX_DETECTION_ROWS}"
         
         return query, bind_params
     

@@ -38,6 +38,8 @@ class MetadataCache:
     - PRODUCT: product_id -> {product_name, product_code, product_weight, ...}
     - SHIFT: shift_id -> {shift_name, start_time, end_time, ...}
     - FILTER: filter_id -> {filter_name, description, additional_filter, ...}
+    - FAILURE: failure_id -> {type_failure, description}
+    - INCIDENT: incident_id -> {failure_id, incident_code, description, has_solution}
     
     Cached tables (from global DB):
     - WIDGET_CATALOG: widget_id -> {widget_name, description}
@@ -74,7 +76,8 @@ class MetadataCache:
             # Production Lines
             result = await session.execute(text("""
                 SELECT line_id, line_name, line_code, is_active, 
-                       availability, performance, downtime_threshold
+                       availability, performance, downtime_threshold,
+                       auto_detect_downtime
                 FROM production_line
                 WHERE is_active = 1
             """))
@@ -128,6 +131,27 @@ class MetadataCache:
             rows = result.mappings().all()
             self._cache["filters"] = CacheEntry(
                 data={row["filter_id"]: dict(row) for row in rows}
+            )
+            
+            # Failures
+            result = await session.execute(text("""
+                SELECT failure_id, type_failure, description
+                FROM failure
+            """))
+            rows = result.mappings().all()
+            self._cache["failures"] = CacheEntry(
+                data={row["failure_id"]: dict(row) for row in rows}
+            )
+            
+            # Incidents
+            result = await session.execute(text("""
+                SELECT incident_id, failure_id, incident_code,
+                       description, has_solution, solution
+                FROM incident
+            """))
+            rows = result.mappings().all()
+            self._cache["incidents"] = CacheEntry(
+                data={row["incident_id"]: dict(row) for row in rows}
             )
     
     async def _load_global_metadata(self) -> None:
@@ -196,6 +220,27 @@ class MetadataCache:
     def get_filter(self, filter_id: int) -> Optional[dict]:
         """Get single filter by ID"""
         return self.get_filters().get(filter_id)
+    
+    def get_failures(self) -> Dict[int, dict]:
+        """Get all failures indexed by failure_id"""
+        entry = self._cache.get("failures")
+        return entry.data if entry else {}
+    
+    def get_failure(self, failure_id: int) -> Optional[dict]:
+        """Get single failure by ID"""
+        return self.get_failures().get(failure_id)
+    
+    def get_incidents(self) -> Dict[int, dict]:
+        """Get all incidents indexed by incident_id"""
+        entry = self._cache.get("incidents")
+        return entry.data if entry else {}
+    
+    def get_incidents_by_failure(self, failure_id: int) -> List[dict]:
+        """Get all incidents for a specific failure type"""
+        return [
+            inc for inc in self.get_incidents().values()
+            if inc["failure_id"] == failure_id
+        ]
     
     def get_widget_catalog(self) -> Dict[int, dict]:
         """Get all widgets indexed by widget_id"""

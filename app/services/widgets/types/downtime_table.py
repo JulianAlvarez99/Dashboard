@@ -38,7 +38,6 @@ class DowntimeTableWidget(TableWidget):
                 {"key": "start_time", "label": "Inicio"},
                 {"key": "end_time", "label": "Fin"},
                 {"key": "duration", "label": "Duración (min)"},
-                {"key": "reason", "label": "Motivo"},
                 {"key": "line_name", "label": "Línea"}
             ],
             "rows": []

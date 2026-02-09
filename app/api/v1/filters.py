@@ -40,10 +40,12 @@ class FilterConfigResponse(BaseModel):
 
 class ProductionLineOption(BaseModel):
     """Production line option"""
-    value: int
+    value: Any
     label: str
-    line_code: str
-    downtime_threshold: int
+    line_code: Optional[str] = None
+    downtime_threshold: Optional[int] = None
+    is_group: bool = False
+    line_ids: Optional[List[int]] = None
 
 
 class AreaOption(BaseModel):
@@ -122,11 +124,12 @@ async def get_filters_configs(
 @router.get("/options/production-lines", response_model=List[ProductionLineOption])
 async def get_production_line_options():
     """
-    Get all production line options.
+    Get all production line options including line groups.
     
-    Used to populate the production line dropdown.
+    Groups come from filter.additional_filter with format:
+    {"alias": "Fraccionado", "line_ids": [2, 3, 4]}
     """
-    options = FilterResolver.get_production_line_options()
+    options = FilterResolver.get_production_line_options_with_groups()
     return [ProductionLineOption(**opt) for opt in options]
 
 

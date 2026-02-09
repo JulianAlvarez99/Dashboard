@@ -33,6 +33,13 @@ from app.services.processors.tables import (
     process_downtime_table,
 )
 
+# Ranking & summary processors
+from app.services.processors.ranking import (
+    process_product_ranking,
+    process_line_status,
+    process_metrics_summary,
+)
+
 # Helpers (for direct import if needed)
 from app.services.processors.helpers import (
     empty_widget,
@@ -72,10 +79,17 @@ PROCESSOR_MAP: Dict[str, Callable[..., Dict[str, Any]]] = {
     "comparison_bar": process_comparison_bar,
     # Tables
     "downtime_table": process_downtime_table,
+    # Ranking & summary
+    "product_ranking": process_product_ranking,
+    "line_status": process_line_status,
+    "metrics_summary": process_metrics_summary,
 }
 
 # Categories for the orchestrator to know which signature to use
-CHART_TYPES = {"line_chart", "bar_chart", "pie_chart", "comparison_bar"}
+CHART_TYPES = {
+    "line_chart", "bar_chart", "pie_chart", "comparison_bar",
+    "product_ranking", "line_status", "metrics_summary",
+}
 
 __all__ = [
     "PROCESSOR_MAP",

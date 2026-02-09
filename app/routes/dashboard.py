@@ -70,6 +70,17 @@ def _infer_widget_type(widget_name: str) -> str:
 
     if "tabla" in name or "table" in name:
         return "downtime_table"
+
+    # Ranking / summary / status
+    if "ranking" in name or "top producto" in name:
+        return "product_ranking"
+    if "estado" in name and "linea" in name:
+        return "line_status"
+    if "resumen" in name and "metrica" in name:
+        return "metrics_summary"
+    if "resumen" in name:
+        return "metrics_summary"
+
     if "comparacion" in name or "comparativa" in name or "comparison" in name:
         return "comparison_bar"
     if "distribucion" in name or "torta" in name or "pie" in name:

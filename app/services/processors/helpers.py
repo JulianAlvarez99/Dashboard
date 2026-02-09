@@ -150,7 +150,19 @@ def infer_widget_type(widget_name: str) -> str:
 
     # Table widgets
     if "tabla" in name or "table" in name:
+        if "parada" in name or "downtime" in name:
+            return "downtime_table"
         return "downtime_table"
+
+    # Ranking / summary / status widgets
+    if "ranking" in name or "top producto" in name:
+        return "product_ranking"
+    if "estado" in name and "linea" in name:
+        return "line_status"
+    if "resumen" in name and "metrica" in name:
+        return "metrics_summary"
+    if "resumen" in name:
+        return "metrics_summary"
 
     # Chart widgets
     if "comparacion" in name or "comparativa" in name or "comparison" in name:

@@ -18,10 +18,14 @@
         "kpi_quality":          { "col_span": 1, "size": "small",  "order": 7,  "chart_height": null },
 
         "line_chart":           { "col_span": 4, "size": "large",  "order": 8,  "chart_height": "400px" },
-        "comparison_bar":       { "col_span": 2, "size": "medium", "order": 9,  "chart_height": "400px" },
+        "comparison_bar":       { "col_span": 4, "size": "large", "order": 9,  "chart_height": "400px" },
         "bar_chart":            { "col_span": 2, "size": "medium", "order": 10, "chart_height": "400px" },
-        "pie_chart":            { "col_span": 2, "size": "medium", "order": 11, "chart_height": "400px" },
-        "downtime_table":       { "col_span": 4, "size": "large",  "order": 12, "chart_height": null },
+        "pie_chart":            { "col_span": 2, "size": "medium", "order": 11, "chart_height": null },
+        "line_status":          { "col_span": 2, "size": "small",  "order": 12, "chart_height": null },
+        "metrics_summary":      { "col_span": 2, "size": "small",   "order": 13, "chart_height": null },
+
+        "product_ranking":      { "col_span": 2, "size": "small",  "order": 14, "chart_height": null },
+        "downtime_table":       { "col_span": 2, "size": "medium",  "order": 15, "chart_height": null },
 
         "unknown":              { "col_span": 1, "size": "small",  "order": 99, "chart_height": null }
     },

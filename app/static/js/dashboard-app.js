@@ -40,6 +40,8 @@ function dashboardApp(filterConfigs, widgetConfigs, apiBaseUrl) {
             total_detections: null,
             elapsed_ms: null
         },
+        isMultiLine: false,
+        selectedLineGroup: null,
 
         // ── Lifecycle ────────────────────────────────────────────
 
@@ -113,12 +115,31 @@ function dashboardApp(filterConfigs, widgetConfigs, apiBaseUrl) {
         },
 
         async onLineChange() {
-            if (this.filterValues.line_id) {
+            const val = this.filterValues.line_id;
+            // Check if it's a group or "all" selection
+            const opt = this.options.production_line.find(o => String(o.value) === String(val));
+            if (opt && opt.is_group) {
+                this.isMultiLine = true;
+                this.selectedLineGroup = opt.line_ids;
+                // Disable downtime threshold for multi-line
+                this.filterValues.downtime_threshold = null;
+                this.options.area = [];
+            } else if (val) {
+                this.isMultiLine = false;
+                this.selectedLineGroup = null;
+                // Set downtime_threshold from the line's DB value
+                if (opt && opt.downtime_threshold != null) {
+                    this.filterValues.downtime_threshold = opt.downtime_threshold;
+                }
                 const res = await fetch(
-                    `${this.apiBaseUrl}/api/v1/filters/options/areas?line_id=${this.filterValues.line_id}`
+                    `${this.apiBaseUrl}/api/v1/filters/options/areas?line_id=${val}`
                 );
                 this.options.area = await res.json();
             } else {
+                // No line selected — treat as all lines
+                this.isMultiLine = true;
+                this.selectedLineGroup = null;
+                this.filterValues.downtime_threshold = null;
                 this.options.area = [];
             }
         },
@@ -240,14 +261,29 @@ function dashboardApp(filterConfigs, widgetConfigs, apiBaseUrl) {
                 curve_type: this.filterValues.curve_type || 'smooth'
             };
 
-            if (this.filterValues.line_id)
-                body.line_id = parseInt(this.filterValues.line_id);
+            // Handle multi-line (group or "all")
+            if (this.isMultiLine && this.selectedLineGroup) {
+                body.line_ids = this.selectedLineGroup.join(',');
+            } else if (this.filterValues.line_id) {
+                const val = this.filterValues.line_id;
+                const opt = this.options.production_line.find(o => String(o.value) === String(val));
+                if (opt && opt.is_group) {
+                    body.line_ids = opt.line_ids.join(',');
+                } else {
+                    body.line_id = parseInt(val);
+                }
+            }
+
             if (this.filterValues.product_ids && this.filterValues.product_ids.length > 0)
                 body.product_ids = this.filterValues.product_ids.join(',');
             if (this.filterValues.area_ids && this.filterValues.area_ids.length > 0)
                 body.area_ids = this.filterValues.area_ids.join(',');
             if (this.filterValues.shift_id)
                 body.shift_id = parseInt(this.filterValues.shift_id);
+            if (this.filterValues.downtime_threshold != null)
+                body.downtime_threshold = parseInt(this.filterValues.downtime_threshold);
+            if (this.filterValues.show_downtime)
+                body.show_downtime = true;
 
             return body;
         },

@@ -70,7 +70,7 @@ FILTER_REGISTRY: Dict[int, FilterConfig] = {
         filter_type=FilterType.DROPDOWN,
         options_source=OptionsSource.PRODUCTION_LINE,
         param_name="line_id",
-        placeholder="Todas las líneas"
+        placeholder="Seleccione una linea"
     ),
     
     # 3: Productos

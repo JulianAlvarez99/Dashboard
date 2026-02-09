@@ -42,6 +42,8 @@ class DashboardDataRequest(BaseModel):
     shift_id: Optional[int] = None
     interval: str = "hour"
     curve_type: str = "smooth"
+    downtime_threshold: Optional[int] = None
+    show_downtime: bool = False
 
 
 class WidgetDataItem(BaseModel):
@@ -93,6 +95,8 @@ async def get_dashboard_data(
         "shift_id": request.shift_id,
         "interval": request.interval,
         "curve_type": request.curve_type,
+        "downtime_threshold": request.downtime_threshold,
+        "show_downtime": request.show_downtime,
     })
 
     # Execute the single-query pipeline
