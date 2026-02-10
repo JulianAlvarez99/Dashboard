@@ -26,6 +26,7 @@ from app.services.processors.charts import (
     process_bar_chart,
     process_pie_chart,
     process_comparison_bar,
+    process_scatter_chart,
 )
 
 # Table processors
@@ -77,6 +78,7 @@ PROCESSOR_MAP: Dict[str, Callable[..., Dict[str, Any]]] = {
     "bar_chart": process_bar_chart,
     "pie_chart": process_pie_chart,
     "comparison_bar": process_comparison_bar,
+    "scatter_chart": process_scatter_chart,
     # Tables
     "downtime_table": process_downtime_table,
     # Ranking & summary
@@ -87,7 +89,7 @@ PROCESSOR_MAP: Dict[str, Callable[..., Dict[str, Any]]] = {
 
 # Categories for the orchestrator to know which signature to use
 CHART_TYPES = {
-    "line_chart", "bar_chart", "pie_chart", "comparison_bar",
+    "line_chart", "bar_chart", "pie_chart", "comparison_bar", "scatter_chart",
     "product_ranking", "line_status", "metrics_summary",
 }
 
@@ -107,6 +109,7 @@ __all__ = [
     "process_bar_chart",
     "process_pie_chart",
     "process_comparison_bar",
+    "process_scatter_chart",
     # Tables
     "process_downtime_table",
     # Helpers

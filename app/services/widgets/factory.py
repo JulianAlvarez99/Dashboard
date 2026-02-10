@@ -15,8 +15,10 @@ from app.services.widgets.types import (
     BarChartWidget,
     PieChartWidget,
     ComparisonBarWidget,
-    DowntimeTableWidget
+    DowntimeTableWidget,
+    ScatterChartWidget
 )
+
 
 
 class WidgetFactory:
@@ -36,6 +38,7 @@ class WidgetFactory:
         "pie_chart": PieChartWidget,
         "comparison_bar": ComparisonBarWidget,
         "downtime_table": DowntimeTableWidget,
+        "scatter_chart": ScatterChartWidget,
     }
     
     # Keyword mapping for smart detection based on widget name
@@ -59,6 +62,8 @@ class WidgetFactory:
         "comparison": ComparisonBarWidget,
         "tabla": DowntimeTableWidget,
         "table": DowntimeTableWidget,
+        "scatter_chart": ScatterChartWidget,
+        "dispersion": ScatterChartWidget,
     }
     
     @classmethod

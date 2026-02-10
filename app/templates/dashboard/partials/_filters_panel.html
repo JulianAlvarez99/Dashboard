@@ -1,0 +1,45 @@
+{# ── Filters Panel partial ──
+     Expects: filters (from template context)
+#}
+<div class="filters-panel">
+    <div class="filters-header">
+        <h2 class="filters-title">Filtros</h2>
+        <div class="flex items-center gap-3">
+            {# query metadata #}
+            <template x-if="queryMetadata.total_detections !== null">
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                    <span x-text="queryMetadata.total_detections.toLocaleString()"></span> detecciones
+                    · <span x-text="queryMetadata.elapsed_ms"></span>ms
+                </span>
+            </template>
+            {# loading spinner #}
+            <template x-if="loading">
+                <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg"
+                     fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10"
+                            stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </template>
+            <button @click="applyFilters()"
+                    :disabled="loading"
+                    class="filters-apply-btn"
+                    :class="loading ? 'opacity-50 cursor-not-allowed' : ''">
+                <span x-text="loading ? 'Cargando...' : 'Aplicar Filtros'"></span>
+                <svg x-show="!loading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="filters-grid">
+        {% for filter in filters %}
+        {% if filter %}
+            {% include 'dashboard/partials/filters/_filter_' + filter.filter_type + '.html' ignore missing %}
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>

@@ -11,13 +11,13 @@ This ensures the dashboard page renders even if FastAPI isn't running.
 import asyncio
 import json
 import os
-import unicodedata
 
 from flask import Blueprint, render_template, request, session, redirect, url_for
 import httpx
 
 from app.core.config import settings
 from app.routes.auth import login_required, get_current_user
+from app.services.processors.helpers import infer_widget_type
 
 
 dashboard_bp = Blueprint("dashboard", __name__, url_prefix="/dashboard")
@@ -50,49 +50,6 @@ def _load_widget_layout():
         pass  # keep whatever was loaded at import time
 
 
-def _strip_accents(text: str) -> str:
-    nfkd = unicodedata.normalize('NFKD', text)
-    return ''.join(c for c in nfkd if not unicodedata.category(c).startswith('M'))
-
-
-def _infer_widget_type(widget_name: str) -> str:
-    """Infer widget type from its name (accent-insensitive)."""
-    name = _strip_accents(widget_name).lower()
-
-    if "kpi" in name:
-        if "oee" in name:                   return "kpi_oee"
-        if "disponibilidad" in name:        return "kpi_availability"
-        if "rendimiento" in name:           return "kpi_performance"
-        if "calidad" in name:               return "kpi_quality"
-        if "produccion" in name:            return "kpi_total_production"
-        if "peso" in name:                  return "kpi_total_weight"
-        if "parada" in name:                return "kpi_downtime_count"
-
-    if "tabla" in name or "table" in name:
-        return "downtime_table"
-
-    # Ranking / summary / status
-    if "ranking" in name or "top producto" in name:
-        return "product_ranking"
-    if "estado" in name and "linea" in name:
-        return "line_status"
-    if "resumen" in name and "metrica" in name:
-        return "metrics_summary"
-    if "resumen" in name:
-        return "metrics_summary"
-
-    if "comparacion" in name or "comparativa" in name or "comparison" in name:
-        return "comparison_bar"
-    if "distribucion" in name or "torta" in name or "pie" in name:
-        return "pie_chart"
-    if "detecciones por area" in name or "barra" in name or "bar" in name:
-        return "bar_chart"
-    if "produccion por tiempo" in name or "temporal" in name:
-        return "line_chart"
-
-    return "unknown"
-
-
 @dashboard_bp.route("/chart-test")
 def chart_test():
     return render_template("chart_test.html")
@@ -117,8 +74,25 @@ def index():
     tenant_id = user.get("tenant_id", 1)
     role = user.get("role", "ADMIN")
     
+    # Extract tenant database name from user session
+    tenant_info = user.get("tenant_info", {})
+    tenant_config = tenant_info.get("config", {})
+    db_name = tenant_config.get("db_name")
+    
+    if not db_name:
+        return render_template(
+            "dashboard/index.html",
+            user=user,
+            filters=[],
+            widgets=[],
+            api_base_url=settings.API_BASE_URL,
+            error_message="Error: No se encontró el nombre de la base de datos del tenant",
+            widget_layout=_WIDGET_LAYOUT,
+            widget_layout_sizes=_WIDGET_LAYOUT_SIZES,
+        )
+    
     # Load layout DIRECTLY (no FastAPI dependency)
-    layout_config = _get_layout_direct(tenant_id, role)
+    layout_config = _get_layout_direct(tenant_id, role, db_name)
     
     if layout_config is None:
         # Fallback: try via API
@@ -137,7 +111,7 @@ def index():
     # can look it up in widget_layout.json
     for w in widgets:
         if w and "widget_name" in w:
-            w["widget_type_inferred"] = _infer_widget_type(w["widget_name"])
+            w["widget_type_inferred"] = infer_widget_type(w["widget_name"])
     
     return render_template(
         "dashboard/index.html",
@@ -151,11 +125,16 @@ def index():
     )
 
 
-def _get_layout_direct(tenant_id: int, role: str):
+def _get_layout_direct(tenant_id: int, role: str, db_name: str):
     """
     Load layout configuration directly from DB + cache.
     Uses asyncio to call the async LayoutService from synchronous Flask.
     This avoids depending on FastAPI being up.
+    
+    Args:
+        tenant_id: Tenant identifier
+        role: User role (ADMIN, SUPERVISOR, etc.)
+        db_name: Tenant database name (e.g., 'cliente_chacabuco')
     """
     try:
         from app.core.database import db_manager
@@ -163,9 +142,9 @@ def _get_layout_direct(tenant_id: int, role: str):
         from app.services.config.layout_service import LayoutService
 
         async def _fetch():
-            # Ensure cache is loaded
+            # Ensure cache is loaded with tenant-specific database
             if not metadata_cache.is_loaded:
-                await metadata_cache.load_all()
+                await metadata_cache.load_all(db_name)
 
             async with db_manager.get_global_session() as session:
                 layout = await LayoutService.get_layout_config(

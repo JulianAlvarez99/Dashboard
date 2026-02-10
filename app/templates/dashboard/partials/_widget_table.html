@@ -1,0 +1,66 @@
+{# ── Table Widget partial (downtime_table & product_ranking) ──
+     Expects: wid, wtype (from parent loop)
+#}
+<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
+     x-cloak class="widget-body">
+    <h3 class="widget-title mb-3" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+
+    {% if wtype == 'product_ranking' %}
+    <p x-show="widgetResults['{{ wid }}']?.data?.total_production"
+       class="mb-2 text-sm text-gray-500 dark:text-gray-400">
+        Producción total: <span class="font-semibold text-white" x-text="widgetResults['{{ wid }}']?.data?.total_production?.toLocaleString('es-AR')"></span>
+    </p>
+    {% endif %}
+
+    <div class="overflow-x-auto overflow-y-auto" style="max-height: 400px">
+        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400 sticky top-0 z-10">
+                <tr>
+                    <template x-for="col in (widgetResults['{{ wid }}']?.data?.columns || [])" :key="col.key">
+                        <th class="px-4 py-3" x-text="col.label"></th>
+                    </template>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="(row, idx) in (widgetResults['{{ wid }}']?.data?.rows || [])" :key="idx">
+                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                        <template x-for="col in (widgetResults['{{ wid }}']?.data?.columns || [])" :key="col.key">
+                            <td class="px-4 py-3">
+                                <template x-if="col.key === 'percentage'">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                            <div class="bg-blue-500 h-2 rounded-full" :style="'width:' + Math.min(row[col.key], 100) + '%'"></div>
+                                        </div>
+                                        <span x-text="row[col.key] + '%'"></span>
+                                    </div>
+                                </template>
+                                <template x-if="col.key === 'product_name'">
+                                    <span class="flex items-center gap-2">
+                                        <span class="w-3 h-3 rounded-full inline-block" :style="'background:' + (row.product_color || '#888')"></span>
+                                        <span x-text="row[col.key]"></span>
+                                    </span>
+                                </template>
+                                <template x-if="col.key !== 'percentage' && col.key !== 'product_name'">
+                                    <span x-text="typeof row[col.key] === 'number' ? row[col.key].toLocaleString('es-AR') : row[col.key]"></span>
+                                </template>
+                            </td>
+                        </template>
+                    </tr>
+                </template>
+                <template x-if="!widgetResults['{{ wid }}']?.data?.rows || widgetResults['{{ wid }}'].data.rows.length === 0">
+                    <tr>
+                        <td :colspan="(widgetResults['{{ wid }}']?.data?.columns || []).length"
+                            class="px-4 py-6 text-center text-gray-500">
+                            No hay datos disponibles
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+    <p x-show="widgetResults['{{ wid }}']?.metadata?.total_rows > 0"
+       class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        Total: <span x-text="widgetResults['{{ wid }}']?.metadata?.total_rows"></span>
+        <span x-text="'{{ wtype }}' === 'product_ranking' ? 'productos' : 'eventos'"></span>
+    </p>
+</div>

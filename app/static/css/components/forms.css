@@ -1,0 +1,117 @@
+/**
+ * Forms CSS - Estilos para formularios y controles de entrada
+ */
+
+.form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.dark .form-label {
+    color: #d1d5db;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+    font-size: 1rem;
+}
+
+.dark .form-input,
+.dark .form-select,
+.dark .form-textarea {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: transparent;
+    ring: 2px;
+    ring-color: #3b82f6;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+    color: #9ca3af;
+}
+
+.dark .form-input::placeholder,
+.dark .form-textarea::placeholder {
+    color: #6b7280;
+}
+
+.form-input-icon {
+    position: relative;
+}
+
+.form-input-icon input {
+    padding-left: 2.5rem;
+}
+
+.form-input-icon .icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+}
+
+/* Toggle switch */
+.toggle-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.toggle-switch input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.toggle-switch-slider {
+    width: 3rem;
+    height: 1.5rem;
+    background-color: #d1d5db;
+    border-radius: 9999px;
+    transition: background-color 150ms;
+    position: relative;
+}
+
+.dark .toggle-switch-slider {
+    background-color: #4b5563;
+}
+
+.toggle-switch input:checked + .toggle-switch-slider {
+    background-color: #3b82f6;
+}
+
+.toggle-switch-slider::after {
+    content: '';
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    background-color: white;
+    border-radius: 9999px;
+    transition: transform 150ms;
+}
+
+.toggle-switch input:checked + .toggle-switch-slider::after {
+    transform: translateX(1.5rem);
+}

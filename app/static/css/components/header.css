@@ -1,0 +1,87 @@
+/**
+ * Header CSS - Estilos para la barra superior del dashboard
+ */
+
+.header {
+    background-color: white;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    z-index: 40;
+}
+
+.dark .header {
+    background-color: #1f2937;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 4rem;
+    padding: 0 1.5rem;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.header-toggle-btn {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    color: #6b7280;
+    transition: background-color 150ms;
+}
+
+.header-toggle-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.dark .header-toggle-btn:hover {
+    background-color: #374151;
+}
+
+.header-breadcrumb {
+    margin-left: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.header-breadcrumb span {
+    color: #6b7280;
+}
+
+.dark .header-breadcrumb span {
+    color: #9ca3af;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.header-action-btn {
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    color: #6b7280;
+    transition: background-color 150ms;
+}
+
+.header-action-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.dark .header-action-btn:hover {
+    background-color: #374151;
+}
+
+.header-time {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.dark .header-time {
+    color: #9ca3af;
+}

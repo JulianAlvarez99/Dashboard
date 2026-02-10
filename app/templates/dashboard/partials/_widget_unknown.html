@@ -1,0 +1,7 @@
+{# ── Unknown Widget type fallback ──
+     Expects: wid (from parent loop)
+#}
+<div x-show="widgetResults['{{ wid }}']" x-cloak class="widget-body">
+    <h3 class="widget-title" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+    <p class="text-gray-500 mt-2">Widget en desarrollo</p>
+</div>

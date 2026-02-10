@@ -1,0 +1,51 @@
+/**
+ * Empty States - Mensajes cuando no hay datos/configuración
+ */
+
+.empty-state {
+    background-color: #f3f4f6;
+    border-radius: 0.5rem;
+    padding: 3rem;
+    text-align: center;
+}
+
+.dark .empty-state {
+    background-color: #1f2937;
+}
+
+.empty-state-icon {
+    width: 4rem;
+    height: 4rem;
+    margin: 0 auto;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+}
+
+.empty-state-title {
+    color: #6b7280;
+    font-size: 1.125rem;
+    margin-bottom: 0.5rem;
+}
+
+.dark .empty-state-title {
+    color: #9ca3af;
+}
+
+.empty-state-description {
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+.dark .empty-state-description {
+    color: #6b7280;
+}
+
+.empty-state-code {
+    background-color: #fef3c7;
+    padding: 0 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.dark .empty-state-code {
+    background-color: #78350f;
+}

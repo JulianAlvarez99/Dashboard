@@ -1,0 +1,17 @@
+{# ── Select Buttons Filter ── #}
+{% if filter.static_options %}
+<div class="filter-item filter-select-buttons-wrap">
+    <label class="filter-label">{{ filter.filter_name }}</label>
+    <div class="filter-select-buttons">
+        {% for opt in filter.static_options %}
+        <button type="button"
+                @click="filterValues.{{ filter.param_name }} = '{{ opt.value }}';
+                        {% if filter.param_name == 'curve_type' %}onCurveTypeChange(){% endif %}"
+                :class="filterValues.{{ filter.param_name }} === '{{ opt.value }}' ? 'active' : ''"
+                class="filter-select-button">
+            {{ opt.label }}
+        </button>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

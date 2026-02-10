@@ -1,0 +1,27 @@
+{# ── Dropdown Filter (dynamic + static) ── #}
+{% if filter.options_source and filter.options_source != 'static' %}
+{# Dynamic options from Alpine.js #}
+<div class="filter-item">
+    <label class="filter-label">{{ filter.filter_name }}</label>
+    <select x-model="filterValues.{{ filter.param_name }}"
+            @change="{% if filter.options_source == 'production_line' %}onLineChange(){% endif %}"
+            class="filter-select">
+        <option value="">{{ filter.placeholder or 'Todos' }}</option>
+        <template x-for="opt in options.{{ filter.options_source }}" :key="opt.value">
+            <option :value="opt.value"
+                    x-text="opt.is_group ? opt.label : opt.label"
+                    :class="opt.is_group ? 'font-semibold' : ''"></option>
+        </template>
+    </select>
+</div>
+{% elif filter.static_options %}
+{# Static options from Jinja context #}
+<div class="filter-item">
+    <label class="filter-label">{{ filter.filter_name }}</label>
+    <select x-model="filterValues.{{ filter.param_name }}" class="filter-select">
+        {% for opt in filter.static_options %}
+        <option value="{{ opt.value }}">{{ opt.label }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endif %}

@@ -64,15 +64,33 @@ class MetadataCache:
         """Check if cache has been populated"""
         return len(self._cache) > 0
     
-    async def load_all(self) -> None:
-        """Load all metadata tables into cache"""
+    async def load_all(self, db_name: Optional[str] = None) -> None:
+        """
+        Load all metadata tables into cache.
+        
+        Args:
+            db_name: Optional tenant database name for dynamic tenant selection.
+                     If None, uses the default tenant database from settings.
+        """
         async with self._lock:
-            await self._load_tenant_metadata()
+            await self._load_tenant_metadata(db_name)
             await self._load_global_metadata()
     
-    async def _load_tenant_metadata(self) -> None:
-        """Load metadata from tenant database"""
-        async with db_manager.get_tenant_session() as session:
+    async def _load_tenant_metadata(self, db_name: Optional[str] = None) -> None:
+        """
+        Load metadata from tenant database.
+        
+        Args:
+            db_name: Optional tenant database name for dynamic tenant selection.
+                     If None, uses the default tenant database from settings.
+        """
+        # Use dynamic tenant session if db_name provided
+        if db_name:
+            session_context = db_manager.get_tenant_session_by_name(db_name)
+        else:
+            session_context = db_manager.get_tenant_session()
+        
+        async with session_context as session:
             # Production Lines
             result = await session.execute(text("""
                 SELECT line_id, line_name, line_code, is_active, 

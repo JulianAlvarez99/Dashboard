@@ -1,0 +1,46 @@
+/**
+ * Widget Grid - Sistema de grid y clases de tamaño para widgets
+ */
+
+.widgets-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .widgets-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* ── Size classes (mapped from widget_layout.json) ── */
+
+/* Grid item wrappers — flex container so .widget height:100% fills correctly */
+.widget-sm,
+.widget-md,
+.widget-lg {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Small: 1 column — KPI cards */
+.widget-sm {
+    grid-column: span 1;
+}
+
+/* Medium: 2 columns — charts side by side */
+.widget-md {
+    grid-column: span 1;
+}
+
+@media (min-width: 1024px) {
+    .widget-md {
+        grid-column: span 2;
+    }
+}
+
+/* Large: full width — timeline, tables */
+.widget-lg {
+    grid-column: 1 / -1;
+}

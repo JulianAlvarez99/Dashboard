@@ -19,227 +19,14 @@
 
     {# ── Error alert ──────────────────────────────────────────── #}
     {% if error_message %}
-    <div class="dashboard-error-alert">
-        <svg class="dashboard-error-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
-        </svg>
-        <div>
-            <p class="dashboard-error-title">Configuración no encontrada</p>
-            <p class="dashboard-error-message">{{ error_message }}</p>
-            <p class="dashboard-error-message">
-                Verifica que exista un registro en
-                <code class="dashboard-error-code">DASHBOARD_TEMPLATE</code> para este tenant y rol.
-            </p>
-        </div>
-    </div>
+    {% include 'dashboard/partials/_error_alert.html' %}
     {% endif %}
 
     {# ══════════════════════════════════════════════════════════ #}
     {#  FILTERS PANEL                                            #}
     {# ══════════════════════════════════════════════════════════ #}
     {% if filters %}
-    <div class="filters-panel">
-        <div class="filters-header">
-            <h2 class="filters-title">Filtros</h2>
-            <div class="flex items-center gap-3">
-                {# query metadata #}
-                <template x-if="queryMetadata.total_detections !== null">
-                    <span class="text-xs text-gray-500 dark:text-gray-400">
-                        <span x-text="queryMetadata.total_detections.toLocaleString()"></span> detecciones
-                        · <span x-text="queryMetadata.elapsed_ms"></span>ms
-                    </span>
-                </template>
-                {# loading spinner #}
-                <template x-if="loading">
-                    <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg"
-                         fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10"
-                                stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                    </svg>
-                </template>
-                <button @click="applyFilters()"
-                        :disabled="loading"
-                        class="filters-apply-btn"
-                        :class="loading ? 'opacity-50 cursor-not-allowed' : ''">
-                    <span x-text="loading ? 'Cargando...' : 'Aplicar Filtros'"></span>
-                    <svg x-show="!loading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-
-        <div class="filters-grid">
-            {% for filter in filters %}
-            {% if filter %}
-
-                {# DATERANGE #}
-                {% if filter.filter_type == 'daterange' %}
-                <div class="filter-item filter-daterange">
-                    <label class="filter-label">{{ filter.filter_name }}</label>
-                    <div class="filter-daterange-container">
-                        <div class="flex-1">
-                            <input type="date" x-model="filterValues.start_date"
-                                   @change="validateEndDate()" :max="filterValues.end_date || ''"
-                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                          focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer">
-                        </div>
-                        <div class="w-32">
-                            <input type="time" x-model="filterValues.start_time"
-                                   @change="validateEndTime()"
-                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                          focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer">
-                        </div>
-                        <span class="px-1 text-gray-500 dark:text-gray-400 font-medium">a</span>
-                        <div class="flex-1">
-                            <input type="date" x-model="filterValues.end_date"
-                                   @change="validateEndDate()" :min="filterValues.start_date || ''"
-                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                          focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer">
-                        </div>
-                        <div class="w-32">
-                            <input type="time" x-model="filterValues.end_time"
-                                   @change="validateEndTime()"
-                                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                                          bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-                                          focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer">
-                        </div>
-                    </div>
-                </div>
-
-                {# DROPDOWN — dynamic options #}
-                {% elif filter.filter_type == 'dropdown' and filter.options_source and filter.options_source != 'static' %}
-                <div class="filter-item">
-                    <label class="filter-label">{{ filter.filter_name }}</label>
-                    <select x-model="filterValues.{{ filter.param_name }}"
-                            @change="{% if filter.options_source == 'production_line' %}onLineChange(){% endif %}"
-                            class="filter-select">
-                        <option value="">{{ filter.placeholder or 'Todos' }}</option>
-                        <template x-for="opt in options.{{ filter.options_source }}" :key="opt.value">
-                            <option :value="opt.value"
-                                    x-text="opt.is_group ? opt.label : opt.label"
-                                    :class="opt.is_group ? 'font-semibold' : ''"></option>
-                        </template>
-                    </select>
-                </div>
-
-                {# DROPDOWN — static options #}
-                {% elif filter.filter_type == 'dropdown' and filter.static_options %}
-                <div class="filter-item">
-                    <label class="filter-label">{{ filter.filter_name }}</label>
-                    <select x-model="filterValues.{{ filter.param_name }}" class="filter-select">
-                        {% for opt in filter.static_options %}
-                        <option value="{{ opt.value }}">{{ opt.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                {# MULTISELECT #}
-                {% elif filter.filter_type == 'multiselect' %}
-                <div x-data="{ open: false }" class="filter-item filter-multiselect">
-                    <label class="filter-label">{{ filter.filter_name }}</label>
-                    <div class="relative">
-                        <button @click="open = !open" type="button" class="filter-multiselect-button">
-                            <span x-text="filterValues.{{ filter.param_name }}.length
-                                         ? filterValues.{{ filter.param_name }}.length + ' seleccionados'
-                                         : '{{ filter.placeholder or 'Seleccionar...' }}'"></span>
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        <div x-show="open" @click.outside="open = false" x-cloak
-                             class="filter-multiselect-dropdown">
-                            <template x-for="opt in options.{{ filter.options_source }}" :key="opt.value">
-                                <label class="filter-multiselect-option">
-                                    <input type="checkbox" :value="opt.value"
-                                           x-model="filterValues.{{ filter.param_name }}"
-                                           class="filter-multiselect-checkbox">
-                                    <span class="filter-multiselect-label" x-text="opt.label"></span>
-                                </label>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-
-                {# TOGGLE #}
-                {% elif filter.filter_type == 'toggle' %}
-                <div class="filter-item">
-                    <label class="filter-label">{{ filter.filter_name }}</label>
-                    <div class="filter-toggle-container">
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" x-model="filterValues.{{ filter.param_name }}" class="sr-only peer">
-                            <div class="w-12 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2
-                                        peer-focus:ring-blue-500 rounded-full peer dark:bg-gray-600
-                                        peer-checked:after:translate-x-full peer-checked:after:border-white
-                                        after:content-[''] after:absolute after:top-[2px] after:left-[2px]
-                                        after:bg-white after:border-gray-300 after:border after:rounded-full
-                                        after:h-5 after:w-5 after:transition-all dark:border-gray-500
-                                        peer-checked:bg-blue-600"></div>
-                            <span class="ml-3 text-sm text-gray-700 dark:text-gray-300"
-                                  x-text="filterValues.{{ filter.param_name }} ? 'Sí' : 'No'"></span>
-                        </label>
-                    </div>
-                </div>
-
-                {# TEXT #}
-                {% elif filter.filter_type == 'text' %}
-                <div class="filter-item">
-                    <label class="filter-label">{{ filter.filter_name }}</label>
-                    <input type="text" x-model="filterValues.{{ filter.param_name }}"
-                           placeholder="{{ filter.placeholder }}" class="filter-text-input">
-                </div>
-
-                {# SELECT BUTTONS #}
-                {% elif filter.filter_type == 'select_buttons' and filter.static_options %}
-                <div class="filter-item">
-                    <label class="filter-label">{{ filter.filter_name }}</label>
-                    <div class="filter-select-buttons">
-                        {% for opt in filter.static_options %}
-                        <button type="button"
-                                @click="filterValues.{{ filter.param_name }} = '{{ opt.value }}';
-                                        {% if filter.param_name == 'curve_type' %}onCurveTypeChange(){% endif %}"
-                                :class="filterValues.{{ filter.param_name }} === '{{ opt.value }}' ? 'active' : ''"
-                                class="filter-select-button">
-                            {{ opt.label }}
-                        </button>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                {# NUMBER #}
-                {% elif filter.filter_type == 'number' %}
-                <div class="filter-item">
-                    <label class="filter-label">
-                        {{ filter.filter_name }}
-                        {% if filter.param_name == 'downtime_threshold' %}
-                        <span class="text-xs font-normal text-gray-400">(segundos)</span>
-                        {% endif %}
-                    </label>
-                    <input type="number" x-model="filterValues.{{ filter.param_name }}"
-                           placeholder="{{ filter.placeholder }}" min="0" class="filter-number-input"
-                           {% if filter.param_name == 'downtime_threshold' %}
-                           :disabled="isMultiLine"
-                           :class="isMultiLine ? 'opacity-50 cursor-not-allowed' : ''"
-                           {% endif %}>
-                    {% if filter.param_name == 'downtime_threshold' %}
-                    <p x-show="isMultiLine" class="mt-1 text-xs text-yellow-500">
-                        Umbral bloqueado para múltiples líneas
-                    </p>
-                    {% endif %}
-                </div>
-                {% endif %}
-
-            {% endif %}
-            {% endfor %}
-        </div>
-    </div>
+    {% include 'dashboard/partials/_filters_panel.html' %}
     {% else %}
     <div class="empty-state">
         <p class="empty-state-title">No hay filtros configurados para este dashboard.</p>
@@ -249,12 +36,6 @@
     {# ══════════════════════════════════════════════════════════ #}
     {#  WIDGETS GRID                                             #}
     {# ══════════════════════════════════════════════════════════ #}
-    {# ══════════════════════════════════════════════════════════
-       Macro helper — keeps each widget type block readable.
-       `wid`  = widget.widget_id  (int, Jinja-time)
-       `wr`   = JS expression that resolves to the API result for this widget
-    ══════════════════════════════════════════════════════════ #}
-
     {% if widgets %}
     <div id="widgets-container" class="widgets-grid">
         {% for widget in widgets %}
@@ -268,7 +49,7 @@
         <div class="{{ size_class }}" style="order:{{ wl.get('order', 99) }}">
             <div class="widget" id="widget-{{ wid }}">
 
-                {# ── Loading skeleton (shown while API hasn't returned) ── #}
+                {# ── Loading skeleton ── #}
                 <div x-show="!widgetResults['{{ wid }}']" class="widget-loading">
                     <div class="widget-skeleton-bar"></div>
                     <div class="widget-skeleton-bar"></div>
@@ -286,236 +67,19 @@
                        x-text="(widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.message) || 'No hay datos disponibles'"></p>
                 </div>
 
-                {# ════════════════════════════════════════════════════
-                   Widget type decided at SERVER TIME (Jinja2).
-                   Only ONE of these blocks is rendered per widget,
-                   eliminating nested x-if timing issues.
-                ════════════════════════════════════════════════════ #}
-
+                {# ── Widget type partials (server-time decision) ── #}
                 {% if wtype.startswith('kpi_') %}
-                {# ── KPI Widget ── #}
-                <div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
-                     x-cloak class="widget-body">
-                    <h3 class="widget-title" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
-                    <div class="mt-2 flex items-baseline gap-2">
-                        <span class="text-3xl font-bold text-gray-900 dark:text-white"
-                              x-text="typeof widgetResults['{{ wid }}']?.data?.value === 'number'
-                                      ? widgetResults['{{ wid }}'].data.value.toLocaleString('es-AR')
-                                      : widgetResults['{{ wid }}']?.data?.value"></span>
-                        <span class="text-lg font-normal text-gray-500 dark:text-gray-400"
-                              x-text="widgetResults['{{ wid }}']?.data?.unit"></span>
-                    </div>
-
-                    {% if wtype == 'kpi_oee' %}
-                    {# OEE breakdown #}
-                    <div x-show="widgetResults['{{ wid }}']?.data?.availability !== undefined" x-cloak>
-                        <div class="mt-3 grid grid-cols-3 gap-2 text-center">
-                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2">
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Disponibilidad</p>
-                                <p class="text-sm font-semibold text-green-500"
-                                   x-text="widgetResults['{{ wid }}']?.data?.availability + '%'"></p>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2">
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Rendimiento</p>
-                                <p class="text-sm font-semibold text-blue-500"
-                                   x-text="widgetResults['{{ wid }}']?.data?.performance + '%'"></p>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2">
-                                <p class="text-xs text-gray-500 dark:text-gray-400">Calidad</p>
-                                <p class="text-sm font-semibold text-purple-500"
-                                   x-text="widgetResults['{{ wid }}']?.data?.quality + '%'"></p>
-                            </div>
-                        </div>
-                        <p x-show="widgetResults['{{ wid }}']?.data?.scheduled_minutes > 0"
-                           class="mt-2 text-xs text-gray-400 dark:text-gray-500">
-                            Programado:
-                            <span x-text="Math.round(widgetResults['{{ wid }}']?.data?.scheduled_minutes / 60 * 10) / 10"></span>h
-                            · Paradas:
-                            <span x-text="Math.round(widgetResults['{{ wid }}']?.data?.downtime_minutes * 10) / 10"></span> min
-                        </p>
-                    </div>
-                    {% endif %}
-
-                    {% if wtype == 'kpi_downtime_count' %}
-                    <p x-show="widgetResults['{{ wid }}']?.data?.total_minutes !== undefined"
-                       class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                        Total: <span x-text="widgetResults['{{ wid }}']?.data?.total_minutes"></span> min
-                    </p>
-                    {% endif %}
-                </div>
-
-                {% elif wtype in ('line_chart', 'bar_chart', 'pie_chart', 'comparison_bar') %}
-                {# ── Chart Widget ──
-                     Canvas is ALWAYS in the DOM so Chart.js can find it.
-                     x-show hides the wrapper until data arrives.         #}
-                <div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
-                     x-cloak class="widget-body">
-                    <h3 class="widget-title mb-3" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
-
-                    {% if wtype == 'comparison_bar' %}
-                    <div x-show="widgetResults['{{ wid }}']?.data?.summary" class="grid grid-cols-3 gap-3 mb-3">
-                        <div class="text-center bg-green-50 dark:bg-green-900/20 rounded-lg p-2">
-                            <p class="text-xl font-bold text-green-500"
-                               x-text="widgetResults['{{ wid }}']?.data?.summary?.entrada?.toLocaleString('es-AR')"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Entrada</p>
-                        </div>
-                        <div class="text-center bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
-                            <p class="text-xl font-bold text-blue-500"
-                               x-text="widgetResults['{{ wid }}']?.data?.summary?.salida?.toLocaleString('es-AR')"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Salida</p>
-                        </div>
-                        <div class="text-center bg-red-50 dark:bg-red-900/20 rounded-lg p-2">
-                            <p class="text-xl font-bold text-red-500"
-                               x-text="widgetResults['{{ wid }}']?.data?.summary?.descarte?.toLocaleString('es-AR')"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Descarte</p>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <div class="widget-chart-wrap" style="height:{{ chart_h }}">
-                        <canvas id="chart-{{ wid }}"></canvas>
-                    </div>
-                </div>
-
+                    {% include 'dashboard/partials/_widget_kpi.html' %}
+                {% elif wtype in ('line_chart', 'bar_chart', 'pie_chart', 'comparison_bar', 'scatter_chart') %}
+                    {% include 'dashboard/partials/_widget_chart.html' %}
                 {% elif 'table' in wtype or wtype == 'product_ranking' %}
-                {# ── Table Widget (downtime_table & product_ranking) ── #}
-                <div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
-                     x-cloak class="widget-body">
-                    <h3 class="widget-title mb-3" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
-
-                    {% if wtype == 'product_ranking' %}
-                    <p x-show="widgetResults['{{ wid }}']?.data?.total_production"
-                       class="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                        Producción total: <span class="font-semibold text-white" x-text="widgetResults['{{ wid }}']?.data?.total_production?.toLocaleString('es-AR')"></span>
-                    </p>
-                    {% endif %}
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                            <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                                <tr>
-                                    <template x-for="col in (widgetResults['{{ wid }}']?.data?.columns || [])" :key="col.key">
-                                        <th class="px-4 py-3" x-text="col.label"></th>
-                                    </template>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="(row, idx) in (widgetResults['{{ wid }}']?.data?.rows || [])" :key="idx">
-                                    <tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                        <template x-for="col in (widgetResults['{{ wid }}']?.data?.columns || [])" :key="col.key">
-                                            <td class="px-4 py-3">
-                                                <template x-if="col.key === 'percentage'">
-                                                    <div class="flex items-center gap-2">
-                                                        <div class="w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                                                            <div class="bg-blue-500 h-2 rounded-full" :style="'width:' + Math.min(row[col.key], 100) + '%'"></div>
-                                                        </div>
-                                                        <span x-text="row[col.key] + '%'"></span>
-                                                    </div>
-                                                </template>
-                                                <template x-if="col.key === 'product_name'">
-                                                    <span class="flex items-center gap-2">
-                                                        <span class="w-3 h-3 rounded-full inline-block" :style="'background:' + (row.product_color || '#888')"></span>
-                                                        <span x-text="row[col.key]"></span>
-                                                    </span>
-                                                </template>
-                                                <template x-if="col.key !== 'percentage' && col.key !== 'product_name'">
-                                                    <span x-text="typeof row[col.key] === 'number' ? row[col.key].toLocaleString('es-AR') : row[col.key]"></span>
-                                                </template>
-                                            </td>
-                                        </template>
-                                    </tr>
-                                </template>
-                                <template x-if="!widgetResults['{{ wid }}']?.data?.rows || widgetResults['{{ wid }}'].data.rows.length === 0">
-                                    <tr>
-                                        <td :colspan="(widgetResults['{{ wid }}']?.data?.columns || []).length"
-                                            class="px-4 py-6 text-center text-gray-500">
-                                            No hay datos disponibles
-                                        </td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
-                    </div>
-                    <p x-show="widgetResults['{{ wid }}']?.metadata?.total_rows > 0"
-                       class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        Total: <span x-text="widgetResults['{{ wid }}']?.metadata?.total_rows"></span>
-                        <span x-text="'{{ wtype }}' === 'product_ranking' ? 'productos' : 'eventos'"></span>
-                    </p>
-                </div>
-
+                    {% include 'dashboard/partials/_widget_table.html' %}
                 {% elif wtype == 'line_status' %}
-                {# ── Line Status Widget ── #}
-                <div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
-                     x-cloak class="widget-body">
-                    <h3 class="widget-title mb-3" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
-                    <div class="space-y-3">
-                        <template x-for="line in (widgetResults['{{ wid }}']?.data?.lines || [])" :key="line.line_id">
-                            <div class="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
-                                <div class="flex items-center gap-3">
-                                    <span class="w-3 h-3 rounded-full"
-                                          :class="line.status === 'active' ? 'bg-green-500 animate-pulse' : line.status === 'idle' ? 'bg-yellow-500' : 'bg-gray-500'"></span>
-                                    <div>
-                                        <p class="font-medium text-gray-900 dark:text-white" x-text="line.line_name"></p>
-                                        <p class="text-xs text-gray-500" x-text="line.line_code"></p>
-                                    </div>
-                                </div>
-                                <div class="text-right">
-                                    <p class="text-sm font-semibold text-gray-900 dark:text-white"
-                                       x-text="line.output_count.toLocaleString('es-AR') + ' uds'"></p>
-                                    <p class="text-xs text-gray-500" x-text="'Última: ' + line.last_detection"></p>
-                                </div>
-                            </div>
-                        </template>
-                    </div>
-                </div>
-
+                    {% include 'dashboard/partials/_widget_line_status.html' %}
                 {% elif wtype == 'metrics_summary' %}
-                {# ── Metrics Summary Widget ── #}
-                <div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
-                     x-cloak class="widget-body">
-                    <h3 class="widget-title mb-3" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-blue-500" x-text="widgetResults['{{ wid }}']?.data?.output_count?.toLocaleString('es-AR')"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Producción</p>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-green-500" x-text="widgetResults['{{ wid }}']?.data?.total_weight?.toLocaleString('es-AR') + ' kg'"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Peso Total</p>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-purple-500" x-text="widgetResults['{{ wid }}']?.data?.avg_per_hour + '/h'"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Promedio/Hora</p>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-amber-500" x-text="widgetResults['{{ wid }}']?.data?.unique_products"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Productos</p>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-cyan-500" x-text="widgetResults['{{ wid }}']?.data?.lines_count"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Líneas</p>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                            <p class="text-2xl font-bold text-gray-400" x-text="widgetResults['{{ wid }}']?.data?.hours_span + 'h'"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Período</p>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                            <p class="text-sm text-gray-300" x-text="widgetResults['{{ wid }}']?.data?.first_detection"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Primera Detección</p>
-                        </div>
-                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
-                            <p class="text-sm text-gray-300" x-text="widgetResults['{{ wid }}']?.data?.last_detection"></p>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">Última Detección</p>
-                        </div>
-                    </div>
-                </div>
-
+                    {% include 'dashboard/partials/_widget_metrics_summary.html' %}
                 {% else %}
-                {# ── Unknown type fallback ── #}
-                <div x-show="widgetResults['{{ wid }}']" x-cloak class="widget-body">
-                    <h3 class="widget-title" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
-                    <p class="text-gray-500 mt-2">Widget en desarrollo</p>
-                </div>
+                    {% include 'dashboard/partials/_widget_unknown.html' %}
                 {% endif %}
 
             </div>{# /.widget #}

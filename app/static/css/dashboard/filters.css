@@ -1,0 +1,342 @@
+/**
+ * Filters Panel - Panel de filtros y controles individuales
+ */
+
+.filters-panel {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.dark .filters-panel {
+    background-color: #1f2937; /* dark:bg-gray-800 */
+}
+
+.filters-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.filters-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.dark .filters-title {
+    color: white;
+}
+
+.filters-apply-btn {
+    padding: 0.5rem 1rem;
+    background-color: #3b82f6;
+    color: white;
+    border-radius: 0.5rem;
+    transition: background-color 150ms;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+}
+
+.filters-apply-btn:hover {
+    background-color: #2563eb;
+}
+
+.filters-apply-btn svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.filters-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+/* ── Base filter item ── */
+
+.filter-item {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filter-item.filter-daterange {
+    flex: 3;
+    min-width: 600px;
+}
+
+.filter-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.25rem;
+}
+
+.dark .filter-label {
+    color: #d1d5db; /* dark:text-gray-300 */
+}
+
+/* ── Daterange ── */
+
+.filter-daterange-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.filter-daterange-input {
+    flex: 1;
+}
+
+.filter-daterange-time {
+    width: 8rem;
+}
+
+.filter-daterange-separator {
+    padding: 0 0.25rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.dark .filter-daterange-separator {
+    color: #9ca3af;
+}
+
+/* ── Dropdown ── */
+
+.filter-select {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+    cursor: pointer;
+}
+
+.dark .filter-select {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.filter-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* ── Multiselect ── */
+
+.filter-multiselect {
+    position: relative;
+}
+
+.filter-multiselect-button {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+}
+
+.dark .filter-multiselect-button {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.filter-multiselect-button:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.filter-multiselect-button svg {
+    width: 1rem;
+    height: 1rem;
+}
+
+.filter-multiselect-dropdown {
+    position: absolute;
+    z-index: 10;
+    margin-top: 0.25rem;
+    width: 100%;
+    background-color: white;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    max-height: 15rem;
+    overflow-y: auto;
+}
+
+.dark .filter-multiselect-dropdown {
+    background-color: #374151;
+    border-color: #4b5563;
+}
+
+.filter-multiselect-option {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 150ms;
+}
+
+.filter-multiselect-option:hover {
+    background-color: #f3f4f6;
+}
+
+.dark .filter-multiselect-option:hover {
+    background-color: #4b5563;
+}
+
+.filter-multiselect-checkbox {
+    width: 1rem;
+    height: 1rem;
+    color: #3b82f6;
+    border-radius: 0.25rem;
+}
+
+.filter-multiselect-checkbox:focus {
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.filter-multiselect-label {
+    margin-left: 0.5rem;
+    color: #374151;
+}
+
+.dark .filter-multiselect-label {
+    color: #e5e7eb;
+}
+
+/* ── Toggle ── */
+
+.filter-toggle-container {
+    display: flex;
+    align-items: center;
+    height: 42px;
+}
+
+/* ── Text ── */
+
+.filter-item.filter-text-wrap {
+    flex: 0 1 220px;
+    min-width: 160px;
+}
+
+.filter-text-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+}
+
+.dark .filter-text-input {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.filter-text-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+.filter-text-input::placeholder {
+    color: #9ca3af;
+}
+
+.dark .filter-text-input::placeholder {
+    color: #6b7280;
+}
+
+/* ── Select buttons ── */
+
+.filter-item.filter-select-buttons-wrap {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.filter-select-buttons {
+    display: flex;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid #d1d5db;
+    white-space: nowrap;
+}
+
+.dark .filter-select-buttons {
+    border-color: #4b5563;
+}
+
+.filter-select-button {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 150ms;
+    border-right: 1px solid #d1d5db;
+    background-color: white;
+    color: #374151;
+    cursor: pointer;
+    border: none;
+}
+
+.dark .filter-select-button {
+    border-right-color: #4b5563;
+    background-color: #374151;
+    color: #d1d5db;
+}
+
+.filter-select-button:last-child {
+    border-right: none;
+}
+
+.filter-select-button.active {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.filter-select-button:not(.active):hover {
+    background-color: #f3f4f6;
+}
+
+.dark .filter-select-button:not(.active):hover {
+    background-color: #4b5563;
+}
+
+/* ── Number ── */
+
+.filter-number-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: white;
+    color: #111827;
+}
+
+.dark .filter-number-input {
+    border-color: #4b5563;
+    background-color: #374151;
+    color: white;
+}
+
+.filter-number-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}

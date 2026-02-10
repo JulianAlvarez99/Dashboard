@@ -1,0 +1,20 @@
+{# ── Number Filter ── #}
+<div class="filter-item">
+    <label class="filter-label">
+        {{ filter.filter_name }}
+        {% if filter.param_name == 'downtime_threshold' %}
+        <span class="text-xs font-normal text-gray-400">(segundos)</span>
+        {% endif %}
+    </label>
+    <input type="number" x-model="filterValues.{{ filter.param_name }}"
+           placeholder="{{ filter.placeholder }}" min="0" class="filter-number-input"
+           {% if filter.param_name == 'downtime_threshold' %}
+           :disabled="isMultiLine"
+           :class="isMultiLine ? 'opacity-50 cursor-not-allowed' : ''"
+           {% endif %}>
+    {% if filter.param_name == 'downtime_threshold' %}
+    <p x-show="isMultiLine" class="mt-1 text-xs text-yellow-500">
+        Umbral bloqueado para múltiples líneas
+    </p>
+    {% endif %}
+</div>

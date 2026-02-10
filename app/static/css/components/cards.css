@@ -1,0 +1,38 @@
+/**
+ * Cards CSS - Estilos para tarjetas reutilizables
+ */
+
+.card {
+    background-color: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+}
+
+.dark .card {
+    background-color: #1f2937;
+}
+
+.card-header {
+    margin-bottom: 1rem;
+}
+
+.card-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+}
+
+.dark .card-title {
+    color: white;
+}
+
+.card-subtitle {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+}
+
+.dark .card-subtitle {
+    color: #9ca3af;
+}

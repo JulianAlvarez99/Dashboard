@@ -167,6 +167,8 @@ def infer_widget_type(widget_name: str) -> str:
     # Chart widgets
     if "comparacion" in name or "comparativa" in name or "comparison" in name:
         return "comparison_bar"
+    if "dispersion" in name or "scatter" in name:
+        return "scatter_chart"
     if "distribucion" in name or "torta" in name or "pie" in name:
         return "pie_chart"
     if "detecciones por area" in name or "barra" in name or "bar" in name:

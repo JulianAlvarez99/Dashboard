@@ -1,0 +1,6 @@
+{# ── Text Filter ── #}
+<div class="filter-item filter-text-wrap">
+    <label class="filter-label">{{ filter.filter_name }}</label>
+    <input type="text" x-model="filterValues.{{ filter.param_name }}"
+           placeholder="{{ filter.placeholder }}" class="filter-text-input">
+</div>

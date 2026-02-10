@@ -1,0 +1,30 @@
+/**
+ * Responsive - Media queries para adaptación móvil
+ */
+
+@media (max-width: 768px) {
+    .dashboard-content {
+        padding: 1rem;
+    }
+    
+    .filters-panel {
+        padding: 1rem;
+    }
+    
+    .filter-item.filter-daterange {
+        min-width: 100%;
+    }
+    
+    .filter-daterange-container {
+        flex-direction: column;
+    }
+    
+    .filter-daterange-input,
+    .filter-daterange-time {
+        width: 100%;
+    }
+    
+    .widget {
+        padding: 1rem;
+    }
+}

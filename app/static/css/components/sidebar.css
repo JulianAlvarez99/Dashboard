@@ -1,0 +1,111 @@
+/**
+ * Sidebar CSS - Estilos para la barra lateral de navegación
+ */
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    width: 16rem;
+    height: 100vh;
+    background-color: white;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    transform: translateX(0);
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark .sidebar {
+    background-color: #1f2937;
+}
+
+.sidebar.closed {
+    transform: translateX(-100%);
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 4rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .sidebar-header {
+    border-bottom-color: #374151;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 1.5rem 1rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: #374151;
+    border-radius: 0.5rem;
+    transition-property: background-color, color;
+    transition-duration: 150ms;
+}
+
+.dark .sidebar-nav-item {
+    color: #e5e7eb;
+}
+
+.sidebar-nav-item:hover {
+    background-color: #f3f4f6;
+}
+
+.dark .sidebar-nav-item:hover {
+    background-color: #374151;
+}
+
+.sidebar-nav-item.active {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.dark .sidebar-nav-item.active {
+    background-color: rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+}
+
+.sidebar-nav-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-right: 0.75rem;
+}
+
+.sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.dark .sidebar-footer {
+    border-top-color: #374151;
+}
+
+.sidebar-user-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    background-color: #3b82f6;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+}

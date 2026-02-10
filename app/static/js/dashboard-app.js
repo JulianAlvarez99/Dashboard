@@ -206,7 +206,7 @@ function dashboardApp(filterConfigs, widgetConfigs, apiBaseUrl) {
          * make containers visible and get layout dimensions.
          */
         _renderAllCharts() {
-            const chartTypes = ['line_chart', 'bar_chart', 'pie_chart', 'comparison_bar'];
+            const chartTypes = ['line_chart', 'bar_chart', 'pie_chart', 'comparison_bar', 'scatter_chart'];
             const chartWidgets = Object.values(this.widgetResults).filter(
                 wd => wd && wd.data && chartTypes.includes(wd.widget_type)
             );

@@ -1,0 +1,31 @@
+{# ── Chart Widget partial ──
+     Expects: wid, wtype, chart_h (from parent loop)
+#}
+<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
+     x-cloak class="widget-body">
+    <h3 class="widget-title mb-3" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+
+    {% if wtype == 'comparison_bar' %}
+    <div x-show="widgetResults['{{ wid }}']?.data?.summary" class="grid grid-cols-3 gap-3 mb-3">
+        <div class="text-center bg-green-50 dark:bg-green-900/20 rounded-lg p-2">
+            <p class="text-xl font-bold text-green-500"
+               x-text="widgetResults['{{ wid }}']?.data?.summary?.entrada?.toLocaleString('es-AR')"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Entrada</p>
+        </div>
+        <div class="text-center bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+            <p class="text-xl font-bold text-blue-500"
+               x-text="widgetResults['{{ wid }}']?.data?.summary?.salida?.toLocaleString('es-AR')"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Salida</p>
+        </div>
+        <div class="text-center bg-red-50 dark:bg-red-900/20 rounded-lg p-2">
+            <p class="text-xl font-bold text-red-500"
+               x-text="widgetResults['{{ wid }}']?.data?.summary?.descarte?.toLocaleString('es-AR')"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Descarte</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="widget-chart-wrap" style="height:{{ chart_h }}">
+        <canvas id="chart-{{ wid }}"></canvas>
+    </div>
+</div>

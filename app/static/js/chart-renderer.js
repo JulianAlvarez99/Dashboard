@@ -277,6 +277,69 @@ const ChartRenderer = {
         };
     },
 
+    // ─── Scatter Chart Config Builder ───────────────────────────
+
+    buildScatterConfig(data) {
+        return {
+            type: 'scatter',
+            data: {
+                datasets: (data.datasets || []).map(ds => ({
+                    label: ds.label || '',
+                    data: ds.data || [],
+                    backgroundColor: ds.backgroundColor || '#3b82f6',
+                    borderColor: ds.borderColor || '#3b82f6',
+                    pointRadius: ds.pointRadius || 6,
+                    pointHoverRadius: 9,
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: { display: true, text: 'Hora del Día (0-24)', color: '#94a3b8' },
+                        min: 0, max: 24,
+                        grid: { color: 'rgba(148,163,184,0.1)' },
+                        ticks: { color: '#94a3b8', stepSize: 2 },
+                    },
+                    y: {
+                        title: { display: true, text: 'Duración (min)', color: '#94a3b8' },
+                        beginAtZero: true,
+                        grid: { color: 'rgba(148,163,184,0.1)' },
+                        ticks: { color: '#94a3b8' },
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: { color: '#94a3b8', usePointStyle: true, padding: 16, font: { size: 11 } },
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15,23,42,0.95)',
+                        titleFont: { size: 13, weight: '600' },
+                        bodyFont: { size: 12 },
+                        padding: 12,
+                        cornerRadius: 8,
+                        callbacks: {
+                            label(ctx) {
+                                const p = ctx.raw;
+                                const h = Math.floor(p.x);
+                                const m = Math.round((p.x - h) * 60);
+                                let lbl = `${h}:${String(m).padStart(2,'0')} — ${p.y} min`;
+                                if (p.tooltip) lbl += ` | ${p.tooltip}`;
+                                return lbl;
+                            }
+                        }
+                    },
+                    zoom: this._zoomOptions(),
+                },
+            },
+        };
+    },
+
     // ─── Builder map ─────────────────────────────────────────────
 
     _configBuilders: {
@@ -284,6 +347,7 @@ const ChartRenderer = {
         'bar_chart': 'buildBarConfig',
         'comparison_bar': 'buildBarConfig',
         'pie_chart': 'buildPieConfig',
+        'scatter_chart': 'buildScatterConfig',
     },
 
     // ─── Render / destroy ────────────────────────────────────────

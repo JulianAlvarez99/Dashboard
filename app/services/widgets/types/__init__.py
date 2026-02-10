@@ -11,6 +11,7 @@ from .bar_chart import BarChartWidget
 from .pie_chart import PieChartWidget
 from .comparison_bar import ComparisonBarWidget
 from .downtime_table import DowntimeTableWidget
+from .scatter_chart import ScatterChartWidget
 
 __all__ = [
     'KPIProductionWidget',
@@ -21,5 +22,6 @@ __all__ = [
     'BarChartWidget',
     'PieChartWidget',
     'ComparisonBarWidget',
-    'DowntimeTableWidget'
+    'DowntimeTableWidget',
+    'ScatterChartWidget'
 ]

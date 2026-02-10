@@ -1,0 +1,41 @@
+{# ── Metrics Summary Widget partial ──
+     Expects: wid (from parent loop)
+#}
+<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
+     x-cloak class="widget-body">
+    <h3 class="widget-title mb-3" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-blue-500" x-text="widgetResults['{{ wid }}']?.data?.output_count?.toLocaleString('es-AR')"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Producción</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-green-500" x-text="widgetResults['{{ wid }}']?.data?.total_weight?.toLocaleString('es-AR') + ' kg'"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Peso Total</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-purple-500" x-text="widgetResults['{{ wid }}']?.data?.avg_per_hour + '/h'"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Promedio/Hora</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-amber-500" x-text="widgetResults['{{ wid }}']?.data?.unique_products"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Productos</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-cyan-500" x-text="widgetResults['{{ wid }}']?.data?.lines_count"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Líneas</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+            <p class="text-2xl font-bold text-gray-400" x-text="widgetResults['{{ wid }}']?.data?.hours_span + 'h'"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Período</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+            <p class="text-sm text-gray-300" x-text="widgetResults['{{ wid }}']?.data?.first_detection"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Primera Detección</p>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+            <p class="text-sm text-gray-300" x-text="widgetResults['{{ wid }}']?.data?.last_detection"></p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Última Detección</p>
+        </div>
+    </div>
+</div>

@@ -26,6 +26,8 @@
 
         "product_ranking":      { "col_span": 2, "size": "small",  "order": 14, "chart_height": null },
         "downtime_table":       { "col_span": 2, "size": "medium",  "order": 15, "chart_height": null },
+        "feed_events":         { "col_span": 2, "size": "small",  "order": 16, "chart_height": null },
+        "scatter_chart":        { "col_span": 4, "size": "large",  "order": 17, "chart_height": "400px" },
 
         "unknown":              { "col_span": 1, "size": "small",  "order": 99, "chart_height": null }
     },
