@@ -1030,6 +1030,15 @@
         "COLUMN_DEFAULT": "current_timestamp()",
         "EXTRA": "",
         "ORDINAL_POSITION": 8
+      },
+      {
+        "COLUMN_NAME": "auto_detect_downtime",
+        "COLUMN_TYPE": "tinyint(1)",
+        "IS_NULLABLE": "NO",
+        "COLUMN_KEY": "",
+        "COLUMN_DEFAULT": "1",
+        "EXTRA": "",
+        "ORDINAL_POSITION": 9
       }
     ]
   },

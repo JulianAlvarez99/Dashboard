@@ -75,7 +75,10 @@ def calculate_gap_downtimes(
         for i in range(len(times) - 1):
             gap_sec = (times[i + 1] - times[i]) / pd.Timedelta(seconds=1)
 
-            if gap_sec >= threshold:
+            # A gap is only downtime if it EXCEEDS the threshold.
+            # If gap == threshold, the next detection arrived exactly at the
+            # limit, meaning production is still running (not a true stop).
+            if gap_sec > threshold:
                 if current_start is None:
                     current_start = pd.Timestamp(times[i])
                 current_end = pd.Timestamp(times[i + 1])

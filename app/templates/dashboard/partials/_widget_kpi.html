@@ -1,7 +1,21 @@
 {# ── KPI Widget partial ──
      Expects: wid, wtype (from parent loop)
 #}
-<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
+
+{# ── Multi-line mode message for downtime KPIs ── #}
+{% if wtype == 'kpi_downtime_count' %}
+<div x-show="isMultiLine" x-cloak class="widget-body" style="align-items:center;justify-content:center">
+    <svg class="mx-auto h-10 w-10 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+    </svg>
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center">
+        Métrica de paradas no disponible<br>en modo múltiples líneas
+    </p>
+</div>
+{% endif %}
+
+<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty){% if wtype == 'kpi_downtime_count' %} && !isMultiLine{% endif %}"
      x-cloak class="widget-body">
     <h3 class="widget-title" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
     <div class="mt-2 flex items-baseline gap-2">
@@ -33,12 +47,19 @@
                    x-text="widgetResults['{{ wid }}']?.data?.quality + '%'"></p>
             </div>
         </div>
-        <p x-show="widgetResults['{{ wid }}']?.data?.scheduled_minutes > 0"
+        {# Hide downtime minutes in multi-line mode #}
+        <p x-show="widgetResults['{{ wid }}']?.data?.scheduled_minutes > 0 && !isMultiLine"
            class="mt-2 text-xs text-gray-400 dark:text-gray-500">
             Programado:
             <span x-text="Math.round(widgetResults['{{ wid }}']?.data?.scheduled_minutes / 60 * 10) / 10"></span>h
             · Paradas:
             <span x-text="Math.round(widgetResults['{{ wid }}']?.data?.downtime_minutes * 10) / 10"></span> min
+        </p>
+        {# Show simplified version in multi-line mode #}
+        <p x-show="widgetResults['{{ wid }}']?.data?.scheduled_minutes > 0 && isMultiLine"
+           class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+            Programado:
+            <span x-text="Math.round(widgetResults['{{ wid }}']?.data?.scheduled_minutes / 60 * 10) / 10"></span>h
         </p>
     </div>
     {% endif %}

@@ -48,7 +48,7 @@ function dashboardApp(filterConfigs, widgetConfigs, apiBaseUrl) {
         async init() {
             this.initFilterValues();
             await this.loadOptions();
-            await this.applyFilters();
+            // Don't auto-query on login — user must click "Aplicar Filtros"
         },
 
         // ═════════════════════════════════════════════════════════
@@ -62,8 +62,8 @@ function dashboardApp(filterConfigs, widgetConfigs, apiBaseUrl) {
                 const defaultVal = filter.default_value;
 
                 if (filter.filter_type === 'daterange') {
-                    const daysBack = (defaultVal && defaultVal.days_back) || 7;
-                    this.filterValues.start_date = this._daysAgo(daysBack);
+                    // Default: yesterday to today
+                    this.filterValues.start_date = this._daysAgo(1);
                     this.filterValues.end_date = this._today();
                     this.filterValues.start_time = '00:00';
                     this.filterValues.end_time = '23:59';
@@ -215,10 +215,11 @@ function dashboardApp(filterConfigs, widgetConfigs, apiBaseUrl) {
 
             // rAF waits for the browser to paint, ensuring x-show
             // has toggled visibility and elements have layout dimensions.
+            const isMultiLine = this.isMultiLine;
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     chartWidgets.forEach(wd => {
-                        ChartRenderer.render(wd, this.chartInstances);
+                        ChartRenderer.render(wd, this.chartInstances, isMultiLine);
                     });
                 });
             });
@@ -244,6 +245,14 @@ function dashboardApp(filterConfigs, widgetConfigs, apiBaseUrl) {
             // Re-render all charts (line charts will pick up new curve_type)
             ChartRenderer.destroyAll(this.chartInstances);
             this._renderAllCharts();
+        },
+
+        /**
+         * Check if a widget should be hidden in multi-line mode.
+         * Downtime-related widgets are not available when viewing multiple lines.
+         */
+        isDowntimeWidget(widgetType) {
+            return ['kpi_downtime_count', 'scatter_chart'].includes(widgetType);
         },
 
         // ═════════════════════════════════════════════════════════

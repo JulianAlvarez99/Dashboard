@@ -1,7 +1,21 @@
 {# ── Chart Widget partial ──
      Expects: wid, wtype, chart_h (from parent loop)
 #}
-<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
+
+{# ── Multi-line mode message for scatter_chart (downtime visualization) ── #}
+{% if wtype == 'scatter_chart' %}
+<div x-show="isMultiLine" x-cloak class="widget-body" style="align-items:center;justify-content:center">
+    <svg class="mx-auto h-10 w-10 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+    </svg>
+    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center">
+        Visualización de paradas no disponible<br>en modo múltiples líneas
+    </p>
+</div>
+{% endif %}
+
+<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty){% if wtype == 'scatter_chart' %} && !isMultiLine{% endif %}"
      x-cloak class="widget-body">
     <h3 class="widget-title mb-3" x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
 

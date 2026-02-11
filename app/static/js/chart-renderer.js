@@ -33,23 +33,30 @@ const ChartRenderer = {
 
     // ─── Zoom / pan defaults ─────────────────────────────────────
 
-    _zoomOptions() {
+    /**
+     * Build zoom/pan plugin options.
+     * @param {HTMLElement|null} resetBtn - optional reset-zoom button to show/hide
+     */
+    _zoomOptions(resetBtn) {
         return {
             pan: {
                 enabled: true,
                 mode: 'x',
-                modifierKey: null,
+                modifierKey: null,          // Regular drag → pan along timeline
+                onPanComplete: resetBtn ? () => { resetBtn.style.display = 'inline-block'; } : undefined,
             },
             zoom: {
-                wheel: { enabled: true, modifierKey: 'ctrl' },
+                wheel: { enabled: true, modifierKey: 'ctrl' },   // Ctrl+wheel → zoom
                 pinch: { enabled: true },
                 drag: {
                     enabled: true,
-                    backgroundColor: 'rgba(59,130,246,0.1)',
+                    modifierKey: 'ctrl',    // Ctrl+drag → area selection zoom
+                    backgroundColor: 'rgba(59,130,246,0.15)',
                     borderColor: '#3b82f6',
                     borderWidth: 1,
                 },
                 mode: 'x',
+                onZoomComplete: resetBtn ? () => { resetBtn.style.display = 'inline-block'; } : undefined,
             },
             limits: {
                 x: { minRange: 2 },
@@ -101,14 +108,15 @@ const ChartRenderer = {
 
     // ─── Line Chart Config Builder ───────────────────────────────
 
-    buildLineConfig(data) {
+    buildLineConfig(data, resetBtn, isMultiLine) {
         const curveType = data.curve_type || 'smooth';
         const curveProps = this._curveProps(curveType);
         const stacked = curveType === 'stacked';
         const classDetails = data.class_details || {};
         const multiDataset = (data.datasets || []).length > 1;
         const downtimeEvents = data.downtime_events || [];
-        const downtimeAnnotations = this._buildDowntimeAnnotations(downtimeEvents);
+        // Hide downtime annotations in multi-line mode
+        const downtimeAnnotations = isMultiLine ? {} : this._buildDowntimeAnnotations(downtimeEvents);
 
         return {
             type: 'line',
@@ -169,7 +177,7 @@ const ChartRenderer = {
                     annotation: Object.keys(downtimeAnnotations).length > 0
                         ? { annotations: downtimeAnnotations }
                         : false,
-                    zoom: this._zoomOptions(),
+                    zoom: this._zoomOptions(resetBtn),
                 },
                 scales: {
                     x: {
@@ -190,7 +198,7 @@ const ChartRenderer = {
 
     // ─── Bar Chart Config Builder ────────────────────────────────
 
-    buildBarConfig(data) {
+    buildBarConfig(data, resetBtn) {
         const isTimeSeries = (data.datasets || []).length > 1;
         return {
             type: 'bar',
@@ -226,7 +234,7 @@ const ChartRenderer = {
                         padding: 12,
                         cornerRadius: 8,
                     },
-                    zoom: isTimeSeries ? this._zoomOptions() : false,
+                    zoom: isTimeSeries ? this._zoomOptions(resetBtn) : false,
                 },
                 scales: {
                     x: {
@@ -245,7 +253,7 @@ const ChartRenderer = {
 
     // ─── Pie / Doughnut Config Builder ───────────────────────────
 
-    buildPieConfig(data) {
+    buildPieConfig(data, _resetBtn) {
         return {
             type: 'doughnut',
             data: {
@@ -279,7 +287,7 @@ const ChartRenderer = {
 
     // ─── Scatter Chart Config Builder ───────────────────────────
 
-    buildScatterConfig(data) {
+    buildScatterConfig(data, resetBtn, isMultiLine) {
         return {
             type: 'scatter',
             data: {
@@ -334,9 +342,11 @@ const ChartRenderer = {
                             }
                         }
                     },
-                    zoom: this._zoomOptions(),
+                    zoom: this._zoomOptions(resetBtn),
                 },
             },
+            // Mark as multi-line so render() can hide it
+            _isMultiLine: isMultiLine,
         };
     },
 
@@ -358,10 +368,11 @@ const ChartRenderer = {
      *
      * @param {Object} widgetData - The widget data from the API
      * @param {Object} chartInstances - Map of canvasId → Chart instance
+     * @param {boolean} isMultiLine - Whether multi-line mode is active
      * @param {number} _attempt - Internal retry counter
      * @returns {Chart|null} The created Chart instance, or null
      */
-    render(widgetData, chartInstances, _attempt) {
+    render(widgetData, chartInstances, isMultiLine, _attempt) {
         if (!widgetData || !widgetData.data) return null;
 
         const canvasId = `chart-${widgetData.widget_id}`;
@@ -371,7 +382,7 @@ const ChartRenderer = {
         if (!canvas || canvas.offsetWidth === 0) {
             const attempt = (_attempt || 0) + 1;
             if (attempt <= 10) {
-                setTimeout(() => this.render(widgetData, chartInstances, attempt), 50);
+                setTimeout(() => this.render(widgetData, chartInstances, isMultiLine, attempt), 50);
             }
             return null;
         }
@@ -385,10 +396,66 @@ const ChartRenderer = {
         const builderName = this._configBuilders[widgetData.widget_type];
         if (!builderName) return null;
 
-        const config = this[builderName](widgetData.data);
+        // Create zoom toolbar BEFORE chart so callbacks are wired into config
+        const resetBtn = this._createZoomToolbar(canvas, widgetData.widget_type);
+
+        const config = this[builderName](widgetData.data, resetBtn, isMultiLine);
         const chart = new Chart(canvas.getContext('2d'), config);
         chartInstances[canvasId] = chart;
+
+        // Wire the reset button click to this chart instance
+        if (resetBtn) {
+            resetBtn.onclick = () => {
+                chart.resetZoom();
+                resetBtn.style.display = 'none';
+            };
+
+            // Native dblclick event listener to reset zoom (onDblClick is not a Chart.js option)
+            canvas.addEventListener('dblclick', () => {
+                chart.resetZoom();
+                resetBtn.style.display = 'none';
+            });
+        }
+
         return chart;
+    },
+
+    /**
+     * Create a zoom toolbar with hint text and a reset button above the canvas.
+     * Returns the reset button element (or null if not a zoomable chart type).
+     */
+    _createZoomToolbar(canvas, widgetType) {
+        const zoomableTypes = ['line_chart', 'bar_chart', 'comparison_bar', 'scatter_chart'];
+        if (!zoomableTypes.includes(widgetType)) return null;
+
+        const wrapper = canvas.closest('.widget-chart-wrap') || canvas.parentElement;
+        if (!wrapper) return null;
+
+        // Remove any existing toolbar for this chart
+        const existingBar = wrapper.querySelector('.chart-zoom-toolbar');
+        if (existingBar) existingBar.remove();
+
+        const toolbar = document.createElement('div');
+        toolbar.className = 'chart-zoom-toolbar';
+        toolbar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 8px 2px;font-size:11px;color:#64748b;';
+
+        // Hint text
+        const hint = document.createElement('span');
+        hint.textContent = 'Arrastrar: mover · Ctrl+rueda: zoom · Ctrl+arrastrar: seleccionar zona · Doble-clic: resetear';
+        hint.style.cssText = 'opacity:0.7;';
+
+        // Reset button (hidden until zoomed)
+        const btn = document.createElement('button');
+        btn.textContent = '↺ Reset Zoom';
+        btn.style.cssText = 'display:none;padding:2px 10px;border-radius:4px;background:#334155;color:#e2e8f0;cursor:pointer;font-size:11px;border:1px solid #475569;transition:background .15s;';
+        btn.onmouseenter = () => { btn.style.background = '#475569'; };
+        btn.onmouseleave = () => { btn.style.background = '#334155'; };
+
+        toolbar.appendChild(hint);
+        toolbar.appendChild(btn);
+        wrapper.insertBefore(toolbar, canvas);
+
+        return btn;
     },
 
     /**
