@@ -1,483 +1,374 @@
-# Architecture Diagrams
+# Diagramas de Arquitectura — Camet Analytics
 
-## System Overview
+Diagramas técnicos actualizados del sistema.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         DASHBOARD SYSTEM                         │
-│                                                                  │
-│  ┌──────────────────────┐         ┌──────────────────────┐      │
-│  │   FILTER SYSTEM      │         │   WIDGET SYSTEM      │      │
-│  │                      │         │                      │      │
-│  │  • FilterResolver    │────────▶│  • WidgetRenderer    │      │
-│  │  • FilterFactory     │  Params │  • WidgetFactory     │      │
-│  │  • Filter Types      │         │  • Widget Types      │      │
-│  │  • Base Classes      │         │  • DataAggregator    │      │
-│  └──────────────────────┘         └──────────────────────┘      │
-│           │                                    │                 │
-│           │                                    │                 │
-│           ▼                                    ▼                 │
-│  ┌──────────────────────────────────────────────────────┐       │
-│  │              METADATA CACHE                          │       │
-│  │  • Production Lines  • Products  • Filters           │       │
-│  │  • Areas             • Shifts    • Widgets           │       │
-│  └──────────────────────────────────────────────────────┘       │
-│                              │                                   │
-│                              ▼                                   │
-│                    ┌──────────────────┐                         │
-│                    │  DATABASE        │                         │
-│                    │  • Global DB     │                         │
-│                    │  • Tenant DBs    │                         │
-│                    └──────────────────┘                         │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Última actualización:** 13 Febrero 2026
 
-## Filter System Architecture
+---
+
+## 1. Flujo General del Sistema
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      FILTER RESOLVER                             │
-│                  (Entry Point / Facade)                          │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-         ┌─────────────────────┐
-         │  FILTER FACTORY     │
-         │                     │
-         │  create(config)     │────┐
-         └─────────────────────┘    │
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            BROWSER                                      │
+│  ┌───────────────────┐   ┌─────────────────┐   ┌──────────────────┐   │
+│  │  Alpine.js State   │   │  Chart.js        │   │  HTMX (futuro)  │   │
+│  │  dashboard-app.js  │──▶│  chart-renderer  │   │                  │   │
+│  │  Filtros · Layout  │   │  Zoom · Annotate │   │                  │   │
+│  └────────┬──────────┘   └─────────────────┘   └──────────────────┘   │
+│           │ POST /api/v1/dashboard/data                                 │
+└───────────┼─────────────────────────────────────────────────────────────┘
+            │
+            ▼
+┌───────────────────────────────────────┐
+│         FLASK (Puerto 5000)           │
+│  ┌─────────────┐  ┌───────────────┐ │
+│  │  auth_bp     │  │ dashboard_bp  │ │
+│  │  Login/Out   │  │ Render Index  │ │
+│  │  Sessions    │  │ SSR + Config  │ │
+│  └──────┬──────┘  └───────┬───────┘ │
+│         │                  │          │
+│  ┌──────▼──────────────────▼───────┐ │
+│  │ Global DB (Sync pymysql)        │ │
+│  │ authenticate_user()             │ │
+│  └─────────────────────────────────┘ │
+└───────────────────────────────────────┘
+            │
+            │ API calls (browser → FastAPI directamente)
+            ▼
+┌───────────────────────────────────────────────────────────┐
+│              FASTAPI (Puerto 8000)                         │
+│                                                            │
+│  ┌──────────┐ ┌──────────┐ ┌────────┐ ┌───────────────┐ │
+│  │ dashboard │ │ filters  │ │ layout │ │ system/widgets│ │
+│  │  .py      │ │  .py     │ │  .py   │ │     .py       │ │
+│  └─────┬────┘ └────┬─────┘ └───┬────┘ └──────┬────────┘ │
+│        │           │           │              │           │
+│  ┌─────▼───────────▼───────────▼──────────────▼────────┐ │
+│  │                  SERVICE LAYER                       │ │
+│  │  DashboardDataService                                │ │
+│  │  ├─ FilterResolver                                   │ │
+│  │  ├─ DataAggregator (fetch + enrich)                  │ │
+│  │  ├─ DowntimeCalculator (gap analysis)                │ │
+│  │  └─ PROCESSOR_MAP (16 tipos de widget)               │ │
+│  │     ├─ kpi.py (7 KPIs)                              │ │
+│  │     ├─ charts/ (5 tipos de gráfico)                  │ │
+│  │     ├─ tables.py (downtime_table)                    │ │
+│  │     └─ ranking/ (3 tipos)                            │ │
+│  └───────────────────────┬─────────────────────────────┘ │
+│                          │                                │
+│  ┌───────────────────────▼─────────────────────────────┐ │
+│  │            MetadataCache (In-Memory)                 │ │
+│  │  production_lines │ areas │ products │ shifts        │ │
+│  │  filters │ failures │ incidents │ widget_catalog     │ │
+│  └───────────────────────┬─────────────────────────────┘ │
+│                          │                                │
+│  ┌───────────────────────▼─────────────────────────────┐ │
+│  │         DatabaseManager (Async aiomysql)             │ │
+│  │         NullPool · Cursor pagination                 │ │
+│  └───────────────────────┬─────────────────────────────┘ │
+└──────────────────────────┼────────────────────────────────┘
+                           │
+           ┌───────────────┼───────────────┐
+           ▼                               ▼
+┌───────────────────┐           ┌───────────────────────┐
+│   camet_global    │           │  db_client_{tenant}   │
+│   ───────────     │           │  ──────────────────   │
+│   tenant          │           │  production_line      │
+│   user            │           │  area                 │
+│   widget_catalog  │           │  product / shift      │
+│   dashboard_templ │           │  filter / failure     │
+│   user_login      │           │  incident             │
+│   audit_log       │           │  detection_line_X (N) │
+└───────────────────┘           │  downtime_events_X(N) │
+                                └───────────────────────┘
+```
+
+---
+
+## 2. Pipeline de Datos (Single Query)
+
+```
+                    POST /api/v1/dashboard/data
+                    { widget_ids, line_id, dates, ... }
+                              │
+                              ▼
+                    ┌─────────────────────┐
+                    │ FilterParams.from_  │
+                    │ dict(request)       │
+                    └─────────┬───────────┘
+                              │
+                              ▼
+                    ┌─────────────────────┐
+                    │ get_line_ids_from_  │
+                    │ params()            │
+                    │ line_ids o [line_id]│
+                    │ o todas las activas │
+                    └─────────┬───────────┘
+                              │
+                    ┌─────────▼───────────┐
+                    │  _fetch_all_data()  │
+                    │                     │
+                    │  ┌─────────────┐    │
+                    │  │ detections  │    │
+                    │  │ per line    │◄───│── detection_line_{name}
+                    │  │ + enrich    │    │
+                    │  └──────┬──────┘    │
+                    │         │            │
+                    │  ┌──────▼──────┐    │
+                    │  │ DB downtime │◄───│── downtime_events_{name}
+                    │  │ source="db" │    │
+                    │  └──────┬──────┘    │
+                    │         │            │
+                    │  ┌──────▼──────┐    │
+                    │  │ Gap calc    │    │
+                    │  │ source=     │    │
+                    │  │ "calculated"│    │
+                    │  └──────┬──────┘    │
+                    │         │            │
+                    │  ┌──────▼──────┐    │
+                    │  │ remove_     │    │
+                    │  │ overlapping │    │
+                    │  │ (DB wins)   │    │
+                    │  └──────┬──────┘    │
+                    │         │            │
+                    │  ┌──────▼──────┐    │
+                    │  │ MERGE       │    │
+                    │  │ + enrich    │    │
+                    │  └──────┬──────┘    │
+                    └─────────┼───────────┘
+                              │
+                    ┌─────────▼───────────┐
+                    │   DashboardData     │
+                    │   .detections (DF)  │
+                    │   .downtime (DF)    │
+                    │   .params           │
+                    │   .lines_queried    │
+                    └─────────┬───────────┘
+                              │
+                    ┌─────────▼───────────┐
+                    │  for widget_id:     │
+                    │  ┌─────────────────┐│
+                    │  │ infer_widget_   ││
+                    │  │ type(name)      ││
+                    │  └────────┬────────┘│
+                    │           │          │
+                    │  ┌────────▼────────┐│
+                    │  │ PROCESSOR_MAP   ││
+                    │  │ [widget_type]   ││
+                    │  └────────┬────────┘│
+                    │           │          │
+                    │  ┌────────▼────────┐│
+                    │  │ processor(...)  ││
+                    │  │ → widget dict   ││
+                    │  └─────────────────┘│
+                    └─────────┬───────────┘
+                              │
+                              ▼
+                    { widgets: {...}, metadata: {...} }
+```
+
+---
+
+## 3. Sistema de Filtros
+
+```
+┌──────────────────────────────────────────────────────┐
+│                  tabla "filter" (DB)                   │
+│  filter_id │ filter_name │ additional_filter (JSON)   │
+└──────────────────────┬───────────────────────────────┘
+                       │ MetadataCache.get_filters()
+                       ▼
+┌──────────────────────────────────────────────────────┐
+│                 FilterResolver                        │
+│                                                       │
+│  resolve_filter(filter_id)                            │
+│  ├─ _parse_filter_config(data) → FilterConfig         │
+│  ├─ FilterFactory.create(config) → BaseFilter subclass│
+│  └─ filter.get_options(parent_values) → [FilterOption]│
+│                                                       │
+│  get_production_line_options_with_groups()             │
+│  ├─ 1. "Todas las líneas" (si >1)                    │
+│  ├─ 2. Grupos custom (from additional_filter JSON)    │
+│  │   ├─ {"alias": "X", "line_ids": [2,3]}            │
+│  │   └─ {"groups": [{alias, line_ids}, ...]}          │
+│  └─ 3. Líneas individuales                            │
+└──────────────────────────────────────────────────────┘
+                       │
+                       ▼
+┌──────────────────────────────────────────────────────┐
+│                 FilterFactory                         │
+│  "daterange"  → DateRangeFilter                       │
+│  "dropdown"   → DropdownFilter                        │
+│  "multiselect"→ MultiselectFilter                     │
+│  "text"       → TextFilter                            │
+│  "number"     → NumberFilter                          │
+│  "toggle"     → ToggleFilter                          │
+│  "checkbox"   → ToggleFilter (alias)                  │
+└──────────────────────────────────────────────────────┘
+```
+
+---
+
+## 4. Flujo de Autenticación
+
+```
+            GET /auth/login
+                 │
+                 ▼
+        ┌────────────────┐
+        │   login.html   │
+        │  (Flask Jinja2) │
+        └────────┬───────┘
+                 │ POST username + password
+                 ▼
+        ┌────────────────────────────┐
+        │ authenticate_user()        │
+        │ ├─ SELECT user JOIN tenant │◄── camet_global (sync)
+        │ ├─ Check tenant.is_active  │
+        │ └─ Argon2.verify(hash, pw) │
+        └────────┬───────────────────┘
+                 │
+          ┌──────┼──────┐
+          │ OK   │      │ Fail
+          ▼      │      ▼
+   session["user"] =    flash("error")
+   { user_id,           redirect(login)
+     username,
+     tenant_id,
+     role,
+     permissions,
+     tenant_info }
+          │
+          │ INSERT INTO user_login
+          │ (audit trail)
+          ▼
+   redirect → /dashboard
+          │
+          ▼
+   @login_required
+   ├─ session["user"] existe? → continuar
+   └─ no → redirect /auth/login
+```
+
+---
+
+## 5. Cálculo OEE
+
+```
+                    ┌─────────────────────────────────────┐
+                    │           DATOS DE ENTRADA           │
+                    │                                      │
+                    │  detections DataFrame (enriquecido)  │
+                    │  downtime DataFrame (merged)         │
+                    │  params (FilterParams)               │
+                    │  lines_queried [line_id, ...]        │
+                    └───────────────┬─────────────────────┘
                                     │
-                                    ▼
-    ┌──────────────────────────────────────────────────────────┐
-    │                    BASE CLASSES                           │
-    ├──────────────────────────────────────────────────────────┤
-    │                                                           │
-    │  ┌─────────────────┐  ┌──────────────┐  ┌────────────┐  │
-    │  │  BaseFilter     │  │ OptionsFilter│  │InputFilter │  │
-    │  │  (Abstract)     │  │ (Abstract)   │  │(Abstract)  │  │
-    │  └────────┬────────┘  └──────┬───────┘  └─────┬──────┘  │
-    │           │                   │                │          │
-    └───────────┼───────────────────┼────────────────┼──────────┘
-                │                   │                │
-                ▼                   ▼                ▼
-    ┌───────────────────────────────────────────────────────────┐
-    │                    CONCRETE TYPES                          │
-    ├───────────────────────────────────────────────────────────┤
-    │                                                            │
-    │  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐      │
-    │  │ DropdownF.  │  │ MultiselectF.│  │DateRangeF.  │      │
-    │  └─────────────┘  └──────────────┘  └─────────────┘      │
-    │                                                            │
-    │  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐      │
-    │  │  TextF.     │  │  NumberF.    │  │  ToggleF.   │      │
-    │  └─────────────┘  └──────────────┘  └─────────────┘      │
-    │                                                            │
-    └────────────────────────────────────────────────────────────┘
-
-RESPONSIBILITIES:
-━━━━━━━━━━━━━━━━━
-• BaseFilter:      Interface + common methods
-• OptionsFilter:   Option loading + caching
-• InputFilter:     Input validation only
-• Dropdown:        Single selection from cache
-• Multiselect:     Multiple selection from cache
-• DateRange:       Date/time range handling
-• Text:            Free text validation
-• Number:          Numeric validation
-• Toggle:          Boolean handling
-```
-
-## Widget System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                     WIDGET RENDERER                              │
-│                  (Entry Point / Facade)                          │
-└────────────────────┬────────────────────────────────────────────┘
-                     │
-                     ▼
-         ┌─────────────────────┐
-         │  WIDGET FACTORY     │
-         │                     │
-         │  create(config,     │────┐
-         │         session)    │    │
-         └─────────────────────┘    │
+                    ┌───────────────▼─────────────────────┐
+                    │          DISPONIBILIDAD              │
+                    │                                      │
+                    │  scheduled = Σ(turnos) × N_días     │
+                    │  downtime  = Σ(downtime.duration)/60│
+                    │  A = (scheduled - downtime)          │
+                    │      / scheduled × 100               │
+                    └───────────────┬─────────────────────┘
                                     │
-                                    ▼
-    ┌──────────────────────────────────────────────────────────┐
-    │                    BASE CLASSES                           │
-    ├──────────────────────────────────────────────────────────┤
-    │                                                           │
-    │  ┌───────────┐  ┌───────────┐  ┌──────────┐  ┌────────┐ │
-    │  │BaseWidget │  │KPIWidget  │  │ChartWidget│ │TableW. │ │
-    │  │(Abstract) │  │(Abstract) │  │(Abstract) │ │(Abs.)  │ │
-    │  └─────┬─────┘  └─────┬─────┘  └─────┬────┘ └───┬────┘ │
-    │        │              │              │            │       │
-    └────────┼──────────────┼──────────────┼────────────┼───────┘
-             │              │              │            │
-             ▼              ▼              ▼            ▼
-    ┌────────────────────────────────────────────────────────────┐
-    │                  CONCRETE WIDGET TYPES                      │
-    ├────────────────────────────────────────────────────────────┤
-    │                                                             │
-    │  KPI Widgets:                                               │
-    │  ┌───────────────┐  ┌──────────────┐  ┌───────────────┐   │
-    │  │ Production    │  │ Weight       │  │ OEE           │   │
-    │  └───────────────┘  └──────────────┘  └───────────────┘   │
-    │  ┌───────────────┐                                         │
-    │  │ Downtime      │                                         │
-    │  └───────────────┘                                         │
-    │                                                             │
-    │  Chart Widgets:                                             │
-    │  ┌───────────────┐  ┌──────────────┐  ┌───────────────┐   │
-    │  │ Line Chart    │  │ Bar Chart    │  │ Pie Chart     │   │
-    │  └───────────────┘  └──────────────┘  └───────────────┘   │
-    │  ┌───────────────┐                                         │
-    │  │ Comparison Bar│                                         │
-    │  └───────────────┘                                         │
-    │                                                             │
-    │  Table Widgets:                                             │
-    │  ┌───────────────┐                                         │
-    │  │Downtime Table │                                         │
-    │  └───────────────┘                                         │
-    │                                                             │
-    └─────────────────────────────────────────────────────────────┘
-
-              ┌──────────────────────────────────┐
-              │      DATA AGGREGATOR             │
-              │  (Shared Data Fetching Logic)    │
-              ├──────────────────────────────────┤
-              │ • fetch_detections()             │
-              │ • fetch_detections_multi_line()  │
-              │ • enrich_with_metadata()         │
-              │ • enrich_with_line_metadata()    │
-              │ • resample_time_series()         │
-              │ • aggregate_by_column()          │
-              │ • calculate_total_weight()       │
-              └──────────────────────────────────┘
-
-RESPONSIBILITIES:
-━━━━━━━━━━━━━━━━━
-• BaseWidget:        Interface + common methods
-• KPIWidget:         Single value + trend calculation
-• ChartWidget:       Labels + datasets structure
-• TableWidget:       Columns + rows structure
-• Specific Types:    Concrete implementations
-• DataAggregator:    Centralized data fetching/processing
+                    ┌───────────────▼─────────────────────┐
+                    │          RENDIMIENTO                  │
+                    │                                      │
+                    │  real_output = count(area_type==out) │
+                    │                                      │
+                    │  Para cada línea L:                  │
+                    │    rate = line[L].performance        │
+                    │    dt_L = Σ(downtime[L]) / 60       │
+                    │    op_L = scheduled - dt_L           │
+                    │    expected_L = rate × op_L          │
+                    │                                      │
+                    │  expected = Σ(expected_L)            │
+                    │  P = real / expected × 100           │
+                    └───────────────┬─────────────────────┘
+                                    │
+                    ┌───────────────▼─────────────────────┐
+                    │           CALIDAD                    │
+                    │                                      │
+                    │  dual_lines = líneas con input+output│
+                    │  Si hay dual_lines:                  │
+                    │    entrada = count(dual, input)      │
+                    │    salida  = count(dual, output)     │
+                    │    Q = salida / entrada × 100        │
+                    │  Sino:                               │
+                    │    Q = 100%                          │
+                    └───────────────┬─────────────────────┘
+                                    │
+                    ┌───────────────▼─────────────────────┐
+                    │              OEE                     │
+                    │                                      │
+                    │  OEE = A × P × Q / 10000            │
+                    │                                      │
+                    │  Retorna: oee, availability,         │
+                    │  performance, quality,               │
+                    │  scheduled_min, downtime_min         │
+                    └─────────────────────────────────────┘
 ```
 
-## Data Flow Diagram
+---
+
+## 6. Diagrama de Componentes Frontend
 
 ```
-┌──────────┐
-│  USER    │
-│ SELECTS  │
-│ FILTERS  │
-└────┬─────┘
-     │
-     ▼
-┌─────────────────────────────────────────────┐
-│  1. FILTER RESOLUTION                       │
-│                                             │
-│  FilterResolver.resolve_filters()           │
-│         │                                   │
-│         ▼                                   │
-│  FilterFactory.create()                     │
-│         │                                   │
-│         ▼                                   │
-│  filter.get_options()                       │
-│                                             │
-└────┬────────────────────────────────────────┘
-     │
-     ▼
-┌─────────────────────────────────────────────┐
-│  2. PARAMETER CONSTRUCTION                  │
-│                                             │
-│  FilterParams.from_dict(filter_values)      │
-│     {                                       │
-│       line_ids: [1, 2],                     │
-│       start_date: "2024-01-01",             │
-│       end_date: "2024-01-31",               │
-│       interval: "day"                       │
-│     }                                       │
-│                                             │
-└────┬────────────────────────────────────────┘
-     │
-     ▼
-┌─────────────────────────────────────────────┐
-│  3. WIDGET RENDERING                        │
-│                                             │
-│  WidgetRenderer.render(widget_id, params)   │
-│         │                                   │
-│         ▼                                   │
-│  WidgetFactory.create(config, session)      │
-│         │                                   │
-│         ▼                                   │
-│  widget.render(params)                      │
-│         │                                   │
-│         ▼                                   │
-│  DataAggregator.fetch_detections()          │
-│         │                                   │
-│         ▼                                   │
-│  DataAggregator.enrich_with_metadata()      │
-│         │                                   │
-│         ▼                                   │
-│  widget._process_chart_data()               │
-│                                             │
-└────┬────────────────────────────────────────┘
-     │
-     ▼
-┌─────────────────────────────────────────────┐
-│  4. RESPONSE                                │
-│                                             │
-│  WidgetData {                               │
-│    widget_id: 1,                            │
-│    widget_name: "Producción Total",         │
-│    widget_type: "kpi_total_production",     │
-│    data: {                                  │
-│      value: 15420,                          │
-│      unit: "unidades"                       │
-│    },                                       │
-│    metadata: {...}                          │
-│  }                                          │
-│                                             │
-└────┬────────────────────────────────────────┘
-     │
-     ▼
-┌──────────┐
-│ DISPLAY  │
-│    TO    │
-│   USER   │
-└──────────┘
+                    ┌───────────────────────────────┐
+                    │         base.html             │
+                    │  CDN: Alpine, Chart.js,       │
+                    │  Tailwind, HTMX, plugins      │
+                    └───────────┬───────────────────┘
+                                │ extends
+                    ┌───────────▼───────────────────┐
+                    │       index.html              │
+                    │  x-data="dashboardApp(...)"   │
+                    │  ┌─────────┐  ┌────────────┐ │
+                    │  │ header  │  │  sidebar   │ │
+                    │  │  .html  │  │   .html    │ │
+                    │  └─────────┘  │  Filtros   │ │
+                    │               └────────────┘ │
+                    │  ┌──────────────────────────┐│
+                    │  │    Grid 4 columnas       ││
+                    │  │  ┌──────┐ ┌──────┐      ││
+                    │  │  │_kpi  │ │_kpi  │ ...  ││
+                    │  │  │.html │ │.html │      ││
+                    │  │  └──────┘ └──────┘      ││
+                    │  │  ┌──────────────────┐   ││
+                    │  │  │  _chart.html     │   ││
+                    │  │  │  <canvas>        │   ││
+                    │  │  └──────────────────┘   ││
+                    │  │  ┌──────────────────┐   ││
+                    │  │  │  _table.html     │   ││
+                    │  │  └──────────────────┘   ││
+                    │  └──────────────────────────┘│
+                    └──────────────────────────────┘
+                                │
+                    ┌───────────▼───────────────────┐
+                    │     dashboard-app.js          │
+                    │  Alpine.js component          │
+                    │  ├─ filterValues (state)      │
+                    │  ├─ applyFilters() → POST     │
+                    │  ├─ onLineChange() → cascade  │
+                    │  └─ _renderAllCharts()         │
+                    └───────────┬───────────────────┘
+                                │
+                    ┌───────────▼───────────────────┐
+                    │     chart-renderer.js         │
+                    │  ChartRenderer singleton      │
+                    │  ├─ buildLineConfig()         │
+                    │  ├─ buildBarConfig()          │
+                    │  ├─ buildPieConfig()          │
+                    │  ├─ buildScatterConfig()      │
+                    │  ├─ _zoomOptions()            │
+                    │  ├─ _buildDowntimeAnnotations()│
+                    │  └─ render() + toolbar        │
+                    └──────────────────────────────┘
 ```
 
-## Class Hierarchy - Filters
+---
 
-```
-BaseFilter (Abstract)
-│
-├── OptionsFilter (Abstract)
-│   │
-│   ├── DropdownFilter
-│   │   └── Methods:
-│   │       • _load_options()
-│   │       • _load_production_lines()
-│   │       • _load_areas()
-│   │       • _load_products()
-│   │       • _load_shifts()
-│   │
-│   └── MultiselectFilter
-│       └── Inherits: DropdownFilter
-│           Overrides:
-│           • validate_value() - validates list
-│           • get_default_value() - returns list
-│
-└── InputFilter (Abstract)
-    │
-    ├── DateRangeFilter
-    │   └── Methods:
-    │       • validate_value() - checks date range
-    │       • get_default_value() - last N days
-    │       • parse_to_datetime() - converts to datetime
-    │
-    ├── TextFilter
-    │   └── Methods:
-    │       • validate_value() - min/max length
-    │       • get_default_value() - empty string
-    │
-    ├── NumberFilter
-    │   └── Methods:
-    │       • validate_value() - min/max value
-    │       • get_default_value() - zero
-    │
-    └── ToggleFilter
-        └── Methods:
-            • validate_value() - boolean check
-            • get_default_value() - false
-```
-
-## Class Hierarchy - Widgets
-
-```
-BaseWidget (Abstract)
-│
-├── KPIWidget (Abstract)
-│   │   Methods:
-│   │   • render() - calculates KPI + trend
-│   │   • _calculate_value() (abstract)
-│   │   • _calculate_trend()
-│   │   • _get_unit() (abstract)
-│   │
-│   ├── KPIProductionWidget
-│   │   • _calculate_value() - count detections
-│   │   • _get_unit() - "unidades"
-│   │
-│   ├── KPIWeightWidget
-│   │   • _calculate_value() - sum weights
-│   │   • _get_unit() - "kg"
-│   │
-│   ├── KPIOEEWidget
-│   │   • _calculate_value() - OEE formula
-│   │   • _get_unit() - "%"
-│   │
-│   └── KPIDowntimeWidget
-│       • _calculate_value() - count downtime
-│       • _get_unit() - "paradas"
-│
-├── ChartWidget (Abstract)
-│   │   Methods:
-│   │   • render() - fetch + process data
-│   │   • _fetch_data() (abstract)
-│   │   • _process_chart_data() (abstract)
-│   │
-│   ├── LineChartWidget
-│   │   • _fetch_data() - detections
-│   │   • _process_chart_data() - resample time series
-│   │
-│   ├── BarChartWidget
-│   │   • _fetch_data() - detections + enrich
-│   │   • _process_chart_data() - group by area
-│   │
-│   ├── PieChartWidget
-│   │   • _fetch_data() - detections + enrich
-│   │   • _process_chart_data() - group by product
-│   │
-│   └── ComparisonBarWidget
-│       • _fetch_data() - detections + enrich
-│       • _process_chart_data() - group by area_type
-│
-└── TableWidget (Abstract)
-    │   Methods:
-    │   • render() - fetch + process table
-    │   • _fetch_data() (abstract)
-    │   • _process_table_data() (abstract)
-    │
-    └── DowntimeTableWidget
-        • _fetch_data() - downtime events
-        • _process_table_data() - format rows
-```
-
-## SRP & DRY Implementation
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│                  SINGLE RESPONSIBILITY PRINCIPLE               │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  Each class has ONE reason to change:                          │
-│                                                                │
-│  ┌──────────────────┐    ┌──────────────────┐                 │
-│  │ DropdownFilter   │    │ DateRangeFilter  │                 │
-│  │                  │    │                  │                 │
-│  │ Responsibility:  │    │ Responsibility:  │                 │
-│  │ Load options     │    │ Handle date      │                 │
-│  │ from cache       │    │ range validation │                 │
-│  └──────────────────┘    └──────────────────┘                 │
-│                                                                │
-│  ┌──────────────────┐    ┌──────────────────┐                 │
-│  │KPIProductionW.   │    │ LineChartWidget  │                 │
-│  │                  │    │                  │                 │
-│  │ Responsibility:  │    │ Responsibility:  │                 │
-│  │ Calculate total  │    │ Time series      │                 │
-│  │ production count │    │ visualization    │                 │
-│  └──────────────────┘    └──────────────────┘                 │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────────────────────┐
-│                   DON'T REPEAT YOURSELF                        │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  Shared logic extracted to common components:                  │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │              BASE CLASSES                                 │ │
-│  │  • Common validation logic                                │ │
-│  │  • Common serialization (to_dict)                         │ │
-│  │  • Common error handling                                  │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │              DATA AGGREGATOR                              │ │
-│  │  • SQL query building                                     │ │
-│  │  • Metadata enrichment                                    │ │
-│  │  • Time series resampling                                 │ │
-│  │  • Column aggregation                                     │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │              FACTORIES                                    │ │
-│  │  • Centralized object creation                            │ │
-│  │  • Type mapping logic                                     │ │
-│  │  • Registration mechanism                                 │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │              OPTIONS FILTER BASE                          │ │
-│  │  • Option loading pattern                                 │ │
-│  │  • Option caching                                         │ │
-│  │  • Shared validation                                      │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
-
-## Extension Points
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│                    ADDING NEW FILTER TYPE                      │
-└────────────────────────────────────────────────────────────────┘
-
-    1. Create Class                 2. Register
-    ───────────────────            ───────────────────
-    
-    class MyFilter:                FilterFactory.register(
-        def get_options():             "my_filter",
-            ...                        MyFilter
-        def validate():            )
-            ...
-    
-    
-    ✅ No changes to existing code
-    ✅ Follows Open/Closed Principle
-
-
-┌────────────────────────────────────────────────────────────────┐
-│                    ADDING NEW WIDGET TYPE                      │
-└────────────────────────────────────────────────────────────────┘
-
-    1. Create Class                 2. Register
-    ───────────────────            ───────────────────
-    
-    class MyWidget:                WidgetFactory.register(
-        async def render():            "my_widget",
-            aggregator = ...           MyWidget,
-            df = await fetch()         keywords=["custom"]
-            return process(df)     )
-    
-    
-    ✅ Uses DataAggregator (DRY)
-    ✅ Follows same patterns
-
-
-┌────────────────────────────────────────────────────────────────┐
-│                  CUSTOMIZING DATA AGGREGATION                  │
-└────────────────────────────────────────────────────────────────┘
-
-    Add methods to DataAggregator:
-    
-    class DataAggregator:
-        
-        async def fetch_custom_data(self, ...):
-            # Custom SQL query
-            ...
-        
-        def apply_custom_transform(self, df):
-            # Custom pandas operation
-            ...
-    
-    
-    ✅ Available to all widgets
-    ✅ Reusable across types
-```
+_Diagramas basados en el estado actual del código. Ver [Documentation.md](Documentation.md) para detalles de implementación._

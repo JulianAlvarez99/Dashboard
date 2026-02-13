@@ -1,507 +1,246 @@
-# Dashboard Architecture - SRP & DRY Implementation
+# Arquitectura y Refactorización — Camet Analytics
 
-## Overview
+Documenta los patrones arquitectónicos, decisiones de diseño y la estructura modular del sistema.
 
-This document explains the refactored architecture for filters and widgets, implementing **Single Responsibility Principle (SRP)** and **Don't Repeat Yourself (DRY)** principles for maximum scalability and maintainability.
+**Última actualización:** 13 Febrero 2026
 
-## Architecture Principles
+---
 
-### Single Responsibility Principle (SRP)
-- Each filter type has its own class with a single responsibility
-- Each widget type has its own class with a single responsibility
-- Shared logic is extracted into dedicated utility classes
-- Each class focuses on one specific aspect of the system
+## 1. Arquitectura Dual-Server
 
-### Don't Repeat Yourself (DRY)
-- Common data fetching logic centralized in `DataAggregator`
-- Shared filter option loading logic in base classes
-- Factory pattern eliminates repetitive instantiation code
-- Base classes provide common functionality
+### ¿Por qué dos servidores?
 
-## Directory Structure
+| Decisión | Justificación |
+|----------|---------------|
+| **FastAPI para API** | Async nativo, rendimiento en I/O-bound (DB queries), OpenAPI auto-docs, Pydantic validation |
+| **Flask para Frontend** | Jinja2 SSR maduro, system de sesiones built-in, integración simple con templates |
+| **Comunicación interna** | Flask hace proxy a FastAPI via `httpx` cuando necesita datos |
+| **Mismo codebase** | Comparten `app/core/`, `app/models/`, `app/services/` |
 
-```
-app/services/
-├── filters/
-│   ├── __init__.py
-│   ├── base.py                  # Base classes for all filters
-│   ├── factory.py               # FilterFactory for creating filter instances
-│   ├── filter_config.py         # Original filter configuration (kept for compatibility)
-│   ├── filter_resolver.py       # Main entry point, now uses factory
-│   └── types/                   # Specific filter implementations
-│       ├── __init__.py
-│       ├── daterange.py         # DateRangeFilter
-│       ├── dropdown.py          # DropdownFilter
-│       ├── multiselect.py       # MultiselectFilter
-│       ├── text.py              # TextFilter
-│       ├── number.py            # NumberFilter
-│       └── toggle.py            # ToggleFilter
-│
-└── widgets/
-    ├── __init__.py
-    ├── base.py                  # Base classes for all widgets
-    ├── factory.py               # WidgetFactory for creating widget instances
-    ├── aggregators.py           # DataAggregator for shared data fetching
-    ├── widget_renderer.py       # Main entry point, now uses factory
-    └── types/                   # Specific widget implementations
-        ├── __init__.py
-        ├── kpi_production.py    # KPIProductionWidget
-        ├── kpi_weight.py        # KPIWeightWidget
-        ├── kpi_oee.py           # KPIOEEWidget
-        ├── kpi_downtime.py      # KPIDowntimeWidget
-        ├── line_chart.py        # LineChartWidget
-        ├── bar_chart.py         # BarChartWidget
-        ├── pie_chart.py         # PieChartWidget
-        ├── comparison_bar.py    # ComparisonBarWidget
-        └── downtime_table.py    # DowntimeTableWidget
-```
-
-## Filter System
-
-### Base Classes
-
-#### `BaseFilter` (Abstract)
-- Defines interface for all filter types
-- Methods: `get_options()`, `validate_value()`, `get_default_value()`, `to_dict()`
-- Each filter type inherits and implements specific logic
-
-#### `OptionsFilter` (Abstract)
-- Base for filters with options (dropdown, multiselect)
-- Implements option caching
-- Subclasses implement `_load_options()`
-
-#### `InputFilter` (Abstract)
-- Base for input-based filters (text, number, date)
-- No options to load, just validation
-
-### Specific Filter Types
-
-#### DateRangeFilter
-- **Responsibility**: Handle date/time range selection
-- **Features**: 
-  - Date validation (start <= end)
-  - Default ranges (e.g., last 7 days)
-  - Convert to datetime objects
-- **File**: `app/services/filters/types/daterange.py`
-
-#### DropdownFilter
-- **Responsibility**: Single selection from options
-- **Features**:
-  - Load options from cache (production lines, areas, products, shifts)
-  - Support parent dependencies (cascading)
-  - Option validation
-- **File**: `app/services/filters/types/dropdown.py`
-
-#### MultiselectFilter
-- **Responsibility**: Multiple selection from options
-- **Features**:
-  - Inherits option loading from DropdownFilter
-  - Validates list of values
-  - Default value as list
-- **File**: `app/services/filters/types/multiselect.py`
-
-#### TextFilter
-- **Responsibility**: Free text input
-- **Features**:
-  - Min/max length validation
-  - Configurable constraints
-- **File**: `app/services/filters/types/text.py`
-
-#### NumberFilter
-- **Responsibility**: Numeric input
-- **Features**:
-  - Integer/float support
-  - Min/max validation
-  - Type coercion
-- **File**: `app/services/filters/types/number.py`
-
-#### ToggleFilter
-- **Responsibility**: Boolean on/off switch
-- **Features**:
-  - Boolean validation
-  - Default value handling
-- **File**: `app/services/filters/types/toggle.py`
-
-### FilterFactory
-
-**File**: `app/services/filters/factory.py`
-
-The factory creates filter instances based on type:
+### Lifespan de FastAPI
 
 ```python
-from app.services.filters.factory import FilterFactory
-from app.services.filters.base import FilterConfig
-
-config = FilterConfig(
-    filter_id=1,
-    filter_name="Línea de Producción",
-    param_name="line_id",
-    filter_type="dropdown",
-    options_source="production_line"
-)
-
-filter_instance = FilterFactory.create(config)
-options = filter_instance.get_options()
+# app/main.py
+@asynccontextmanager
+async def lifespan(app):
+    await metadata_cache.load_all()   # Carga cache al startup
+    yield
+    # Cleanup (si fuera necesario)
 ```
 
-**Features**:
-- Type mapping (type string → class)
-- Keyword detection from names
-- Extensible via `register_filter_type()`
+El cache se carga UNA vez al arrancar. Todos los requests posteriores usan datos in-memory. Si se inicia una nueva sesion, o la sesion se expira, debe volver a traer el caché
 
-### FilterResolver (Updated)
+---
 
-**File**: `app/services/filters/filter_resolver.py`
+## 2. Capas de la Aplicación
 
-Now delegates to FilterFactory:
-
-```python
-from app.services.filters.filter_resolver import FilterResolver
-
-# Resolve single filter
-filter_dict = FilterResolver.resolve_filter(filter_id=1, parent_values={"line_id": 1})
-
-# Resolve multiple filters
-filters = FilterResolver.resolve_filters([1, 2, 3])
+```
+┌──────────────────────────────────────────────────┐
+│                   PRESENTATION                     │
+│  Templates (Jinja2) │ API Endpoints (FastAPI)      │
+│  dashboard-app.js   │ chart-renderer.js            │
+├──────────────────────────────────────────────────┤
+│                    SERVICE                         │
+│  DashboardDataService (orquestador)                │
+│  FilterResolver │ LayoutService │ DataAggregator   │
+├──────────────────────────────────────────────────┤
+│                   PROCESSORS                       │
+│  kpi.py │ charts/ │ tables.py │ ranking/           │
+│  downtime_calculator.py │ helpers.py               │
+├──────────────────────────────────────────────────┤
+│                 DATA ACCESS                        │
+│  MetadataCache │ DatabaseManager │ SQLAlchemy       │
+├──────────────────────────────────────────────────┤
+│                   DATABASE                         │
+│  camet_global │ db_client_{tenant}                 │
+└──────────────────────────────────────────────────┘
 ```
 
-## Widget System
+### Flujo de dependencias
 
-### Base Classes
-
-#### `BaseWidget` (Abstract)
-- Defines interface for all widget types
-- Methods: `render()`, `_create_widget_data()`, `_create_empty_response()`
-- Each widget type inherits and implements specific logic
-
-#### `KPIWidget` (Abstract)
-- Base for KPI widgets
-- Methods: `_calculate_value()`, `_calculate_trend()`, `_get_unit()`
-- Handles trend calculation
-
-#### `ChartWidget` (Abstract)
-- Base for chart widgets
-- Methods: `_fetch_data()`, `_process_chart_data()`
-- Returns labels and datasets
-
-#### `TableWidget` (Abstract)
-- Base for table widgets
-- Methods: `_fetch_data()`, `_process_table_data()`
-- Returns columns and rows
-
-### DataAggregator
-
-**File**: `app/services/widgets/aggregators.py`
-
-Centralizes all data fetching and enrichment logic:
-
-```python
-from app.services.widgets.aggregators import DataAggregator
-
-aggregator = DataAggregator(session)
-
-# Fetch detections for single line
-df = await aggregator.fetch_detections(line_id=1, params=filter_params)
-
-# Fetch detections for multiple lines
-df = await aggregator.fetch_detections_multi_line([1, 2], params=filter_params)
-
-# Enrich with metadata
-df = aggregator.enrich_with_metadata(df)
-
-# Resample time series
-series = aggregator.resample_time_series(df, interval="hour")
-
-# Aggregate by column
-series = aggregator.aggregate_by_column(df, "area_name")
-
-# Calculate total weight
-total_weight = aggregator.calculate_total_weight(df)
+```
+Endpoints → Services → Processors → Cache (lectura)
+                    → Aggregators → DB (lectura)
 ```
 
-**Features**:
-- Single source for SQL query building
-- Metadata enrichment (areas, products, lines)
-- Time series resampling
-- Column aggregation
-- Weight calculations
+Los procesadores NUNCA acceden a la DB directamente. Reciben `DashboardData` (DataFrames enriquecidos) y el cache para metadatos estáticos.
 
-### Specific Widget Types
+---
 
-#### KPIProductionWidget
-- **Responsibility**: Total production count
-- **Features**: Counts detections across lines
-- **File**: `app/services/widgets/types/kpi_production.py`
+## 3. Patrones de Diseño Aplicados
 
-#### KPIWeightWidget
-- **Responsibility**: Total weight of production
-- **Features**: Sums product weights
-- **File**: `app/services/widgets/types/kpi_weight.py`
+### 3.1 Factory Pattern
 
-#### KPIOEEWidget
-- **Responsibility**: OEE calculation
-- **Status**: Placeholder (requires downtime integration)
-- **File**: `app/services/widgets/types/kpi_oee.py`
-
-#### KPIDowntimeWidget
-- **Responsibility**: Downtime event count
-- **Status**: Placeholder (requires downtime integration)
-- **File**: `app/services/widgets/types/kpi_downtime.py`
-
-#### LineChartWidget
-- **Responsibility**: Time series visualization
-- **Features**: Resamples data by interval
-- **File**: `app/services/widgets/types/line_chart.py`
-
-#### BarChartWidget
-- **Responsibility**: Category distribution
-- **Features**: Groups by area/product
-- **File**: `app/services/widgets/types/bar_chart.py`
-
-#### PieChartWidget
-- **Responsibility**: Proportion visualization
-- **Features**: Groups by product with colors
-- **File**: `app/services/widgets/types/pie_chart.py`
-
-#### ComparisonBarWidget
-- **Responsibility**: Entrada vs Salida vs Descarte
-- **Features**: Calculates difference
-- **File**: `app/services/widgets/types/comparison_bar.py`
-
-#### DowntimeTableWidget
-- **Responsibility**: Downtime events table
-- **Status**: Placeholder (requires downtime integration)
-- **File**: `app/services/widgets/types/downtime_table.py`
-
-### WidgetFactory
-
-**File**: `app/services/widgets/factory.py`
-
-Creates widget instances based on type:
-
+**FilterFactory** (`app/services/filters/factory.py`):
 ```python
-from app.services.widgets.factory import WidgetFactory
-from app.services.widgets.base import WidgetConfig
-
-config = WidgetConfig(
-    widget_id=1,
-    widget_name="Producción Total",
-    widget_type="kpi_total_production"
-)
-
-widget_instance = WidgetFactory.create(config, session)
-widget_data = await widget_instance.render(params)
+_filter_map = {
+    "daterange": DateRangeFilter,
+    "dropdown": DropdownFilter,
+    "multiselect": MultiselectFilter,
+    "text": TextFilter,
+    "number": NumberFilter,
+    "toggle": ToggleFilter,
+    "checkbox": ToggleFilter,   # Alias
+}
 ```
+Permite agregar nuevos tipos de filtro registrando una clase en el mapa, sin modificar el resolver.
 
-**Features**:
-- Type mapping (type string → class)
-- Keyword detection from names (smart inference)
-- Category detection (kpi, chart, table)
-- Extensible via `register_widget_type()`
-
-### WidgetRenderer (Updated)
-
-**File**: `app/services/widgets/widget_renderer.py`
-
-Now delegates to WidgetFactory:
-
+**PROCESSOR_MAP** (`app/services/processors/__init__.py`):
 ```python
-from app.services.widgets.widget_renderer import WidgetRenderer
-
-renderer = WidgetRenderer(session)
-widget_data = await renderer.render(widget_id=1, params=filter_params)
+PROCESSOR_MAP = {
+    "kpi_total_production": process_kpi_production,
+    "line_chart": process_line_chart,
+    # ... 16 tipos
+}
 ```
+Nuevos widgets se agregan registrando su función procesadora en el mapa.
 
-## Adding New Filter Types
-
-To add a new filter type:
-
-1. **Create filter class** in `app/services/filters/types/`:
-
-```python
-# app/services/filters/types/my_filter.py
-from app.services.filters.base import InputFilter
-
-class MyFilter(InputFilter):
-    def validate_value(self, value):
-        # Validation logic
-        return True
-    
-    def get_default_value(self):
-        return "default"
-```
-
-2. **Register in factory**:
-
-```python
-# In app/services/filters/factory.py
-from app.services.filters.types.my_filter import MyFilter
-
-FilterFactory.register_filter_type("my_filter", MyFilter)
-```
-
-3. **Add to types __init__.py**:
-
-```python
-# app/services/filters/types/__init__.py
-from .my_filter import MyFilter
-
-__all__ = ['MyFilter', ...]
-```
-
-## Adding New Widget Types
-
-To add a new widget type:
-
-1. **Create widget class** in `app/services/widgets/types/`:
-
-```python
-# app/services/widgets/types/my_widget.py
-from app.services.widgets.base import ChartWidget
-from app.services.widgets.aggregators import DataAggregator
-
-class MyWidget(ChartWidget):
-    async def _fetch_data(self, params):
-        aggregator = DataAggregator(self.session)
-        return await aggregator.fetch_detections_multi_line(
-            aggregator.get_line_ids_from_params(params), 
-            params
-        )
-    
-    async def _process_chart_data(self, df, params):
-        # Processing logic
-        return {"labels": [], "datasets": []}
-```
-
-2. **Register in factory**:
-
-```python
-# In app/services/widgets/factory.py
-from app.services.widgets.types.my_widget import MyWidget
-
-WidgetFactory.register_widget_type(
-    "my_widget", 
-    MyWidget, 
-    keywords=["custom", "special"]
-)
-```
-
-3. **Add to types __init__.py**:
-
-```python
-# app/services/widgets/types/__init__.py
-from .my_widget import MyWidget
-
-__all__ = ['MyWidget', ...]
-```
-
-## Benefits
-
-### Scalability
-- **Easy to add new types**: Just create a class and register it
-- **No modification of existing code**: Open/Closed Principle
-- **Independent testing**: Each type can be tested in isolation
-- **Parallel development**: Teams can work on different types simultaneously
-
-### Maintainability
-- **Single point of change**: Each class has one reason to change
-- **Clear responsibilities**: Easy to understand what each class does
-- **Reduced code duplication**: Shared logic in base classes and aggregators
-- **Consistent patterns**: All types follow same structure
-
-### Easy Parameter Access
-- **Type-safe configs**: FilterConfig and WidgetConfig dataclasses
-- **Validation built-in**: Each type validates its own parameters
-- **Default values**: Centralized default value logic
-- **Cascading support**: Parent-child dependencies handled cleanly
-
-## Migration Notes
-
-### Backward Compatibility
-- Original `FilterResolver` interface preserved
-- `WidgetRenderer` interface unchanged
-- Returns same data structures
-- No breaking changes to API endpoints
-
-### Testing Strategy
-1. Test each filter/widget type independently
-2. Test factories with various configurations
-3. Test aggregator methods with sample data
-4. Integration tests with full rendering pipeline
-
-## Example Usage
-
-### Complete Filter Flow
-
-```python
-# 1. Get filter from cache
-filter_data = metadata_cache.get_filter(1)
-
-# 2. Resolve using FilterResolver
-filter_dict = FilterResolver.resolve_filter(1, parent_values={"line_id": 1})
-
-# Returns:
-{
-    "filter_id": 1,
-    "filter_name": "Áreas",
-    "param_name": "area_ids",
-    "filter_type": "multiselect",
-    "options": [
-        {"value": 1, "label": "Área 1", "extra": {...}},
-        {"value": 2, "label": "Área 2", "extra": {...}}
-    ],
-    "depends_on": "line_id",
-    "required": False,
-    "default_value": None,
-    "ui_config": {...}
+**ChartRenderer._configBuilders** (`chart-renderer.js`):
+```javascript
+_configBuilders: {
+    'line_chart': 'buildLineConfig',
+    'bar_chart': 'buildBarConfig',
+    // ...
 }
 ```
 
-### Complete Widget Flow
+### 3.2 Singleton
 
-```python
-# 1. Get widget from cache
-widget_data = metadata_cache.get_widget(1)
+- `MetadataCache`: `__new__` retorna la misma instancia
+- `ChartRenderer`: Objeto literal JS global
+- `DatabaseManager`: Instancia global `db_manager`
+- `Settings`: Cached via `@lru_cache` en `get_settings()`
 
-# 2. Create params from filters
-params = FilterParams(
-    line_ids=[1, 2],
-    start_date=date(2024, 1, 1),
-    end_date=date(2024, 1, 31),
-    interval="day"
-)
+### 3.3 Strategy
 
-# 3. Render using WidgetRenderer
-renderer = WidgetRenderer(session)
-result = await renderer.render(widget_id=1, params=params)
+Los tipos de filtro (`BaseFilter` → subclases) implementan `get_options()` de forma diferente según su tipo. El `DropdownFilter` carga opciones del cache; el `DateRangeFilter` genera rangos estáticos.
 
-# Returns:
-{
-    "widget_id": 1,
-    "widget_name": "Producción Total",
-    "widget_type": "kpi_total_production",
-    "data": {
-        "value": 15420,
-        "unit": "unidades",
-        "trend": None
-    },
-    "metadata": {
-        "widget_category": "kpi",
-        "line_ids": [1, 2]
-    }
-}
+### 3.4 Facade
+
+`FilterResolver` es una fachada que orquesta `FilterFactory`, `MetadataCache` y los filtros individuales para resolver configuraciones completas con opciones.
+
+`DashboardDataService` es una fachada sobre `DataAggregator`, `DowntimeCalculator` y los procesadores.
+
+### 3.5 Data Transfer Object (DTO)
+
+- `FilterParams`: Dataclass que encapsula todos los parámetros de filtrado
+- `DashboardData`: Container para DataFrames enriquecidos
+- `FilterConfig`: Config de un filtro
+- `WidgetConfig`: Config de un widget
+
+---
+
+## 4. Decisiones de Enriquecimiento Application-Side
+
+### ¿Por qué joins en Python y no en SQL?
+
+| Factor | SQL JOINs | Python + Cache |
+|--------|------------|----------------|
+| **Tablas dinámicas** | No se puede hacer JOIN a una tabla cuyo nombre no se conoce en compile-time | El nombre se construye en runtime |
+| **N tablas por línea** | Requeriría UNION ALL dinámicos | Iteramos y concatenamos DataFrames |
+| **Carga de hosting** | JOINs pesados en shared hosting → lento | Queries simples + enrich in-memory |
+| **Flexibilidad** | Modificar JOINs requiere cambiar SQL | Agregar campos de enrich es trivial |
+
+### Flujo de enriquecimiento
+
+```
+detection_line_X (raw)
+  ↓ fetch
+DataFrame[detection_id, detected_at, area_id, product_id, line_id]
+  ↓ enrich_with_metadata()
+  + area_name, area_type, product_name, product_code, product_weight, product_color
+  ↓ enrich_with_line_metadata()
+  + line_name, line_code
+  ↓
+DataFrame enriquecido → pasa a TODOS los procesadores
 ```
 
-## Future Enhancements
+---
 
-1. **Async option loading**: For filters with expensive queries
-2. **Option caching strategies**: TTL-based cache invalidation
-3. **Filter presets**: Save/load filter combinations
-4. **Widget templates**: Reusable widget configurations
-5. **Dynamic aggregations**: User-defined aggregation functions
-6. **Real-time updates**: WebSocket support for live data
-7. **Export capabilities**: CSV/Excel export for widgets
+## 5. Separación Frontend-Backend
 
-## Conclusion
+### SSR con Hidratación Reactiva
 
-This architecture provides a solid foundation for scaling the dashboard system. Each component has a clear responsibility, shared logic is centralized, and adding new filter or widget types is straightforward and non-disruptive.
+Flask renderiza el HTML inicial con datos de configuración (filtros, widgets, layout) embedded como JSON en atributos `x-data`. Alpine.js hidrata esos datos para reactividad client-side.
+
+```html
+<!-- index.html (simplificado) -->
+<div x-data="dashboardApp({{ filter_configs|tojson }}, {{ widget_configs|tojson }}, '{{ api_base_url }}')">
+  <!-- El HTML renderizado por Flask contiene la estructura -->
+  <!-- Alpine.js maneja la interactividad -->
+  <!-- Chart.js renderiza los gráficos una vez llegan los datos -->
+</div>
+```
+
+### Zero Build Step
+
+Todo el frontend se carga via CDN:
+- Alpine.js, Chart.js, plugins, Hammer.js: `<script>` tags
+- Tailwind CSS: CDN `<script>` con configuración inline
+- **No hay npm, webpack, vite ni ningún bundler**
+
+Esto simplifica el deploy pero impide tree-shaking y compilación customizada.
+
+---
+
+## 6. Gestión de Conexiones de Base de Datos
+
+### NullPool
+
+Se usa `NullPool` (sin connection pooling) para compatibilidad con hosting compartido (cPanel) que limita conexiones simultáneas.
+
+```python
+create_async_engine(
+    url,
+    poolclass=NullPool,          # Sin pool
+    connect_args={"charset": "utf8mb4"}
+)
+```
+
+**Trade-off**: Cada request abre y cierra una conexión. Mayor latencia por request, pero no se agotan las conexiones.
+
+### Context Managers
+
+```python
+# Async (FastAPI)
+async with db_manager.get_tenant_session() as session:
+    result = await session.execute(text(...))
+
+# Sync (Flask)
+with db_manager.get_global_session_sync() as session:
+    user = authenticate_user(session, ...)
+```
+
+Todos los context managers hacen commit automático o rollback en excepción.
+
+---
+
+## 7. Configuración y Settings
+
+### Pydantic Settings v2
+
+```python
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=False,
+        extra="ignore"
+    )
+    # 30+ variables de configuración
+```
+
+Todas las settings se cargan desde `.env` con validación de tipos. El `@lru_cache` en `get_settings()` asegura que solo se parsee una vez.
+
+### Properties calculados
+
+```python
+@property
+def global_db_url(self) -> str:       # mysql+aiomysql://...
+def global_db_url_sync(self) -> str:   # mysql+pymysql://...
+def tenant_db_url(self) -> str:        # mysql+aiomysql://...
+def tenant_db_url_sync(self) -> str:   # mysql+pymysql://...
+```
+
+---
+
+_Documento de arquitectura actualizado. Para detalles de cálculos, ver [Documentation.md](Documentation.md)._

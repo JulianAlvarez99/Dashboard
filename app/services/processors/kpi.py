@@ -75,8 +75,20 @@ def process_kpi_oee(
     OEE = A × P × Q
 
     - Availability = (Scheduled – Downtime) / Scheduled
-    - Performance  = Actual Output / Expected Output  (production_std)
-    - Quality      = Output / Input  (only dual-area lines; defaults to 100 %)
+        • Scheduled = sum of shift intervals × days in range.
+        • Downtime  = merged DB + gap-calculated events (DB has priority
+          over calculated when intervals overlap — already handled
+          upstream by ``remove_overlapping``).
+
+    - Performance = Real Output / Theoretical Output
+        • Theoretical = production_line.performance (products/min)
+                        × operating minutes (scheduled – downtime).
+        • Real        = total output detections for that line.
+        When multiple lines are queried the theoretical output is
+        summed per-line so each line contributes its own rate.
+
+    - Quality = Output / Input  (only for lines with both areas)
+        • Lines with a single area default to 100 %.
     """
     df = data.detections
     downtime_df = data.downtime
@@ -91,7 +103,9 @@ def process_kpi_oee(
     if not df.empty and "area_type" in df.columns:
         salida = len(df[df["area_type"] == "output"])
 
-        # ── Quality ──
+        # ── Quality ──────────────────────────────────────────────
+        # For lines with input + output areas: quality = output / input.
+        # For lines with only one area: quality = 100 %.
         dual_lines = get_lines_with_input_output(data.lines_queried)
         if dual_lines and "line_id" in df.columns:
             dual_df = df[df["line_id"].isin(dual_lines)]
@@ -105,7 +119,9 @@ def process_kpi_oee(
         else:
             quality = 100.0
 
-        # ── Availability ──
+        # ── Availability ─────────────────────────────────────────
+        # Scheduled time = shift durations × calendar days.
+        # Downtime already de-duplicated (DB events take priority).
         scheduled_minutes = calculate_scheduled_minutes(data.params)
         if not downtime_df.empty and "duration" in downtime_df.columns:
             total_downtime_minutes = downtime_df["duration"].sum() / 60.0
@@ -121,27 +137,38 @@ def process_kpi_oee(
                 ),
             )
 
-        # ── Performance ──
-        if "product_id" in df.columns and scheduled_minutes > 0:
-            output_df = df[df["area_type"] == "output"]
-            if not output_df.empty:
-                most_common = output_df["product_id"].mode()
-                if not most_common.empty:
-                    pid = most_common.iloc[0]
-                    prod_std = (
-                        metadata_cache.get_products()
-                        .get(pid, {})
-                        .get("production_std", 0)
-                    )
-                    if prod_std > 0:
-                        hours = (scheduled_minutes - total_downtime_minutes) / 60.0
-                        expected = prod_std * hours
-                        if expected > 0:
-                            performance = min(
-                                100.0, round((salida / expected) * 100, 1)
-                            )
+        # ── Performance ──────────────────────────────────────────
+        # Uses production_line.performance (products/min) per line.
+        # Theoretical = Σ(line.performance × operating_minutes) per line.
+        # Real        = total output detections across all queried lines.
+        operating_minutes = max(0.0, scheduled_minutes - total_downtime_minutes)
+        if operating_minutes > 0 and "line_id" in df.columns:
+            total_expected = 0.0
+            for lid in data.lines_queried:
+                line_meta = metadata_cache.get_production_line(lid)
+                if not line_meta:
+                    continue
+                # performance = products per minute (from PRODUCTION_LINE table)
+                perf_rate = line_meta.get("performance", 0) or 0
+                if perf_rate <= 0:
+                    continue
 
-        # ── OEE ──
+                # Per-line downtime (minutes)
+                line_dt_min = 0.0
+                if not downtime_df.empty and "line_id" in downtime_df.columns:
+                    line_dt = downtime_df[downtime_df["line_id"] == lid]
+                    if not line_dt.empty and "duration" in line_dt.columns:
+                        line_dt_min = line_dt["duration"].sum() / 60.0
+
+                line_op_min = max(0.0, scheduled_minutes - line_dt_min)
+                total_expected += perf_rate * line_op_min
+
+            if total_expected > 0:
+                performance = min(
+                    100.0, round((salida / total_expected) * 100, 1)
+                )
+
+        # ── OEE ──────────────────────────────────────────────────
         if availability > 0 and performance > 0 and quality > 0:
             oee = round(
                 (availability / 100) * (performance / 100) * (quality / 100) * 100,
