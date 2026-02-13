@@ -1,0 +1,24 @@
+{# ── Multiselect Filter ──
+     Expects: f (filter dict from context)
+#}
+<div class="space-y-1.5">
+  <label class="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+    <i data-lucide="list-checks" class="w-3.5 h-3.5 text-accent-400/70"></i>
+    {{ f.description or f.class_name }}
+  </label>
+  <div class="bg-surface-800 border border-surface-600 rounded-lg p-2 max-h-36 overflow-y-auto space-y-1">
+    {% for opt in f.options %}
+    <label class="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-700/50 cursor-pointer transition-colors group">
+      <input type="checkbox" value="{{ opt.value }}"
+        @change="toggleMultiselect('{{ f.param_name }}', {{ opt.value }})"
+        :checked="params.{{ f.param_name }}.includes({{ opt.value }})"
+        class="w-3.5 h-3.5 rounded border-surface-600 bg-surface-900 text-accent-500
+               focus:ring-accent-500/30 focus:ring-offset-0 cursor-pointer">
+      <span class="text-sm text-gray-300 group-hover:text-white transition-colors">{{ opt.label }}</span>
+      {% if opt.extra and opt.extra.product_color %}
+      <span class="w-2.5 h-2.5 rounded-full ml-auto shrink-0" style="background:{{ opt.extra.product_color }}"></span>
+      {% endif %}
+    </label>
+    {% endfor %}
+  </div>
+</div>

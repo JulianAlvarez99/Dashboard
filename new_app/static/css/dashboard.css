@@ -1,0 +1,14 @@
+/**
+ * Dashboard CSS — Entry point
+ *
+ * Dashboard-specific styles that complement Tailwind utilities.
+ * Base styles (noise grain, scrollbar, animations) remain in base.html.
+ *
+ * Modules:
+ *   dashboard/filters.css  — Filter panel custom styles
+ *   dashboard/layout.css   — Dashboard layout overrides
+ *   dashboard/widgets.css  — Widget card styles (Etapa 5+)
+ */
+@import url('dashboard/filters.css');
+@import url('dashboard/layout.css');
+@import url('dashboard/widgets.css');

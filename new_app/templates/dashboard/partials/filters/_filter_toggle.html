@@ -1,0 +1,16 @@
+{# ── Toggle Filter ──
+     Expects: f (filter dict from context)
+#}
+<div class="flex items-center justify-between py-1">
+  <label class="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+    <i data-lucide="toggle-left" class="w-3.5 h-3.5 text-accent-400/70"></i>
+    {{ f.ui_config.get('label', f.description or f.class_name) }}
+  </label>
+  <button type="button" @click="params.{{ f.param_name }} = !params.{{ f.param_name }}"
+    :class="params.{{ f.param_name }} ? 'bg-accent-500' : 'bg-surface-700'"
+    class="relative w-10 h-5 rounded-full transition-colors duration-200 cursor-pointer focus-ring">
+    <span
+      :class="params.{{ f.param_name }} ? 'translate-x-5' : 'translate-x-0.5'"
+      class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"></span>
+  </button>
+</div>

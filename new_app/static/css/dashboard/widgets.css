@@ -1,0 +1,29 @@
+/**
+ * Widgets — Card and grid styles for dashboard widgets
+ * Placeholder — will be populated in Etapa 5+
+ */
+
+/* Widget card base */
+.widget-card {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  background-color: #0F172A;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.widget-card:hover {
+  border-color: rgba(34, 197, 94, 0.3);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.08);
+}
+
+/* Widget header */
+.widget-card-header {
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.4);
+}
+
+/* Widget body */
+.widget-card-body {
+  padding: 1rem 1.25rem;
+}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Camet Analytics{% endblock %}
+
+{# ── Dashboard CSS ── #}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block body %}
+<div x-data="dashboardApp()" x-init="init()" class="flex flex-col min-h-screen">
+
+  {# ── Header ── #}
+  {% include 'dashboard/partials/_header.html' %}
+
+  {# ── Main Layout ── #}
+  <div class="flex flex-1 overflow-hidden">
+
+    {# ── Sidebar: Filter Panel ── #}
+    {% include 'dashboard/partials/_filters_panel.html' %}
+
+    {# ── Main Content: Widget Grid ── #}
+    {% include 'dashboard/partials/_main_content.html' %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+{# ── JSON bootstrap: pass server data to external JS ── #}
+<script>
+  window.__dashboardConfig = {
+    apiBase: {{ api_base_url|tojson }},
+    filters: {{ filters|tojson }},
+    widgets: {{ widgets|tojson if widgets else '[]' }},
+    lineOptions: {{ (filters | selectattr('param_name', 'equalto', 'line_id') | first).options | tojson if filters | selectattr('param_name', 'equalto', 'line_id') | list else '[]' }}
+  };
+</script>
+<script src="{{ url_for('static', filename='js/dashboard-app.js') }}"></script>
+{% endblock %}

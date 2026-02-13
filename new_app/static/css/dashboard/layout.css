@@ -1,0 +1,24 @@
+/**
+ * Layout — Dashboard structural overrides
+ */
+
+/* Ensure sidebar doesn't collapse below minimum width */
+aside {
+  min-width: 0;
+}
+
+/* Smooth sidebar slide on mobile */
+@media (max-width: 1023px) {
+  aside {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 50;
+  }
+}
+
+/* Main content scroll containment */
+main {
+  scroll-behavior: smooth;
+}

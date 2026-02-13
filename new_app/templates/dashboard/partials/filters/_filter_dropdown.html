@@ -1,0 +1,24 @@
+{# ── Dropdown Filter ──
+     Expects: f (filter dict from context)
+#}
+<div class="space-y-1.5">
+  <label class="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+    <i data-lucide="chevron-down-circle" class="w-3.5 h-3.5 text-accent-400/70"></i>
+    {{ f.description or f.class_name }}
+  </label>
+  <select x-model="params.{{ f.param_name }}"
+    {% if f.param_name == 'line_id' %}@change="onLineChange($event.target.value)"{% endif %}
+    class="w-full px-3 py-2.5 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white
+           focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500/50 outline-none
+           transition-all cursor-pointer appearance-none"
+    style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;16&quot; height=&quot;16&quot; fill=&quot;%236b7280&quot; viewBox=&quot;0 0 24 24&quot;><path d=&quot;m6 9 6 6 6-6&quot; stroke=&quot;%236b7280&quot; stroke-width=&quot;2&quot; fill=&quot;none&quot; stroke-linecap=&quot;round&quot;/></svg>');
+           background-position: right 10px center;
+           background-repeat: no-repeat;">
+    <option value="" class="bg-surface-800">{{ f.placeholder or 'Seleccionar…' }}</option>
+    {% for opt in f.options %}
+    <option value="{{ opt.value }}"
+      class="bg-surface-800 {{ 'font-semibold' if opt.extra and opt.extra.is_group else '' }}"
+      >{% if opt.extra and opt.extra.is_group %}▸ {% endif %}{{ opt.label }}</option>
+    {% endfor %}
+  </select>
+</div>

@@ -1,0 +1,56 @@
+# ================================================================
+# External APIs Configuration — Data Broker
+# ================================================================
+#
+# Define every external data source that a widget can consume
+# instead of (or in addition to) the internal master DataFrame.
+#
+# The Data Broker reads this file at startup. When a widget has
+# source_type="external" and api_source_id pointing to a key here,
+# the broker fetches data from this API instead of the DB.
+#
+# ── Structure ──────────────────────────────────────────────────
+#
+#   <api_id>:
+#     name         : Human-readable name.
+#     base_url     : Base URL of the API.
+#     method       : HTTP method (GET | POST).
+#     timeout      : Request timeout in seconds.
+#     auth_type    : "bearer" | "api_key" | "basic" | "none".
+#     auth_env_var : Name of the .env variable holding the token/key.
+#     headers      : Extra headers (optional).
+#     params       : Default query parameters (optional).
+#     response_key : JSON path to extract data from response (optional).
+#
+# ── Example ────────────────────────────────────────────────────
+#
+#   erp_production:
+#     name: "ERP — Órdenes de producción"
+#     base_url: "https://erp.example.com/api/v1/production/orders"
+#     method: GET
+#     timeout: 10
+#     auth_type: bearer
+#     auth_env_var: ERP_API_TOKEN
+#     headers:
+#       Accept: application/json
+#     params:
+#       status: active
+#     response_key: "data.orders"
+#
+#   weather_api:
+#     name: "Open-Meteo — Clima planta"
+#     base_url: "https://api.open-meteo.com/v1/forecast"
+#     method: GET
+#     timeout: 5
+#     auth_type: none
+#     auth_env_var: null
+#     params:
+#       latitude: -34.6
+#       longitude: -58.4
+#       hourly: temperature_2m,relative_humidity_2m
+#     response_key: "hourly"
+#
+# ================================================================
+
+# No external APIs configured yet.
+# Uncomment and adapt the examples above when integrating third-party data.

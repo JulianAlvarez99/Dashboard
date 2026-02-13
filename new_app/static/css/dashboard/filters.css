@@ -1,0 +1,26 @@
+/**
+ * Filters — Custom styles for the filter sidebar
+ */
+
+/* Custom dropdown arrow for select elements inside the filter panel */
+.filter-select-arrow {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236b7280" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" stroke="%236b7280" stroke-width="2" fill="none" stroke-linecap="round"/></svg>');
+  background-position: right 10px center;
+  background-repeat: no-repeat;
+}
+
+/* Staggered animation for filter items */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out both;
+}
+
+/* Checkbox accent override for dark theme */
+input[type="checkbox"]:checked {
+  accent-color: #22C55E;
+}
+
+/* Date/time input color-scheme for dark mode */
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}

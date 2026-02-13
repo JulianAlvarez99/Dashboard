@@ -1,0 +1,20 @@
+{# ── Number Filter ──
+     Expects: f (filter dict from context)
+#}
+<div class="space-y-1.5">
+  <label class="text-xs font-medium text-gray-400 uppercase tracking-wide flex items-center gap-1.5">
+    <i data-lucide="hash" class="w-3.5 h-3.5 text-accent-400/70"></i>
+    {{ f.description or f.class_name }}
+  </label>
+  <div class="flex items-center gap-2">
+    <input type="number" x-model.number="params.{{ f.param_name }}"
+      {% if f.ui_config.get('min') is not none %}min="{{ f.ui_config.min }}"{% endif %}
+      {% if f.ui_config.get('step') %}step="{{ f.ui_config.step }}"{% endif %}
+      placeholder="{{ f.placeholder or '' }}"
+      class="flex-1 px-3 py-2.5 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white font-mono
+             focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500/50 outline-none transition-all">
+    {% if f.ui_config.get('unit') %}
+    <span class="text-xs text-gray-500 font-mono">{{ f.ui_config.unit }}</span>
+    {% endif %}
+  </div>
+</div>

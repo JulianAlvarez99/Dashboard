@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Camet Analytics{% endblock %}</title>
+
+  <!-- Fonts: Fira Sans (body) + Fira Code (data/mono) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS (CDN — zero build step) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        fontFamily: {
+          sans:  ['Fira Sans', 'system-ui', 'sans-serif'],
+          mono:  ['Fira Code', 'monospace'],
+        },
+        extend: {
+          colors: {
+            surface: {
+              950: '#020617',
+              900: '#0F172A',
+              800: '#1E293B',
+              700: '#334155',
+              600: '#475569',
+            },
+            accent: {
+              DEFAULT: '#22C55E',
+              50:  '#F0FDF4',
+              100: '#DCFCE7',
+              400: '#4ADE80',
+              500: '#22C55E',
+              600: '#16A34A',
+              700: '#15803D',
+            },
+            info:    '#38BDF8',
+            warn:    '#FBBF24',
+            danger:  '#F87171',
+          },
+          boxShadow: {
+            'glow-sm': '0 0 8px rgba(34,197,94,0.15)',
+            'glow':    '0 0 20px rgba(34,197,94,0.2)',
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.3s ease-out',
+            'slide-up': 'slideUp 0.35s ease-out',
+          },
+          keyframes: {
+            fadeIn:  { from: { opacity: '0' }, to: { opacity: '1' } },
+            slideUp: { from: { opacity: '0', transform: 'translateY(8px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+          },
+        }
+      }
+    }
+  </script>
+
+  <!-- Alpine.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
+  <!-- Lucide Icons (SVG — no emojis) -->
+  <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* Subtle noise grain overlay for depth */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      pointer-events: none;
+      opacity: 0.018;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0F172A; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .focus-ring:focus-visible {
+      outline: 2px solid #22C55E;
+      outline-offset: 2px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-surface-950 text-gray-100 font-sans min-h-screen flex flex-col antialiased">
+  {% block body %}{% endblock %}
+
+  {% block scripts %}
+  <script>
+    document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+    document.addEventListener('alpine:initialized', () => lucide.createIcons());
+  </script>
+  {% endblock %}
+</body>
+</html>
