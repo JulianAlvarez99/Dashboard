@@ -1,0 +1,131 @@
+"""Chart: Entrada vs Salida vs Descarte — comparison bar over time."""
+
+from __future__ import annotations
+
+from typing import Any, Dict
+
+import pandas as pd
+
+from new_app.services.widgets.base import BaseWidget, WidgetResult
+from new_app.services.widgets.helpers import (
+    format_time_labels,
+    get_freq,
+    get_lines_with_input_output,
+)
+
+
+class EntryOutputCompareChart(BaseWidget):
+
+    def process(self) -> WidgetResult:
+        df = self.df
+        if df.empty or "area_type" not in df.columns:
+            return self._empty("chart")
+
+        interval = self.ctx.params.get("interval", "hour")
+        freq = get_freq(interval)
+
+        df["detected_at"] = pd.to_datetime(df["detected_at"])
+
+        dual_lines = get_lines_with_input_output(self.ctx.lines_queried)
+
+        relevant = df[df["area_type"].isin(["input", "output"])]
+        if relevant.empty:
+            return self._empty("chart")
+
+        # Per-interval series
+        output_series = (
+            relevant[relevant["area_type"] == "output"]
+            .set_index("detected_at").resample(freq).size()
+        )
+
+        input_series = pd.Series(dtype=int)
+        output_dual_series = pd.Series(dtype=int)
+
+        if dual_lines and "line_id" in relevant.columns:
+            dual_df = relevant[relevant["line_id"].isin(dual_lines)]
+            input_series = (
+                dual_df[dual_df["area_type"] == "input"]
+                .set_index("detected_at").resample(freq).size()
+            )
+            output_dual_series = (
+                dual_df[dual_df["area_type"] == "output"]
+                .set_index("detected_at").resample(freq).size()
+            )
+
+        # Full time index
+        full_index = self._build_full_index(freq)
+
+        all_idx = output_series.index
+        if not input_series.empty:
+            all_idx = all_idx.union(input_series.index)
+        if not output_dual_series.empty:
+            all_idx = all_idx.union(output_dual_series.index)
+        all_idx = all_idx.sort_values()
+
+        if full_index is not None and len(full_index) > 0:
+            all_idx = full_index
+
+        if all_idx.empty:
+            return self._empty("chart")
+
+        entrada_vals = (
+            input_series.reindex(all_idx, fill_value=0)
+            if not input_series.empty
+            else pd.Series(0, index=all_idx)
+        )
+        salida_vals = output_series.reindex(all_idx, fill_value=0)
+        if not output_dual_series.empty:
+            descarte_vals = (
+                input_series.reindex(all_idx, fill_value=0)
+                - output_dual_series.reindex(all_idx, fill_value=0)
+            ).clip(lower=0)
+        else:
+            descarte_vals = pd.Series(0, index=all_idx)
+
+        labels = format_time_labels(all_idx, interval)
+
+        return self._result(
+            "chart",
+            {
+                "labels": labels,
+                "datasets": [
+                    {
+                        "label": "Entrada",
+                        "data": entrada_vals.values.tolist(),
+                        "backgroundColor": "#22c55e",
+                    },
+                    {
+                        "label": "Salida",
+                        "data": salida_vals.values.tolist(),
+                        "backgroundColor": "#3b82f6",
+                    },
+                    {
+                        "label": "Descarte",
+                        "data": descarte_vals.values.tolist(),
+                        "backgroundColor": "#ef4444",
+                    },
+                ],
+                "summary": {
+                    "entrada": int(entrada_vals.sum()),
+                    "salida": int(salida_vals.sum()),
+                    "descarte": int(descarte_vals.sum()),
+                },
+            },
+            category="chart",
+            total_points=len(all_idx),
+        )
+
+    def _build_full_index(self, freq: str):
+        daterange = self.ctx.params.get("daterange", {})
+        sd = daterange.get("start_date")
+        ed = daterange.get("end_date")
+        st = daterange.get("start_time")
+        et = daterange.get("end_time")
+        if sd and ed:
+            try:
+                start_str = f"{sd} {st}" if st else sd
+                end_str = f"{ed} {et}" if et else ed
+                return pd.date_range(start=start_str, end=end_str, freq=freq)
+            except Exception:
+                pass
+        return None

@@ -1,0 +1,35 @@
+{# ── Event Feed Widget partial ──
+     Expects: wid from parent loop
+     Data shape: { events: [{timestamp, event_type, description, line_name?, ...}], total }
+#}
+<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty)"
+     x-cloak class="widget-card-body">
+  <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center justify-between">
+    <span x-text="widgetResults['{{ wid }}']?.widget_name"></span>
+    <span class="text-[10px] font-mono text-gray-600 normal-case"
+          x-text="(widgetResults['{{ wid }}']?.data?.total || 0) + ' eventos'"></span>
+  </h3>
+  <div class="space-y-1 max-h-80 overflow-y-auto">
+    <template x-for="(evt, idx) in (widgetResults['{{ wid }}']?.data?.events || [])" :key="idx">
+      <div class="flex items-start gap-3 p-2 rounded-md hover:bg-surface-800/50 transition-colors">
+        {# Event type icon #}
+        <span class="mt-0.5 w-2 h-2 rounded-full shrink-0"
+              :class="evt.event_type === 'detection' ? 'bg-accent-500'
+                     : evt.event_type === 'downtime_start' ? 'bg-red-500'
+                     : evt.event_type === 'downtime_end' ? 'bg-yellow-500'
+                     : 'bg-gray-500'"></span>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-gray-300 truncate" x-text="evt.description"></p>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-[10px] text-gray-500 font-mono" x-text="evt.timestamp"></span>
+            <span x-show="evt.line_name" class="text-[10px] text-gray-600" x-text="evt.line_name"></span>
+          </div>
+        </div>
+      </div>
+    </template>
+    {# Empty feed #}
+    <template x-if="!widgetResults['{{ wid }}']?.data?.events || widgetResults['{{ wid }}'].data.events.length === 0">
+      <p class="text-sm text-gray-500 text-center py-4">Sin eventos recientes</p>
+    </template>
+  </div>
+</div>

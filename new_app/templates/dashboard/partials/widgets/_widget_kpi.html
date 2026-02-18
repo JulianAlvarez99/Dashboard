@@ -1,0 +1,61 @@
+{# ── KPI Widget partial ──
+     Expects: wid, wtype (kpi | kpi_oee) from parent loop
+     Data shape: { value, unit, trend, [availability, performance, quality, ...] }
+#}
+<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty){% if w.downtime_only %} && !isMultiLine{% endif %}"
+     x-cloak class="widget-card-body">
+  <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2"
+      x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+
+  <div class="flex items-baseline gap-2">
+    <span class="text-3xl font-bold text-white"
+          x-text="typeof widgetResults['{{ wid }}']?.data?.value === 'number'
+                  ? widgetResults['{{ wid }}'].data.value.toLocaleString('es-AR')
+                  : widgetResults['{{ wid }}']?.data?.value"></span>
+    <span class="text-base font-normal text-gray-500"
+          x-text="widgetResults['{{ wid }}']?.data?.unit"></span>
+  </div>
+
+  {% if wtype == 'kpi_oee' %}
+  {# OEE breakdown — availability / performance / quality #}
+  <div x-show="widgetResults['{{ wid }}']?.data?.availability !== undefined" x-cloak>
+    <div class="mt-3 grid grid-cols-3 gap-2 text-center">
+      <div class="bg-surface-800 rounded-lg p-2">
+        <p class="text-[10px] text-gray-500 uppercase">Disponibilidad</p>
+        <p class="text-sm font-semibold text-green-500"
+           x-text="widgetResults['{{ wid }}']?.data?.availability + '%'"></p>
+      </div>
+      <div class="bg-surface-800 rounded-lg p-2">
+        <p class="text-[10px] text-gray-500 uppercase">Rendimiento</p>
+        <p class="text-sm font-semibold text-blue-500"
+           x-text="widgetResults['{{ wid }}']?.data?.performance + '%'"></p>
+      </div>
+      <div class="bg-surface-800 rounded-lg p-2">
+        <p class="text-[10px] text-gray-500 uppercase">Calidad</p>
+        <p class="text-sm font-semibold text-purple-500"
+           x-text="widgetResults['{{ wid }}']?.data?.quality + '%'"></p>
+      </div>
+    </div>
+    <p x-show="widgetResults['{{ wid }}']?.data?.scheduled_minutes > 0 && !isMultiLine"
+       class="mt-2 text-xs text-gray-500">
+      Programado:
+      <span x-text="Math.round(widgetResults['{{ wid }}']?.data?.scheduled_minutes / 60 * 10) / 10"></span>h
+      · Paradas:
+      <span x-text="Math.round(widgetResults['{{ wid }}']?.data?.downtime_minutes * 10) / 10"></span> min
+    </p>
+    <p x-show="widgetResults['{{ wid }}']?.data?.scheduled_minutes > 0 && isMultiLine"
+       class="mt-2 text-xs text-gray-500">
+      Programado:
+      <span x-text="Math.round(widgetResults['{{ wid }}']?.data?.scheduled_minutes / 60 * 10) / 10"></span>h
+    </p>
+  </div>
+  {% endif %}
+
+  {# Downtime KPI extra info #}
+  {% if w.downtime_only and wtype == 'kpi' %}
+  <p x-show="widgetResults['{{ wid }}']?.data?.total_minutes !== undefined"
+     class="mt-1 text-sm text-gray-500">
+    Total: <span x-text="widgetResults['{{ wid }}']?.data?.total_minutes"></span> min
+  </p>
+  {% endif %}
+</div>

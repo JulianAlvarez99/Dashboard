@@ -1,5 +1,6 @@
 {# ── Main Content Area (Widget Grid) ──
      Parent Alpine scope: dashboardApp()
+     Expects: widgets (list of enriched widget dicts from route)
 #}
 <main class="flex-1 overflow-y-auto p-6 bg-surface-950">
 
@@ -22,27 +23,92 @@
       </template>
     </div>
     <div class="flex items-center gap-2">
+      <template x-if="queryMetadata.total_detections > 0">
+        <span class="text-[10px] font-mono text-gray-500 bg-surface-800 px-2 py-0.5 rounded">
+          <span x-text="queryMetadata.total_detections.toLocaleString('es-AR')"></span> detecciones
+          · <span x-text="queryMetadata.elapsed_ms"></span>ms
+        </span>
+      </template>
       <span class="text-xs text-gray-500" x-show="filterCount > 0">
         <span x-text="filterCount"></span> filtro(s) activo(s)
       </span>
     </div>
   </div>
 
-  <!-- Widget grid placeholder (Etapa 5 will populate) -->
+  <!-- Widget grid -->
+  {% if widgets %}
   <div id="widget-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 
-    <!-- Empty state -->
-    <div class="col-span-full flex flex-col items-center justify-center py-24 animate-fade-in"
-         x-show="!hasData">
-      <div class="w-16 h-16 rounded-2xl bg-surface-800 border border-surface-700 flex items-center justify-center mb-4">
-        <i data-lucide="layout-dashboard" class="w-8 h-8 text-surface-600"></i>
+    {% for w in widgets %}
+    {% set wid = w.widget_id %}
+    {% set wtype = w.render_type %}
+    {% set chart_type = w.chart_type %}
+    {% set chart_h = w.chart_height %}
+
+    <div class="{{ w.size_class }}" style="order:{{ w.order }}">
+      <div class="widget-card" id="widget-{{ wid }}">
+
+        {# ── Loading skeleton ── #}
+        <div x-show="loading || (!widgetResults['{{ wid }}'] && hasData)" x-cloak class="widget-card-body animate-pulse">
+          <div class="h-4 w-1/3 bg-surface-700 rounded mb-3"></div>
+          <div class="h-8 w-2/3 bg-surface-700 rounded mb-2"></div>
+          <div class="h-3 w-1/2 bg-surface-700/60 rounded"></div>
+        </div>
+
+        {# ── Empty state ── #}
+        <div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty"
+             x-cloak class="widget-card-body flex flex-col items-center justify-center py-8">
+          <i data-lucide="bar-chart-3" class="w-8 h-8 text-surface-600 mb-2"></i>
+          <p class="text-sm text-gray-500"
+             x-text="widgetResults['{{ wid }}']?.metadata?.message || 'No hay datos disponibles'"></p>
+        </div>
+
+        {# ── Downtime-only warning in multi-line mode ── #}
+        {% if w.downtime_only %}
+        <div x-show="isMultiLine && hasData" x-cloak class="widget-card-body flex flex-col items-center justify-center py-8">
+          <i data-lucide="alert-triangle" class="w-8 h-8 text-amber-400 mb-2"></i>
+          <p class="text-sm text-gray-500 text-center">
+            Métrica no disponible<br>en modo múltiples líneas
+          </p>
+        </div>
+        {% endif %}
+
+        {# ── Widget type partials (server-time decision) ── #}
+        {% if wtype in ('kpi', 'kpi_oee') %}
+          {% include 'dashboard/partials/widgets/_widget_kpi.html' %}
+        {% elif wtype == 'chart' %}
+          {% include 'dashboard/partials/widgets/_widget_chart.html' %}
+        {% elif wtype == 'table' %}
+          {% include 'dashboard/partials/widgets/_widget_table.html' %}
+        {% elif wtype == 'indicator' %}
+          {% include 'dashboard/partials/widgets/_widget_indicator.html' %}
+        {% elif wtype == 'summary' %}
+          {% include 'dashboard/partials/widgets/_widget_summary.html' %}
+        {% elif wtype == 'feed' %}
+          {% include 'dashboard/partials/widgets/_widget_feed.html' %}
+        {% else %}
+          {% include 'dashboard/partials/widgets/_widget_unknown.html' %}
+        {% endif %}
+
       </div>
-      <h3 class="text-base font-medium text-gray-400 mb-1">Sin datos para mostrar</h3>
-      <p class="text-sm text-gray-500 text-center max-w-xs">
-        Seleccione una línea de producción y rango de fechas, luego presione
-        <span class="text-accent-400 font-medium">Aplicar Filtros</span>.
-      </p>
     </div>
+    {% endfor %}
 
   </div>
+  {% endif %}
+
+  <!-- Empty state (no widgets configured or no data) -->
+  <div class="col-span-full flex flex-col items-center justify-center py-24 animate-fade-in"
+       x-show="!hasData && !loading"
+       {% if widgets %}style="display:none"{% endif %}>
+    <div class="w-16 h-16 rounded-2xl bg-surface-800 border border-surface-700 flex items-center justify-center mb-4">
+      <i data-lucide="layout-dashboard" class="w-8 h-8 text-surface-600"></i>
+    </div>
+    <h3 class="text-base font-medium text-gray-400 mb-1">Sin datos para mostrar</h3>
+    <p class="text-sm text-gray-500 text-center max-w-xs">
+      Seleccione una línea de producción y rango de fechas, luego presione
+      <span class="text-accent-400 font-medium">Aplicar Filtros</span>.
+    </p>
+  </div>
+
 </main>

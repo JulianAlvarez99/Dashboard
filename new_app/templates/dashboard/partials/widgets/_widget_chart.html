@@ -1,0 +1,34 @@
+{# ── Chart Widget partial ──
+     Expects: wid, chart_type, chart_h from parent loop
+     Data shape: { labels?, datasets, curve_type?, class_details?, summary? }
+#}
+<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty){% if w.downtime_only %} && !isMultiLine{% endif %}"
+     x-cloak class="widget-card-body">
+  <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3"
+      x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+
+  {% if chart_type == 'comparison_bar' %}
+  {# Entry / Output / Discard summary cards #}
+  <div x-show="widgetResults['{{ wid }}']?.data?.summary" class="grid grid-cols-3 gap-3 mb-3">
+    <div class="text-center bg-green-900/20 rounded-lg p-2">
+      <p class="text-lg font-bold text-green-500"
+         x-text="widgetResults['{{ wid }}']?.data?.summary?.entrada?.toLocaleString('es-AR')"></p>
+      <p class="text-[10px] text-gray-500">Entrada</p>
+    </div>
+    <div class="text-center bg-blue-900/20 rounded-lg p-2">
+      <p class="text-lg font-bold text-blue-500"
+         x-text="widgetResults['{{ wid }}']?.data?.summary?.salida?.toLocaleString('es-AR')"></p>
+      <p class="text-[10px] text-gray-500">Salida</p>
+    </div>
+    <div class="text-center bg-red-900/20 rounded-lg p-2">
+      <p class="text-lg font-bold text-red-500"
+         x-text="widgetResults['{{ wid }}']?.data?.summary?.descarte?.toLocaleString('es-AR')"></p>
+      <p class="text-[10px] text-gray-500">Descarte</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="widget-chart-wrap" style="height:{{ chart_h }}">
+    <canvas id="chart-{{ wid }}"></canvas>
+  </div>
+</div>

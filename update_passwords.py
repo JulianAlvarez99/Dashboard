@@ -6,7 +6,7 @@ ph = PasswordHasher(time_cost=2, memory_cost=65536, parallelism=1)
 
 # Hash passwords
 pwd_admin = ph.hash("admin123")  # Chacabuco
-pwd_admin_cn = ph.hash("centralnorte2024")  # Central Norte
+pwd_admin_cn = ph.hash("admincn123")  # Central Norte
 
 conn = pymysql.connect(
     host='localhost',
@@ -26,6 +26,6 @@ conn.commit()
 
 print('✓ Passwords updated:')
 print('  admin: admin123')
-print('  admin_cn: centralnorte2024')
+print('  admin_cn: admincn123')
 
 conn.close()

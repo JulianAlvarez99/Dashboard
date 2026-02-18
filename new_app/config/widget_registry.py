@@ -152,3 +152,42 @@ WIDGET_REGISTRY: dict[str, dict] = {
         "default_config": {"max_items": 50},
     },
 }
+
+
+# ── Frontend rendering configuration ────────────────────────────
+#
+# Maps each widget class to the Jinja partial and grid size used by
+# the dashboard template.  ``render`` selects the partial template,
+# ``chart_type`` (if any) tells ChartRenderer which config builder
+# to use, and ``size`` drives the CSS grid column span.
+
+WIDGET_RENDER_MAP: dict[str, dict] = {
+    # KPIs
+    "KpiTotalProduction":    {"render": "kpi", "size": "small"},
+    "KpiTotalWeight":        {"render": "kpi", "size": "small"},
+    "KpiOee":                {"render": "kpi_oee", "size": "medium"},
+    "KpiTotalDowntime":      {"render": "kpi", "size": "small", "downtime_only": True},
+    "KpiAvailability":       {"render": "kpi", "size": "small"},
+    "KpiPerformance":        {"render": "kpi", "size": "small"},
+    "KpiQuality":            {"render": "kpi", "size": "small"},
+    # Charts
+    "ProductionTimeChart":   {"render": "chart", "chart_type": "line_chart",     "size": "large",  "chart_height": "300px"},
+    "AreaDetectionChart":    {"render": "chart", "chart_type": "bar_chart",      "size": "medium", "chart_height": "250px"},
+    "ProductDistributionChart": {"render": "chart", "chart_type": "pie_chart",   "size": "medium", "chart_height": "250px"},
+    "EntryOutputCompareChart":  {"render": "chart", "chart_type": "comparison_bar", "size": "large",  "chart_height": "300px"},
+    "ScatterChart":          {"render": "chart", "chart_type": "scatter_chart",  "size": "large",  "chart_height": "300px", "downtime_only": True},
+    # Tables
+    "DowntimeTable":         {"render": "table", "size": "large", "downtime_only": True},
+    "ProductRanking":        {"render": "table", "size": "medium"},
+    # Status / Summary / Feed
+    "LineStatusIndicator":   {"render": "indicator", "size": "medium"},
+    "MetricsSummary":        {"render": "summary", "size": "full"},
+    "EventFeed":             {"render": "feed", "size": "medium"},
+}
+
+WIDGET_SIZE_CSS: dict[str, str] = {
+    "small":  "col-span-1",
+    "medium": "col-span-1 xl:col-span-1",
+    "large":  "col-span-1 md:col-span-2",
+    "full":   "col-span-full",
+}

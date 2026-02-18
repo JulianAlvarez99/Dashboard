@@ -15,40 +15,48 @@
 #     name         : Human-readable name.
 #     base_url     : Base URL of the API.
 #     method       : HTTP method (GET | POST).
-#     timeout      : Request timeout in seconds.
+#     timeout      : Request timeout in seconds (default: 10).
 #     auth_type    : "bearer" | "api_key" | "basic" | "none".
 #     auth_env_var : Name of the .env variable holding the token/key.
 #     headers      : Extra headers (optional).
 #     params       : Default query parameters (optional).
-#     response_key : JSON path to extract data from response (optional).
+#     body         : Default request body for POST (optional).
+#     response_key : Dot-notation path to extract data (optional).
+#                    e.g. "data.orders" → response["data"]["orders"]
+#     cache_ttl    : Seconds to cache the response (default: 0 = no cache).
+#     enabled      : true | false (default: true).
 #
-# ── Example ────────────────────────────────────────────────────
+# ── Examples ───────────────────────────────────────────────────
 #
-#   erp_production:
-#     name: "ERP — Órdenes de producción"
-#     base_url: "https://erp.example.com/api/v1/production/orders"
-#     method: GET
-#     timeout: 10
-#     auth_type: bearer
-#     auth_env_var: ERP_API_TOKEN
-#     headers:
-#       Accept: application/json
-#     params:
-#       status: active
-#     response_key: "data.orders"
+# erp_production:
+#   name: "ERP — Órdenes de producción"
+#   base_url: "https://erp.example.com/api/v1/production/orders"
+#   method: GET
+#   timeout: 10
+#   auth_type: bearer
+#   auth_env_var: ERP_API_TOKEN
+#   headers:
+#     Accept: application/json
+#   params:
+#     status: active
+#   response_key: "data.orders"
+#   cache_ttl: 300
+#   enabled: true
 #
-#   weather_api:
-#     name: "Open-Meteo — Clima planta"
-#     base_url: "https://api.open-meteo.com/v1/forecast"
-#     method: GET
-#     timeout: 5
-#     auth_type: none
-#     auth_env_var: null
-#     params:
-#       latitude: -34.6
-#       longitude: -58.4
-#       hourly: temperature_2m,relative_humidity_2m
-#     response_key: "hourly"
+# weather_api:
+#   name: "Open-Meteo — Clima planta"
+#   base_url: "https://api.open-meteo.com/v1/forecast"
+#   method: GET
+#   timeout: 5
+#   auth_type: none
+#   auth_env_var: null
+#   params:
+#     latitude: -34.6
+#     longitude: -58.4
+#     hourly: temperature_2m,relative_humidity_2m
+#   response_key: "hourly"
+#   cache_ttl: 600
+#   enabled: true
 #
 # ================================================================
 

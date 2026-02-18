@@ -31,10 +31,14 @@
 <script>
   window.__dashboardConfig = {
     apiBase: {{ api_base_url|tojson }},
+    dashboardApiUrl: {{ dashboard_api_url|tojson }},
+    tenantId: {{ tenant_id|tojson }},
+    role: {{ role|tojson }},
     filters: {{ filters|tojson }},
     widgets: {{ widgets|tojson if widgets else '[]' }},
     lineOptions: {{ (filters | selectattr('param_name', 'equalto', 'line_id') | first).options | tojson if filters | selectattr('param_name', 'equalto', 'line_id') | list else '[]' }}
   };
 </script>
+<script src="{{ url_for('static', filename='js/chart-renderer.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard-app.js') }}"></script>
 {% endblock %}
