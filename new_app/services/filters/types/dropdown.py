@@ -42,7 +42,8 @@ class DropdownFilter(OptionsFilter):
     # ── Validate / Default ───────────────────────────────────
 
     def validate(self, value: Any) -> bool:
-        if value is None:
+        # Empty string from <select> is equivalent to "no selection"
+        if value is None or value == "":
             return not self.config.required
         opts = self.get_options()
         # Support both int and string comparison (group values are strings)

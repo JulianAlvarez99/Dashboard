@@ -41,7 +41,6 @@ const ChartRenderer = {
       pan: {
         enabled: true,
         mode: 'x',
-        modifierKey: null,
         onPanComplete: resetBtn
           ? () => { resetBtn.style.display = 'inline-block'; }
           : undefined,
@@ -49,13 +48,6 @@ const ChartRenderer = {
       zoom: {
         wheel: { enabled: true, modifierKey: 'ctrl' },
         pinch: { enabled: true },
-        drag: {
-          enabled: true,
-          modifierKey: 'ctrl',
-          backgroundColor: 'rgba(34,197,94,0.10)',
-          borderColor: '#22c55e',
-          borderWidth: 1,
-        },
         mode: 'x',
         onZoomComplete: resetBtn
           ? () => { resetBtn.style.display = 'inline-block'; }
@@ -381,6 +373,49 @@ const ChartRenderer = {
     wrapper.insertBefore(toolbar, canvas);
 
     return btn;
+  },
+
+  /**
+   * Update curve type on all line charts in-place (no destroy/recreate).
+   * @param {Object} chartInstances - Map of canvasId → Chart instance
+   * @param {string} curveType      - New curve type key
+   */
+  updateCurveType(chartInstances, curveType) {
+    const curve = this._curveProps(curveType);
+    const stacked = curveType === 'stacked';
+    Object.keys(chartInstances).forEach(function (canvasId) {
+      var chart = chartInstances[canvasId];
+      if (!chart || chart.config.type !== 'line') return;
+      chart.data.datasets.forEach(function (ds) {
+        ds.tension = curve.tension;
+        ds.stepped = curve.stepped;
+        ds.fill = stacked ? 'origin' : false;
+      });
+      if (chart.options.scales && chart.options.scales.x) chart.options.scales.x.stacked = stacked;
+      if (chart.options.scales && chart.options.scales.y) chart.options.scales.y.stacked = stacked;
+      chart.update();
+    });
+  },
+
+  /**
+   * Toggle downtime annotations on all line charts in-place.
+   * @param {Object} chartInstances  - Map of canvasId → Chart instance
+   * @param {Array}  downtimeEvents  - Original downtime_events array (or empty)
+   * @param {boolean} show           - Whether to show or hide annotations
+   */
+  updateDowntimeAnnotations(chartInstances, downtimeEvents, show) {
+    var self = this;
+    Object.keys(chartInstances).forEach(function (canvasId) {
+      var chart = chartInstances[canvasId];
+      if (!chart || chart.config.type !== 'line') return;
+      if (!chart.options.plugins) chart.options.plugins = {};
+      if (show && downtimeEvents && downtimeEvents.length > 0) {
+        chart.options.plugins.annotation = { annotations: self._buildDowntimeAnnotations(downtimeEvents) };
+      } else {
+        chart.options.plugins.annotation = false;
+      }
+      chart.update();
+    });
   },
 
   /** Destroy all chart instances. */

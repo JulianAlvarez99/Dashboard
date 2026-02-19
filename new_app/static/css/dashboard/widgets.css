@@ -2,6 +2,40 @@
  * Widgets — Card, grid, and chart styles for dashboard widgets
  */
 
+/* ── Widget grid — cell-based auto-flow layout ─────────────── */
+
+.widget-grid {
+  display: grid;
+  /* grid-template-columns set via inline style from GRID_COLUMNS */
+  gap: 1rem;
+}
+
+/* Responsive: 2 cols on medium, 1 col on small */
+@media (max-width: 1279px) {
+  .widget-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  /* Collapse multi-col spans to fit 2-col layout */
+  .widget-grid > .widget-cell {
+    grid-column: span 1 !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .widget-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .widget-grid > .widget-cell {
+    grid-column: span 1 !important;
+  }
+}
+
+.widget-cell {
+  min-width: 0;  /* prevent grid blowout */
+  display: flex;  /* card fills full cell height */
+  flex-direction: column;
+}
+
 /* ── Widget card base ──────────────────────────────────────── */
 
 .widget-card {
@@ -10,6 +44,9 @@
   background-color: #0F172A;
   overflow: hidden;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  flex: 1;                   /* stretch to fill cell */
+  display: flex;
+  flex-direction: column;
 }
 
 .widget-card:hover {
@@ -28,6 +65,7 @@
 
 .widget-card-body {
   padding: 1.25rem;
+  flex: 1;  /* fill remaining card height */
 }
 
 /* ── Chart container ───────────────────────────────────────── */

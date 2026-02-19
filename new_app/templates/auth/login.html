@@ -2,90 +2,161 @@
 {% block title %}Iniciar sesión — Camet Analytics{% endblock %}
 
 {% block body %}
-<div class="flex items-center justify-center min-h-screen px-4">
-  <div class="w-full max-w-sm animate-slide-up">
-    <!-- Card -->
-    <div class="bg-surface-800 border border-surface-700 rounded-2xl shadow-xl p-8 relative overflow-hidden">
-      <!-- Subtle top accent bar -->
-      <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-accent-500 to-transparent"></div>
+<div class="flex min-h-screen" x-data="loginPage()">
 
-      <!-- Logo / Title -->
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent-500/10 border border-accent-500/20 mb-4">
-          <i data-lucide="activity" class="w-6 h-6 text-accent-400"></i>
-        </div>
-        <h1 class="text-2xl font-bold text-white tracking-tight">Camet Analytics</h1>
-        <p class="text-sm text-gray-400 mt-1 font-light">Monitoreo Industrial en Tiempo Real</p>
+  <!-- ═══ LEFT: Image Carousel ═══════════════════════════════ -->
+  <div class="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden bg-surface-950">
+    <!-- Slide images -->
+    <template x-for="(slide, idx) in slides" :key="idx">
+      <div class="absolute inset-0 transition-all duration-700 ease-in-out flex items-center justify-center"
+           :class="idx === current
+             ? 'opacity-100 scale-100'
+             : (idx === prev ? 'opacity-0 scale-105' : 'opacity-0 scale-95')">
+        <img :src="slide.src" :alt="slide.alt"
+             class="w-full h-full object-contain p-12 select-none pointer-events-none"
+             draggable="false">
       </div>
+    </template>
 
-      <!-- Flash messages -->
-      {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-      <div class="mb-5 space-y-2 animate-fade-in">
-        {% for category, message in messages %}
-        <div class="flex items-center gap-2 text-sm px-3 py-2.5 rounded-lg
-          {% if category == 'error' %}bg-danger/10 text-danger border border-danger/20
-          {% elif category == 'success' %}bg-accent/10 text-accent-400 border border-accent/20
-          {% elif category == 'warning' %}bg-warn/10 text-warn border border-warn/20
-          {% else %}bg-info/10 text-info border border-info/20{% endif %}">
-          {% if category == 'error' %}<i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
-          {% elif category == 'success' %}<i data-lucide="check-circle-2" class="w-4 h-4 shrink-0"></i>
-          {% else %}<i data-lucide="info" class="w-4 h-4 shrink-0"></i>{% endif %}
-          <span>{{ message }}</span>
-        </div>
-        {% endfor %}
-      </div>
-      {% endif %}
-      {% endwith %}
-
-      <!-- Login form -->
-      <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5" x-data="{ loading: false }" @submit="loading = true">
-        <div>
-          <label for="username" class="block text-sm font-medium text-gray-300 mb-1.5">Usuario</label>
-          <div class="relative">
-            <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-600"></i>
-            <input
-              type="text" id="username" name="username" required autofocus
-              class="w-full pl-10 pr-3 py-2.5 bg-surface-900 border border-surface-600 rounded-lg
-                     text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-500/40
-                     focus:border-accent-500 outline-none transition-all duration-200"
-              placeholder="Ingrese su usuario">
-          </div>
-        </div>
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-300 mb-1.5">Contraseña</label>
-          <div class="relative">
-            <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-600"></i>
-            <input
-              type="password" id="password" name="password" required
-              class="w-full pl-10 pr-3 py-2.5 bg-surface-900 border border-surface-600 rounded-lg
-                     text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-500/40
-                     focus:border-accent-500 outline-none transition-all duration-200"
-              placeholder="Ingrese su contraseña">
-          </div>
-        </div>
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full py-2.5 bg-accent-600 hover:bg-accent-500 disabled:opacity-60 disabled:cursor-not-allowed
-                 text-white font-semibold rounded-lg transition-all duration-200
-                 shadow-glow-sm hover:shadow-glow cursor-pointer flex items-center justify-center gap-2">
-          <template x-if="!loading">
-            <span class="flex items-center gap-2"><i data-lucide="log-in" class="w-4 h-4"></i>Iniciar sesión</span>
-          </template>
-          <template x-if="loading">
-            <span class="flex items-center gap-2">
-              <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
-              Verificando…
-            </span>
-          </template>
+    <!-- Dot indicators -->
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+      <template x-for="(slide, idx) in slides" :key="'dot-' + idx">
+        <button @click="goTo(idx)"
+          class="w-2 h-2 rounded-full transition-all duration-300 cursor-pointer"
+          :class="idx === current
+            ? 'bg-accent-400 w-6'
+            : 'bg-surface-600 hover:bg-surface-500'">
         </button>
-      </form>
+      </template>
+    </div>
 
-      <p class="text-center text-xs text-gray-500 mt-8">
-        &copy; 2026 Camet Robótica. Todos los derechos reservados.
-      </p>
+    <!-- Subtle gradient overlay on the right edge for seamless blend -->
+    <div class="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-surface-950 to-transparent"></div>
+  </div>
+
+  <!-- ═══ RIGHT: Login Form ══════════════════════════════════ -->
+  <div class="flex items-center justify-center w-full lg:w-1/2 xl:w-2/5 px-6">
+    <div class="w-full max-w-sm animate-slide-up">
+      <!-- Card -->
+      <div class="bg-surface-800 border border-surface-700 rounded-2xl shadow-xl p-8 relative overflow-hidden">
+        <!-- Subtle top accent bar -->
+        <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-accent-500 to-transparent"></div>
+
+        <!-- Logo / Title -->
+        <div class="text-center mb-8">
+          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent-500/10 border border-accent-500/20 mb-4">
+            <i data-lucide="activity" class="w-6 h-6 text-accent-400"></i>
+          </div>
+          <h1 class="text-2xl font-bold text-white tracking-tight">Camet Analytics</h1>
+          <p class="text-sm text-gray-400 mt-1 font-light">Monitoreo Industrial en Tiempo Real</p>
+        </div>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="mb-5 space-y-2 animate-fade-in">
+          {% for category, message in messages %}
+          <div class="flex items-center gap-2 text-sm px-3 py-2.5 rounded-lg
+            {% if category == 'error' %}bg-danger/10 text-danger border border-danger/20
+            {% elif category == 'success' %}bg-accent/10 text-accent-400 border border-accent/20
+            {% elif category == 'warning' %}bg-warn/10 text-warn border border-warn/20
+            {% else %}bg-info/10 text-info border border-info/20{% endif %}">
+            {% if category == 'error' %}<i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+            {% elif category == 'success' %}<i data-lucide="check-circle-2" class="w-4 h-4 shrink-0"></i>
+            {% else %}<i data-lucide="info" class="w-4 h-4 shrink-0"></i>{% endif %}
+            <span>{{ message }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <!-- Login form -->
+        <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5" x-data="{ loading: false }" @submit="loading = true">
+          <div>
+            <label for="username" class="block text-sm font-medium text-gray-300 mb-1.5">Usuario</label>
+            <div class="relative">
+              <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-600"></i>
+              <input
+                type="text" id="username" name="username" required autofocus
+                class="w-full pl-10 pr-3 py-2.5 bg-surface-900 border border-surface-600 rounded-lg
+                       text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-500/40
+                       focus:border-accent-500 outline-none transition-all duration-200"
+                placeholder="Ingrese su usuario">
+            </div>
+          </div>
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-300 mb-1.5">Contraseña</label>
+            <div class="relative">
+              <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-600"></i>
+              <input
+                type="password" id="password" name="password" required
+                class="w-full pl-10 pr-3 py-2.5 bg-surface-900 border border-surface-600 rounded-lg
+                       text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-500/40
+                       focus:border-accent-500 outline-none transition-all duration-200"
+                placeholder="Ingrese su contraseña">
+            </div>
+          </div>
+          <button
+            type="submit"
+            :disabled="loading"
+            class="w-full py-2.5 bg-accent-600 hover:bg-accent-500 disabled:opacity-60 disabled:cursor-not-allowed
+                   text-white font-semibold rounded-lg transition-all duration-200
+                   shadow-glow-sm hover:shadow-glow cursor-pointer flex items-center justify-center gap-2">
+            <template x-if="!loading">
+              <span class="flex items-center gap-2"><i data-lucide="log-in" class="w-4 h-4"></i>Iniciar sesión</span>
+            </template>
+            <template x-if="loading">
+              <span class="flex items-center gap-2">
+                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+                Verificando…
+              </span>
+            </template>
+          </button>
+        </form>
+
+        <p class="text-center text-xs text-gray-500 mt-8">
+          &copy; 2026 Camet Robótica. Todos los derechos reservados.
+        </p>
+      </div>
     </div>
   </div>
 </div>
+
+<script>
+function loginPage() {
+  const basePath = '{{ url_for("static", filename="images/carousel/") }}';
+  return {
+    slides: [
+      { src: basePath + 'slide_1.svg', alt: 'Monitoreo en Tiempo Real' },
+      { src: basePath + 'slide_2.svg', alt: 'KPIs y Métricas Clave' },
+      { src: basePath + 'slide_3.svg', alt: 'Dashboard Configurable' },
+    ],
+    current: 0,
+    prev: 2,
+    timer: null,
+
+    init() {
+      this.startAutoplay();
+    },
+
+    startAutoplay() {
+      this.timer = setInterval(() => this.next(), 5000);
+    },
+
+    next() {
+      this.prev = this.current;
+      this.current = (this.current + 1) % this.slides.length;
+    },
+
+    goTo(idx) {
+      if (idx === this.current) return;
+      clearInterval(this.timer);
+      this.prev = this.current;
+      this.current = idx;
+      this.startAutoplay();
+    },
+  };
+}
+</script>
 {% endblock %}

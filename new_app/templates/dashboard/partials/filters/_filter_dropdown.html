@@ -8,6 +8,9 @@
   </label>
   <select x-model="params.{{ f.param_name }}"
     {% if f.param_name == 'line_id' %}@change="onLineChange($event.target.value)"{% endif %}
+    {% if f.param_name == 'curve_type' %}@change="onCurveTypeChange()"{% endif %}
+    {% if f.param_name == 'interval' %}@change="onIntervalChange()"{% endif %}
+    {% if f.param_name == 'shift_id' %}@change="onShiftChange()"{% endif %}
     class="w-full px-3 py-2.5 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white
            focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500/50 outline-none
            transition-all cursor-pointer appearance-none"

@@ -6,16 +6,44 @@
   class="w-80 bg-surface-900 border-r border-surface-700/60 flex flex-col shrink-0 overflow-y-auto transition-all duration-300"
   :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
-  <!-- Sidebar header -->
-  <div class="px-5 pt-5 pb-3 border-b border-surface-700/40">
-    <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-gray-200 uppercase tracking-wider flex items-center gap-2">
-        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-accent-400"></i>
-        Filtros
-      </h2>
-      <button @click="resetFilters()" class="text-xs text-gray-500 hover:text-accent-400 transition-colors cursor-pointer flex items-center gap-1" title="Restablecer filtros">
-        <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
-        <span>Reset</span>
+  <!-- Sidebar header + Apply button (sticky top) -->
+  <div class="sticky top-0 z-10 bg-surface-900">
+    <div class="px-5 pt-5 pb-3 border-b border-surface-700/40">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-semibold text-gray-200 uppercase tracking-wider flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4 text-accent-400"></i>
+          Filtros
+        </h2>
+        <button @click="resetFilters()" class="text-xs text-gray-500 hover:text-accent-400 transition-colors cursor-pointer flex items-center gap-1" title="Restablecer filtros">
+          <i data-lucide="rotate-ccw" class="w-3 h-3"></i>
+          <span>Reset</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Apply button + error toast -->
+    <div class="px-5 py-3 border-b border-surface-700/40 space-y-2">
+      <!-- Validation error toast -->
+      <div id="filter-error-toast"
+           class="hidden text-xs text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2 transition-all"></div>
+
+      <button @click="applyFilters()"
+        :disabled="loading"
+        class="w-full py-2.5 bg-accent-600 hover:bg-accent-500 disabled:opacity-50
+               text-white text-sm font-semibold rounded-lg transition-all duration-200
+               shadow-glow-sm hover:shadow-glow cursor-pointer flex items-center justify-center gap-2">
+        <template x-if="!loading">
+          <span class="flex items-center gap-2">
+            <i data-lucide="play" class="w-4 h-4"></i>
+            Aplicar Filtros
+          </span>
+        </template>
+        <template x-if="loading">
+          <span class="flex items-center gap-2">
+            <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+            Procesando…
+          </span>
+        </template>
       </button>
     </div>
   </div>
@@ -29,25 +57,4 @@
     {% endfor %}
   </div>
 
-  <!-- Apply button -->
-  <div class="px-5 py-4 border-t border-surface-700/40">
-    <button @click="applyFilters()"
-      :disabled="loading"
-      class="w-full py-2.5 bg-accent-600 hover:bg-accent-500 disabled:opacity-50
-             text-white text-sm font-semibold rounded-lg transition-all duration-200
-             shadow-glow-sm hover:shadow-glow cursor-pointer flex items-center justify-center gap-2">
-      <template x-if="!loading">
-        <span class="flex items-center gap-2">
-          <i data-lucide="play" class="w-4 h-4"></i>
-          Aplicar Filtros
-        </span>
-      </template>
-      <template x-if="loading">
-        <span class="flex items-center gap-2">
-          <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
-          Procesando…
-        </span>
-      </template>
-    </button>
-  </div>
 </aside>

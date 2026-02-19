@@ -93,6 +93,8 @@ FILTER_REGISTRY: dict[str, dict] = {
         "depends_on": None,
         "ui_config": {
             "static_options": [
+                {"value": "minute", "label": "Por minuto"},
+                {"value": "15min", "label": "Cada 15 minutos"},
                 {"value": "hour", "label": "Por hora"},
                 {"value": "day", "label": "Por día"},
                 {"value": "week", "label": "Por semana"},
@@ -121,7 +123,7 @@ FILTER_REGISTRY: dict[str, dict] = {
         "filter_type": "number",
         "param_name": "downtime_threshold",
         "options_source": None,
-        "default_value": 300,
+        "default_value": 10,
         "placeholder": "Segundos",
         "required": False,
         "depends_on": "line_id",

@@ -67,6 +67,7 @@ function dashboardApp() {
     sidebarOpen: false,
     loading: false,
     hasData: false,
+    filtersApplied: false,
     lastUpdate: null,
     filterCount: 0,
     apiBase: config.apiBase || '',
@@ -156,6 +157,7 @@ function dashboardApp() {
     resetFilters() {
       this.params = JSON.parse(JSON.stringify(initialParams));
       this.hasData = false;
+      this.filtersApplied = false;
       this.filterCount = 0;
       this.queryMetadata = { total_detections: null, elapsed_ms: null };
       ChartRenderer.destroyAll(this.chartInstances);
@@ -169,23 +171,27 @@ function dashboardApp() {
     async applyFilters() {
       if (this.loading) return;
       this.loading = true;
-      this.sidebarOpen = false;
 
       var startTime = performance.now();
 
       try {
-        // 1. Validate via API
+        // 1. Validate via API (normalize empty strings to null)
+        var normalizedParams = this._normalizeParams();
         var valResp = await fetch(this.apiBase + '/api/v1/filters/validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(this.params),
+          body: JSON.stringify(normalizedParams),
         });
         var valResult = await valResp.json();
         if (!valResult.valid) {
           console.warn('[Filters] Validation errors:', valResult.errors);
+          this._showFilterError(valResult.errors);
           this.loading = false;
           return;
         }
+
+        // Close sidebar only after successful validation
+        this.sidebarOpen = false;
 
         // 2. Build request body for orchestrator
         var body = this._buildRequestBody();
@@ -216,6 +222,7 @@ function dashboardApp() {
         // 6. Set widget results (Alpine reactivity triggers DOM updates)
         this.widgetResults = result.widgets || {};
         this.hasData = Object.keys(this.widgetResults).length > 0;
+        this.filtersApplied = true;
 
         // 7. Count active filters
         var count = 0;
@@ -284,22 +291,138 @@ function dashboardApp() {
 
     /**
      * Re-render line charts when curve_type changes.
+     * Uses in-place Chart.js update — no destroy/recreate cycle.
      */
     onCurveTypeChange() {
+      if (!this.hasData) return;
       var newCurve = this.params.curve_type || 'smooth';
+      // Update widget data for future full re-renders
       var self = this;
       Object.values(this.widgetResults).forEach(function (wd) {
         if (wd && wd.widget_type === 'chart' && wd.data) {
           wd.data.curve_type = newCurve;
         }
       });
-      ChartRenderer.destroyAll(this.chartInstances);
-      this._renderAllCharts();
+      // In-place update — no DOM disruption
+      ChartRenderer.updateCurveType(this.chartInstances, newCurve);
+    },
+
+    /**
+     * Toggle downtime annotations on line charts.
+     * Uses in-place Chart.js update — no destroy/recreate cycle.
+     */
+    onShowDowntimeChange() {
+      if (!this.hasData) return;
+      var show = !!this.params.show_downtime;
+      var self = this;
+
+      // Collect downtime events from widget data and toggle
+      Object.values(this.widgetResults).forEach(function (wd) {
+        if (!wd || wd.widget_type !== 'chart' || !wd.data) return;
+        // Stash original events on first toggle
+        if (!wd.data._original_downtime && wd.data.downtime_events) {
+          wd.data._original_downtime = wd.data.downtime_events.slice();
+        }
+        var events = wd.data._original_downtime || [];
+        var canvasId = 'chart-' + wd.widget_id;
+        var chart = self.chartInstances[canvasId];
+        if (chart && chart.config.type === 'line') {
+          ChartRenderer.updateDowntimeAnnotations(
+            { [canvasId]: chart }, events, show
+          );
+        }
+      });
+    },
+
+    /**
+     * Search filter — client-side filtering of table/ranking rows.
+     * Filters product_name in ranking and table widgets.
+     */
+    onSearchChange() {
+      if (!this.hasData) return;
+      var query = (this.params.search || '').toLowerCase().trim();
+      var self = this;
+
+      Object.keys(this.widgetResults).forEach(function (wid) {
+        var wd = self.widgetResults[wid];
+        if (!wd || !wd.data || !wd.data.rows) return;
+
+        // Stash original rows on first search
+        if (!wd.data._original_rows) {
+          wd.data._original_rows = wd.data.rows.slice();
+        }
+
+        if (!query) {
+          wd.data.rows = wd.data._original_rows.slice();
+        } else {
+          wd.data.rows = wd.data._original_rows.filter(function (row) {
+            // Search across all string values in the row
+            return Object.values(row).some(function (val) {
+              return typeof val === 'string' && val.toLowerCase().includes(query);
+            });
+          });
+        }
+      });
+    },
+
+    /**
+     * Interval change — requires re-aggregation.
+     * Debounced to prevent rapid cascading calls.
+     */
+    onIntervalChange() {
+      if (!this.hasData) return;
+      this._debouncedApply();
+    },
+
+    /**
+     * Shift change — requires re-query with shift window.
+     * Debounced to prevent rapid cascading calls.
+     */
+    onShiftChange() {
+      if (!this.hasData) return;
+      this._debouncedApply();
     },
 
     // ═════════════════════════════════════════════════════════
     // Private helpers
     // ═════════════════════════════════════════════════════════
+
+    /** Debounced apply — prevents multiple rapid fire calls. */
+    _debouncedApply() {
+      var self = this;
+      if (this._applyTimer) clearTimeout(this._applyTimer);
+      this._applyTimer = setTimeout(function() {
+        self._applyTimer = null;
+        if (!self.loading) self.applyFilters();
+      }, 250);
+    },
+
+    /**
+     * Normalize params for API calls.
+     * Converts empty strings to null (critical for dropdown validation).
+     */
+    _normalizeParams() {
+      var out = JSON.parse(JSON.stringify(this.params));
+      for (var k in out) {
+        if (k === 'daterange') continue; // daterange is nested, skip
+        if (out[k] === '') out[k] = null;
+      }
+      return out;
+    },
+
+    /** Show transient error toast for validation failures. */
+    _showFilterError(errors) {
+      if (!errors || Object.keys(errors).length === 0) return;
+      var msgs = Object.values(errors);
+      var el = document.getElementById('filter-error-toast');
+      if (el) {
+        el.textContent = msgs.join(' · ');
+        el.classList.remove('hidden');
+        setTimeout(function() { el.classList.add('hidden'); }, 4000);
+      } else {
+        console.warn('[Filters]', msgs.join(', '));
+      }
+    },
 
     _buildRequestBody() {
       var body = {

@@ -67,11 +67,20 @@ def _get_shift_duration_minutes(shift: dict) -> float:
 
 
 def _to_minutes(value) -> Optional[float]:
-    """Convert a timedelta or time-like object to total minutes."""
+    """Convert a timedelta, time-like, or string object to total minutes."""
     if isinstance(value, timedelta):
         return value.total_seconds() / 60.0
     if hasattr(value, "hour"):
         return value.hour * 60 + value.minute
+    # Handle string like "08:00:00" or "08:00"
+    if isinstance(value, str):
+        parts = value.split(":")
+        try:
+            hours = int(parts[0])
+            minutes = int(parts[1]) if len(parts) > 1 else 0
+            return hours * 60 + minutes
+        except (ValueError, IndexError):
+            return None
     return None
 
 

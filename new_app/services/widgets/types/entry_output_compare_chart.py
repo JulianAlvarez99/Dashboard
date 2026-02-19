@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 import pandas as pd
 
+from new_app.core.cache import metadata_cache
 from new_app.services.widgets.base import BaseWidget, WidgetResult
 from new_app.services.widgets.helpers import (
     format_time_labels,
@@ -116,11 +117,29 @@ class EntryOutputCompareChart(BaseWidget):
         )
 
     def _build_full_index(self, freq: str):
+        """Build date_range from the queried daterange params.
+
+        When a shift is selected, the time window is adjusted to the
+        shift's start/end times so the chart x-axis matches the shift.
+        """
         daterange = self.ctx.params.get("daterange", {})
         sd = daterange.get("start_date")
         ed = daterange.get("end_date")
-        st = daterange.get("start_time")
-        et = daterange.get("end_time")
+        st = daterange.get("start_time", "00:00")
+        et = daterange.get("end_time", "23:59")
+
+        # Adjust to shift window if a shift is selected
+        shift_id = self.ctx.params.get("shift_id")
+        if shift_id:
+            shift = metadata_cache.get_shift(int(shift_id))
+            if shift:
+                shift_st = shift.get("start_time")
+                shift_et = shift.get("end_time")
+                if shift_st is not None:
+                    st = self._time_to_str(shift_st)
+                if shift_et is not None:
+                    et = self._time_to_str(shift_et)
+
         if sd and ed:
             try:
                 start_str = f"{sd} {st}" if st else sd
@@ -129,3 +148,15 @@ class EntryOutputCompareChart(BaseWidget):
             except Exception:
                 pass
         return None
+
+    @staticmethod
+    def _time_to_str(val) -> str:
+        """Convert shift time (timedelta or str) to 'HH:MM' string."""
+        if hasattr(val, "total_seconds"):
+            total = int(val.total_seconds())
+            return f"{total // 3600:02d}:{(total % 3600) // 60:02d}"
+        s = str(val)
+        parts = s.split(":")
+        if len(parts) >= 2:
+            return f"{int(parts[0]):02d}:{int(parts[1]):02d}"
+        return s

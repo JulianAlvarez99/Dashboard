@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0F172A"/>
+      <stop offset="100%" style="stop-color:#1E293B"/>
+    </linearGradient>
+    <linearGradient id="accent1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22C55E"/>
+      <stop offset="100%" style="stop-color:#16A34A"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg1)"/>
+  <!-- Grid lines -->
+  <g opacity="0.08" stroke="#22C55E" stroke-width="1">
+    <line x1="0" y1="100" x2="800" y2="100"/>
+    <line x1="0" y1="200" x2="800" y2="200"/>
+    <line x1="0" y1="300" x2="800" y2="300"/>
+    <line x1="0" y1="400" x2="800" y2="400"/>
+    <line x1="0" y1="500" x2="800" y2="500"/>
+    <line x1="200" y1="0" x2="200" y2="600"/>
+    <line x1="400" y1="0" x2="400" y2="600"/>
+    <line x1="600" y1="0" x2="600" y2="600"/>
+  </g>
+  <!-- Chart line -->
+  <polyline fill="none" stroke="#22C55E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+    points="80,420 160,380 240,350 320,280 400,250 480,200 560,230 640,160 720,140"/>
+  <!-- Area under chart -->
+  <polygon fill="#22C55E" opacity="0.08"
+    points="80,420 160,380 240,350 320,280 400,250 480,200 560,230 640,160 720,140 720,500 80,500"/>
+  <!-- Data dots -->
+  <g fill="#22C55E">
+    <circle cx="80" cy="420" r="5"/>
+    <circle cx="160" cy="380" r="5"/>
+    <circle cx="240" cy="350" r="5"/>
+    <circle cx="320" cy="280" r="5"/>
+    <circle cx="400" cy="250" r="5"/>
+    <circle cx="480" cy="200" r="5"/>
+    <circle cx="560" cy="230" r="5"/>
+    <circle cx="640" cy="160" r="5"/>
+    <circle cx="720" cy="140" r="5"/>
+  </g>
+  <!-- Title -->
+  <text x="400" y="80" text-anchor="middle" fill="white" font-family="system-ui, sans-serif" font-size="28" font-weight="600">
+    Monitoreo en Tiempo Real
+  </text>
+  <text x="400" y="560" text-anchor="middle" fill="#94A3B8" font-family="system-ui, sans-serif" font-size="16">
+    Visualiza la producción de tus líneas al instante
+  </text>
+</svg>

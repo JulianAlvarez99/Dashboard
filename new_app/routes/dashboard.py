@@ -20,7 +20,7 @@ from flask import Blueprint, render_template, session
 
 from new_app.routes.auth import login_required, get_current_user
 from new_app.core.config import get_settings
-from new_app.config.widget_registry import WIDGET_RENDER_MAP, WIDGET_SIZE_CSS
+from new_app.config.widget_registry import WIDGET_RENDER_MAP, GRID_COLUMNS
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +75,7 @@ def index():
         layout=layout_data,
         tenant_id=tenant_id,
         role=role,
+        grid_columns=GRID_COLUMNS,
     )
 
 
@@ -124,7 +125,7 @@ def _enrich_widgets(widgets_data: list):
     """
     Add frontend rendering metadata to each widget dict.
 
-    Adds: render_type, chart_type, size_class, chart_height, downtime_only.
+    Adds: render_type, chart_type, grid_style, chart_height, downtime_only, order.
     Mutates ``widgets_data`` in place.
     """
     for idx, w in enumerate(widgets_data):
@@ -134,9 +135,14 @@ def _enrich_widgets(widgets_data: list):
         render_info = WIDGET_RENDER_MAP.get(class_name, {})
         w["render_type"] = render_info.get("render", "unknown")
         w["chart_type"] = render_info.get("chart_type", "")
-        w["size_class"] = WIDGET_SIZE_CSS.get(
-            render_info.get("size", "small"), "col-span-1"
-        )
         w["chart_height"] = render_info.get("chart_height", "250px")
         w["downtime_only"] = render_info.get("downtime_only", False)
-        w["order"] = idx
+        w["order"] = render_info.get("order", idx)
+
+        # Build CSS Grid placement style (auto-flow, no explicit col/row)
+        col_span = render_info.get("col_span", 1)
+        parts = []
+        if col_span > 1:
+            parts.append(f"grid-column:span {col_span}")
+        parts.append(f"order:{w['order']}")
+        w["grid_style"] = ";".join(parts)
