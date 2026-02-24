@@ -31,8 +31,8 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from new_app.config.widget_registry import WIDGET_REGISTRY
 from new_app.services.broker.external_api_service import external_api_service
+from new_app.services.widgets.engine import widget_engine
 
 logger = logging.getLogger(__name__)
 
@@ -54,10 +54,10 @@ class DataBroker:
         master_df: Optional[pd.DataFrame] = None,
     ) -> Dict[str, WidgetPayload]:
         """
-        Resolve data for a batch of widgets.
+        resolve data for a batch of widgets.
 
         Args:
-            widget_names: list of widget class names (keys in WIDGET_REGISTRY).
+            widget_names: list of widget class names.
             master_df:    the enriched master DataFrame from Etapa 3.
                           Required for internal widgets; may be None if all
                           widgets are external.
@@ -89,41 +89,28 @@ class DataBroker:
     ) -> WidgetPayload:
         """
         Slice the DataFrame for one internal widget (synchronous).
-
-        Useful when widgets are processed one at a time.
         """
-        config = WIDGET_REGISTRY.get(widget_name)
-        if config is None:
+        cls = widget_engine._resolve_class(widget_name)
+        if cls is None:
             return self._unknown_widget(widget_name)
-
-        return self._slice_dataframe(widget_name, config, master_df)
+        return self._slice_dataframe_cls(widget_name, cls, master_df)
 
     async def resolve_external_single(
         self,
         widget_name: str,
     ) -> WidgetPayload:
-        """
-        Fetch data for one external widget.
-        """
-        config = WIDGET_REGISTRY.get(widget_name)
-        if config is None:
+        """Fetch data for one external widget."""
+        cls = widget_engine._resolve_class(widget_name)
+        if cls is None:
             return self._unknown_widget(widget_name)
 
-        api_source_id = config.get("api_source_id")
-        if not api_source_id:
-            return {
-                "source": "external",
-                "ok": False,
-                "error": f"Widget '{widget_name}' has no api_source_id configured",
-                "data": None,
-            }
-
-        result = await external_api_service.fetch(api_source_id)
+        # For external widgets, the api_source_id lives in the DB catalog,
+        # not in the class. Raise a clear error if not configured.
         return {
             "source": "external",
-            "ok": result["ok"],
-            "error": result.get("error"),
-            "data": result.get("data"),
+            "ok": False,
+            "error": f"Widget '{widget_name}' external data not yet configured",
+            "data": None,
         }
 
     # ─────────────────────────────────────────────────────────
@@ -136,19 +123,16 @@ class DataBroker:
     ) -> tuple[List[str], List[str]]:
         """
         Split widgets into internal and external lists.
-
-        Unregistered widgets are silently included as "internal"
-        so they surface an error in _resolve_internal.
+        All current widgets are internal (source_type determined by class).
+        Unresolvable widgets are treated as internal so they surface an error.
         """
         internal: List[str] = []
         external: List[str] = []
 
         for name in widget_names:
-            config = WIDGET_REGISTRY.get(name)
-            if config and config.get("source_type") == "external":
-                external.append(name)
-            else:
-                internal.append(name)
+            # All widgets are internal unless explicitly external
+            # (external support is future work)
+            internal.append(name)
 
         return internal, external
 
@@ -157,14 +141,12 @@ class DataBroker:
         widget_names: List[str],
         master_df: Optional[pd.DataFrame],
     ) -> Dict[str, WidgetPayload]:
-        """
-        Slice the master DataFrame for each internal widget.
-        """
+        """Slice the master DataFrame for each internal widget."""
         results: Dict[str, WidgetPayload] = {}
 
         for name in widget_names:
-            config = WIDGET_REGISTRY.get(name)
-            if config is None:
+            cls = widget_engine._resolve_class(name)
+            if cls is None:
                 results[name] = self._unknown_widget(name)
                 continue
 
@@ -177,7 +159,7 @@ class DataBroker:
                 }
                 continue
 
-            results[name] = self._slice_dataframe(name, config, master_df)
+            results[name] = self._slice_dataframe_cls(name, cls, master_df)
 
         return results
 
@@ -185,73 +167,41 @@ class DataBroker:
         self,
         widget_names: List[str],
     ) -> Dict[str, WidgetPayload]:
-        """
-        Fetch data for all external widgets concurrently.
-        """
-        # Collect api_source_ids
-        api_map: Dict[str, str] = {}  # widget_name → api_source_id
+        """Fetch data for all external widgets concurrently."""
+        # Note: external support is future work
+        # For now return error for any external widget
         results: Dict[str, WidgetPayload] = {}
-
         for name in widget_names:
-            config = WIDGET_REGISTRY.get(name, {})
-            api_id = config.get("api_source_id")
-            if api_id:
-                api_map[name] = api_id
-            else:
-                results[name] = {
-                    "source": "external",
-                    "ok": False,
-                    "error": f"Widget '{name}' has no api_source_id",
-                    "data": None,
-                }
-
-        if not api_map:
-            return results
-
-        # Deduplicate: multiple widgets might share the same API
-        unique_api_ids = list(set(api_map.values()))
-        api_results = await external_api_service.fetch_many(unique_api_ids)
-
-        # Map results back to widgets
-        for widget_name, api_id in api_map.items():
-            raw = api_results.get(api_id, {})
-            results[widget_name] = {
+            results[name] = {
                 "source": "external",
-                "ok": raw.get("ok", False),
-                "error": raw.get("error"),
-                "data": raw.get("data"),
+                "ok": False,
+                "error": f"Widget '{name}' external data not yet configured",
+                "data": None,
             }
-
         return results
 
     @staticmethod
-    def _slice_dataframe(
+    def _slice_dataframe_cls(
         widget_name: str,
-        config: dict,
+        widget_cls: type,
         master_df: pd.DataFrame,
     ) -> WidgetPayload:
         """
-        Apply Data Scoping — return only the columns required by the widget.
-
-        If ``required_columns`` is empty, the widget receives the
-        full DataFrame (e.g., DowntimeTable needs all columns).
+        Apply Data Scoping using class attributes.
+        Reads ``cls.required_columns`` directly — no registry needed.
         """
-        required = config.get("required_columns", [])
+        required = widget_cls.required_columns
 
         if not required:
-            # Widget needs the full DataFrame
             sliced = master_df
         else:
-            # Only include columns that actually exist in the DataFrame
             available = [c for c in required if c in master_df.columns]
             missing = set(required) - set(available)
-
             if missing:
                 logger.warning(
                     f"[DataBroker] Widget '{widget_name}' wants columns "
                     f"{missing} but they are not in the DataFrame"
                 )
-
             sliced = master_df[available] if available else master_df
 
         return {
@@ -263,9 +213,9 @@ class DataBroker:
 
     @staticmethod
     def _unknown_widget(widget_name: str) -> WidgetPayload:
-        """Return error payload for unregistered widget."""
+        """Return error payload for unknown widget class."""
         logger.warning(
-            f"[DataBroker] Widget '{widget_name}' not found in WIDGET_REGISTRY"
+            f"[DataBroker] No class found for widget '{widget_name}' — check file name"
         )
         return {
             "source": "unknown",

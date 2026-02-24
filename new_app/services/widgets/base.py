@@ -2,19 +2,21 @@
 BaseWidget — Abstract base class for all widgets.
 
 Single Responsibility: define the contract that every widget must follow.
-Widgets are "dumb processors" — they receive pre-scoped data (Data Scoping)
-and return a structured JSON-ready dict.
+Widgets are self-describing via class attributes — no external registry needed.
 
-Every concrete widget inherits from BaseWidget and implements ``process()``.
-The widget does NOT know how its data was obtained (internal DB or external API).
+Auto-discovery pattern::
 
-Usage in a concrete widget::
-
-    from new_app.services.widgets.base import BaseWidget, WidgetResult
-
+    DB: widget_catalog.widget_name = "KpiTotalProduction"
+        ↓  CamelCase → snake_case (WidgetEngine)
+    kpi_total_production.py
+        ↓  importlib
     class KpiTotalProduction(BaseWidget):
-        def process(self) -> WidgetResult:
-            ...
+        required_columns = ["area_type"]   # data requirements
+        render           = "kpi"           # frontend render type
+        ...
+        def process(self) -> WidgetResult: ...
+
+Layout (tab, col_span, order) lives in ``config/widget_layout.py``.
 """
 
 from __future__ import annotations
@@ -83,9 +85,28 @@ class BaseWidget(ABC):
     Subclasses MUST implement:
       - ``process()`` → WidgetResult
 
-    The widget receives its context through ``self.ctx`` which contains
-    the pre-scoped data, downtime, lines, params, and config.
+    Class attributes (override in each subclass):
+      required_columns → list of DF columns the widget needs (Data Scoping)
+      default_config   → default config dict passed via self.ctx.config
+      render           → frontend partial type: "kpi"|"kpi_oee"|"chart"|
+                         "table"|"indicator"|"summary"|"feed"|"unknown"
+      chart_type       → only for render="chart": "line_chart"|"bar_chart"|
+                         "pie_chart"|"comparison_bar"|"scatter_chart"
+      chart_height     → CSS height of canvas (only for render="chart")
+
+    Layout attributes (tab, col_span, order, downtime_only) live in
+    ``config/widget_layout.py`` — kept separate so visual positioning
+    can change without touching widget logic.
     """
+
+    # ── Data requirements (override in subclass) ─────────────────
+    required_columns: List[str] = []
+    default_config:   Dict[str, Any] = {}
+
+    # ── Rendering behavior (override in subclass) ────────────────
+    render:       str = "kpi"
+    chart_type:   str = ""
+    chart_height: str = "250px"
 
     def __init__(self, ctx: WidgetContext) -> None:
         self.ctx = ctx

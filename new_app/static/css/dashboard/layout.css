@@ -1,13 +1,19 @@
 /**
  * Layout — Dashboard structural overrides
+ *
+ * Breakpoints:
+ *   Mobile  : < 640px  → 1 column, sidebar drawer
+ *   Tablet  : 640–1023px → 2 columns, sidebar drawer
+ *   Desktop : ≥ 1024px → 4 columns, sidebar always visible
  */
 
-/* Ensure sidebar doesn't collapse below minimum width */
+/* ─── Sidebar ──────────────────────────────────────────────────── */
+
 aside {
   min-width: 0;
 }
 
-/* Smooth sidebar slide on mobile */
+/* Mobile / tablet: sidebar is a fixed drawer */
 @media (max-width: 1023px) {
   aside {
     position: fixed;
@@ -15,10 +21,88 @@ aside {
     left: 0;
     bottom: 0;
     z-index: 50;
+    width: 20rem;
+    /* w-80 equivalent */
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
   }
 }
 
-/* Main content scroll containment */
+/* ─── Overlay (mobile sidebar backdrop) ──────────────────────── */
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  animation: overlayFadeIn 0.2s ease-out;
+}
+
+.sidebar-overlay.active {
+  display: block;
+}
+
+@keyframes overlayFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* ─── Widget Grid ─────────────────────────────────────────────── */
+
+.widget-grid {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  grid-auto-flow: row dense;
+  grid-auto-rows: minmax(140px, auto);
+}
+
+/* Mobile (< 640px): always 1 column, ignore col_span and row_span */
+@media (max-width: 639px) {
+  .widget-grid {
+    grid-template-columns: 1fr !important;
+    grid-auto-rows: minmax(180px, auto);
+  }
+
+  .widget-cell {
+    grid-column: span 1 !important;
+    grid-row: span 1 !important;
+    /* Stack vertically on mobile */
+  }
+}
+
+/* Tablet (640px–1023px): always 2 columns, col_span capped at 2 */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .widget-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .widget-cell {
+    /* Spans wider than 2 collapse to full width, others to 1 */
+    grid-column: span min(var(--col-span, 1), 2) !important;
+    grid-row: span min(var(--row-span, 1), 2) !important;
+  }
+}
+
+/* Desktop (≥ 1024px): use server-rendered grid_template_columns */
+/* (grid-template-columns is set via inline style in the template) */
+
+/* ─── Widget cell base ─────────────────────────────────────────── */
+
+.widget-cell {
+  min-width: 0;
+  /* prevent overflow in grid children */
+}
+
+/* ─── Main content scroll containment ─────────────────────────── */
+
 main {
   scroll-behavior: smooth;
+  min-width: 0;
 }

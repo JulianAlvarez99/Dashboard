@@ -4,6 +4,9 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class KpiTotalWeight(BaseWidget):
+    required_columns = ["area_type", "product_weight"]
+    default_config   = {"unit": "kg"}
+    render           = "kpi"
 
     def process(self) -> WidgetResult:
         df = self.df

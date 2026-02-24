@@ -11,6 +11,9 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class LineStatusIndicator(BaseWidget):
+    required_columns = ["line_id", "line_name", "detected_at", "area_type"]
+    default_config   = {}
+    render           = "indicator"
 
     def process(self) -> WidgetResult:
         df = self.df

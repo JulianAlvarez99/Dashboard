@@ -6,6 +6,11 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class ProductDistributionChart(BaseWidget):
+    required_columns = ["product_name", "product_color"]
+    default_config   = {}
+    render           = "chart"
+    chart_type       = "pie_chart"
+    chart_height     = "280px"
 
     def process(self) -> WidgetResult:
         df = self.df

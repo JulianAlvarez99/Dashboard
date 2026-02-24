@@ -27,6 +27,11 @@ from new_app.services.widgets.helpers import (
 
 
 class ProductionTimeChart(BaseWidget):
+    required_columns = ["detected_at", "area_type", "line_id", "product_name", "product_color"]
+    default_config   = {"curve_type": "smooth"}
+    render           = "chart"
+    chart_type       = "line_chart"
+    chart_height     = "600px"
 
     def process(self) -> WidgetResult:
         df = self.df

@@ -1,14 +1,23 @@
 {# ── Main Content Area (Widget Grid) ──
-     Parent Alpine scope: dashboardApp()
-     Expects: widgets (list of enriched widget dicts from route)
+Parent Alpine scope: dashboardApp()
+Expects: widgets (list of enriched widget dicts from route)
 #}
-<main class="flex-1 overflow-y-auto p-6 bg-surface-950">
+
+{# Mobile sidebar backdrop overlay #}
+<div class="sidebar-overlay lg:hidden" :class="sidebarOpen ? 'active' : ''" @click="sidebarOpen = false"
+  x-show="sidebarOpen" x-cloak style="display:none">
+</div>
+
+<main class="flex-1 overflow-y-auto p-4 sm:p-6 bg-surface-950 min-w-0">
 
   <!-- Mobile filter toggle -->
   <button @click="sidebarOpen = !sidebarOpen"
     class="lg:hidden mb-4 px-3 py-2 bg-surface-800 border border-surface-700 rounded-lg text-sm text-gray-300 flex items-center gap-2 cursor-pointer hover:border-accent-500/40 transition-colors">
     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
     Filtros
+    <span x-show="filterCount > 0"
+      class="ml-1 px-1.5 py-0.5 text-[10px] bg-accent-600/80 text-white rounded-full font-bold"
+      x-text="filterCount"></span>
   </button>
 
   <!-- Status bar -->
@@ -35,14 +44,33 @@
     </div>
   </div>
 
+
+  <!-- ── Tab switcher (Producción / OEE) ─────────────────────── -->
+  <div class="flex overflow-x-auto gap-0.5 mb-5 border-b border-surface-700 scrollbar-none" x-show="filtersApplied"
+    x-cloak>
+    <button @click="activeTab='produccion'" :class="activeTab==='produccion'
+              ? 'border-b-2 border-accent-400 text-white pb-2'
+              : 'text-gray-500 hover:text-gray-300 pb-2'"
+      class="px-4 text-sm font-medium transition-colors flex items-center gap-1.5 shrink-0">
+      <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+      Producción
+    </button>
+    {% if show_oee_tab %}
+    <button @click="activeTab='oee'" :class="activeTab==='oee'
+              ? 'border-b-2 border-accent-400 text-white pb-2'
+              : 'text-gray-500 hover:text-gray-300 pb-2'"
+      class="px-4 text-sm font-medium transition-colors flex items-center gap-1.5 shrink-0">
+      <i data-lucide="gauge-circle" class="w-3.5 h-3.5"></i>
+      OEE
+    </button>
+    {% endif %}
+  </div>
+
   <!-- Widget grid — hidden until filters are applied -->
   {% if widgets %}
-  <div id="widget-grid" class="widget-grid"
-       style="grid-template-columns: repeat({{ grid_columns|default(3) }}, 1fr)"
-       x-show="filtersApplied" x-cloak
-       x-transition:enter="transition ease-out duration-300"
-       x-transition:enter-start="opacity-0 translate-y-4"
-       x-transition:enter-end="opacity-100 translate-y-0">
+  <div id="widget-grid" class="widget-grid" style="grid-template-columns: repeat({{ grid_columns|default(4) }}, 1fr)"
+    x-show="filtersApplied" x-cloak x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0">
 
     {% for w in widgets %}
     {% set wid = w.widget_id %}
@@ -50,27 +78,32 @@
     {% set chart_type = w.chart_type %}
     {% set chart_h = w.chart_height %}
 
-    <div class="widget-cell" style="{{ w.grid_style }}">
+    <div class="widget-cell"
+      style="{{ w.grid_style }}; --col-span: {{ w.col_span|default(1) }}; --row-span: {{ w.row_span|default(1) }}"
+      x-show="activeTab === '{{ w.tab }}'">
       <div class="widget-card" id="widget-{{ wid }}">
 
         {# ── Loading skeleton ── #}
-        <div x-show="loading || (!widgetResults['{{ wid }}'] && hasData)" x-cloak class="widget-card-body animate-pulse">
+        <div x-show="loading || (!widgetResults['{{ wid }}'] && hasData)" x-cloak
+          class="widget-card-body animate-pulse">
           <div class="h-4 w-1/3 bg-surface-700 rounded mb-3"></div>
           <div class="h-8 w-2/3 bg-surface-700 rounded mb-2"></div>
           <div class="h-3 w-1/2 bg-surface-700/60 rounded"></div>
         </div>
 
         {# ── Empty state ── #}
-        <div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty"
-             x-cloak class="widget-card-body flex flex-col items-center justify-center py-8">
+        <div
+          x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty"
+          x-cloak class="widget-card-body flex flex-col items-center justify-center py-8">
           <i data-lucide="bar-chart-3" class="w-8 h-8 text-surface-600 mb-2"></i>
           <p class="text-sm text-gray-500"
-             x-text="widgetResults['{{ wid }}']?.metadata?.message || 'No hay datos disponibles'"></p>
+            x-text="widgetResults['{{ wid }}']?.metadata?.message || 'No hay datos disponibles'"></p>
         </div>
 
         {# ── Downtime-only warning in multi-line mode ── #}
         {% if w.downtime_only %}
-        <div x-show="isMultiLine && hasData" x-cloak class="widget-card-body flex flex-col items-center justify-center py-8">
+        <div x-show="isMultiLine && hasData" x-cloak
+          class="widget-card-body flex flex-col items-center justify-center py-8">
           <i data-lucide="alert-triangle" class="w-8 h-8 text-amber-400 mb-2"></i>
           <p class="text-sm text-gray-500 text-center">
             Métrica no disponible<br>en modo múltiples líneas
@@ -80,19 +113,19 @@
 
         {# ── Widget type partials (server-time decision) ── #}
         {% if wtype in ('kpi', 'kpi_oee') %}
-          {% include 'dashboard/partials/widgets/_widget_kpi.html' %}
+        {% include 'dashboard/partials/widgets/_widget_kpi.html' %}
         {% elif wtype == 'chart' %}
-          {% include 'dashboard/partials/widgets/_widget_chart.html' %}
+        {% include 'dashboard/partials/widgets/_widget_chart.html' %}
         {% elif wtype == 'table' %}
-          {% include 'dashboard/partials/widgets/_widget_table.html' %}
+        {% include 'dashboard/partials/widgets/_widget_table.html' %}
         {% elif wtype == 'indicator' %}
-          {% include 'dashboard/partials/widgets/_widget_indicator.html' %}
+        {% include 'dashboard/partials/widgets/_widget_indicator.html' %}
         {% elif wtype == 'summary' %}
-          {% include 'dashboard/partials/widgets/_widget_summary.html' %}
+        {% include 'dashboard/partials/widgets/_widget_summary.html' %}
         {% elif wtype == 'feed' %}
-          {% include 'dashboard/partials/widgets/_widget_feed.html' %}
+        {% include 'dashboard/partials/widgets/_widget_feed.html' %}
         {% else %}
-          {% include 'dashboard/partials/widgets/_widget_unknown.html' %}
+        {% include 'dashboard/partials/widgets/_widget_unknown.html' %}
         {% endif %}
 
       </div>
@@ -104,7 +137,7 @@
 
   <!-- Empty state — shown until user applies filters -->
   <div class="col-span-full flex flex-col items-center justify-center py-24 animate-fade-in"
-       x-show="!filtersApplied && !loading">
+    x-show="!filtersApplied && !loading">
     <div class="w-16 h-16 rounded-2xl bg-surface-800 border border-surface-700 flex items-center justify-center mb-4">
       <i data-lucide="layout-dashboard" class="w-8 h-8 text-surface-600"></i>
     </div>

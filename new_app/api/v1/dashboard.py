@@ -78,6 +78,16 @@ class DashboardDataRequest(BaseModel):
         None, description="User role. Defaults to 'ADMIN'.",
     )
 
+    # Raw data mode (for client-side re-aggregation without re-query)
+    include_raw: bool = Field(
+        False,
+        description=(
+            "When True, includes raw_data (detections) and raw_downtime "
+            "arrays in the response so the frontend can re-aggregate by "
+            "shift/interval/product without a new DB query."
+        ),
+    )
+
 
 class DashboardMetadataResponse(BaseModel):
     """Metadata portion of the dashboard response."""
@@ -174,6 +184,7 @@ async def get_dashboard_data(
             tenant_id=tenant_id,
             role=role,
             widget_ids=request.widget_ids,
+            include_raw=request.include_raw,
         )
 
     return result

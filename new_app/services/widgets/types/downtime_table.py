@@ -27,6 +27,9 @@ _COLUMNS = [
 
 
 class DowntimeTable(BaseWidget):
+    required_columns = []
+    default_config   = {}
+    render           = "table"
 
     def process(self) -> WidgetResult:
         dt_df = self.downtime_df

@@ -17,6 +17,11 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class ScatterChart(BaseWidget):
+    required_columns = []
+    default_config   = {}
+    render           = "chart"
+    chart_type       = "scatter_chart"
+    chart_height     = "300px"
 
     def process(self) -> WidgetResult:
         dt_df = self.downtime_df

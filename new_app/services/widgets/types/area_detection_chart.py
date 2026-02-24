@@ -7,6 +7,11 @@ from new_app.services.widgets.helpers import FALLBACK_PALETTE
 
 
 class AreaDetectionChart(BaseWidget):
+    required_columns = ["area_name", "area_type"]
+    default_config   = {}
+    render           = "chart"
+    chart_type       = "bar_chart"
+    chart_height     = "280px"
 
     def process(self) -> WidgetResult:
         df = self.df

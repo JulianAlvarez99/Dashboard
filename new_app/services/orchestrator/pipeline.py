@@ -62,6 +62,7 @@ class DashboardOrchestrator:
         tenant_id: int,
         role: str,
         widget_ids: Optional[List[int]] = None,
+        include_raw: bool = False,
     ) -> Dict[str, Any]:
         """
         Full dashboard execution pipeline.
@@ -72,9 +73,11 @@ class DashboardOrchestrator:
             tenant_id:    Current tenant ID (for layout resolution).
             role:         User role (for layout resolution).
             widget_ids:   Explicit widget IDs (bypasses layout lookup).
+            include_raw:  If True, include raw detection + downtime rows
+                          in the response for client-side re-aggregation.
 
         Returns:
-            ``{"widgets": {...}, "metadata": {...}}``
+            ``{"widgets": {...}, "metadata": {...}, "raw_data": [...]}``
         """
         t0 = time.perf_counter()
 
@@ -107,13 +110,20 @@ class DashboardOrchestrator:
         elapsed = time.perf_counter() - t0
 
         _log_summary(ctx, widgets_result, elapsed)
-        return ResponseAssembler.assemble(ctx, widgets_result, elapsed)
+        return ResponseAssembler.assemble(
+            ctx,
+            widgets_result,
+            elapsed,
+            raw_df=ctx.detections if include_raw else None,
+            downtime_df=ctx.downtime if include_raw else None,
+        )
 
     async def execute_quick(
         self,
         session,
         cleaned: Dict[str, Any],
         widget_names: List[str],
+        include_raw: bool = False,
     ) -> Dict[str, Any]:
         """
         Simplified pipeline — skips validation and layout resolution.
@@ -136,7 +146,13 @@ class DashboardOrchestrator:
         widgets_result = _execute_widgets(ctx)
         elapsed = time.perf_counter() - t0
 
-        return ResponseAssembler.assemble(ctx, widgets_result, elapsed)
+        return ResponseAssembler.assemble(
+            ctx,
+            widgets_result,
+            elapsed,
+            raw_df=ctx.detections if include_raw else None,
+            downtime_df=ctx.downtime if include_raw else None,
+        )
 
 
 # ─────────────────────────────────────────────────────────────────

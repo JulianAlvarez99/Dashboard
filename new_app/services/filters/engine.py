@@ -1,20 +1,15 @@
 """
-FilterEngine — Auto-registration and dynamic instantiation.
+FilterEngine — Auto-discovery and dynamic instantiation.
 
-This is the **heart of Etapa 2**.  It:
+Auto-discovery pattern (no registry needed)::
 
-1. Reads the ``filter`` table rows from MetadataCache.
-2. Looks up each ``filter_name`` (= class name) in FILTER_REGISTRY.
-3. Builds a ``FilterConfig`` merging DB metadata + registry metadata.
-4. Dynamically imports the concrete filter class from
-   ``new_app.services.filters.types``.
-5. Instantiates it → ready to validate, provide options, build SQL.
+    filter_name (DB) → CamelCase→snake_case → importlib → Filter class
+    Filter class carries its own metadata as class attributes.
 
 Usage::
 
     from new_app.services.filters.engine import filter_engine
 
-    # After cache is loaded (post-login):
     all_filters = filter_engine.get_all()          # list[BaseFilter]
     resolved    = filter_engine.resolve_all()       # list[dict]  (JSON-ready)
     one         = filter_engine.get_by_name("DateRangeFilter")
@@ -24,42 +19,52 @@ Usage::
 from __future__ import annotations
 
 import importlib
+import logging
+import re
 from typing import Any, Dict, List, Optional, Type
 
-from new_app.config.filter_registry import FILTER_REGISTRY
 from new_app.core.cache import metadata_cache
 from new_app.services.filters.base import BaseFilter, FilterConfig
 
+logger = logging.getLogger(__name__)
 
-# ── Type map: filter_type → module name holding the class ──
-_TYPE_TO_MODULE: dict[str, str] = {
-    "daterange":   "daterange",
-    "dropdown":    "dropdown",
-    "multiselect": "multiselect",
-    "text":        "text",
-    "number":      "number",
-    "toggle":      "toggle",
-}
-
-# ── Class name per filter_type (the concrete Python class) ──
-_TYPE_TO_CLASS: dict[str, str] = {
-    "daterange":   "DateRangeFilter",
-    "dropdown":    "DropdownFilter",
-    "multiselect": "MultiselectFilter",
-    "text":        "TextFilter",
-    "number":      "NumberFilter",
-    "toggle":      "ToggleFilter",
-}
+# Module path where named filter classes live
+_FILTER_MODULE = "new_app.services.filters.types"
 
 
-def _get_filter_class(filter_type: str) -> Optional[Type[BaseFilter]]:
-    """Dynamically import and return the concrete filter class."""
-    mod_name = _TYPE_TO_MODULE.get(filter_type)
-    cls_name = _TYPE_TO_CLASS.get(filter_type)
-    if not mod_name or not cls_name:
-        return None
-    module = importlib.import_module(f"new_app.services.filters.types.{mod_name}")
-    return getattr(module, cls_name, None)
+def _camel_to_snake(name: str) -> str:
+    """
+    Convert CamelCase class name to snake_case module file name.
+
+    ``DateRangeFilter``      → ``date_range_filter``
+    ``ProductionLineFilter`` → ``production_line_filter``
+    ``CurveTypeFilter``      → ``curve_type_filter``
+    """
+    s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
+    s = re.sub(r"([a-z\d])([A-Z])", r"\1_\2", s)
+    return s.lower()
+
+
+def _resolve_filter_class(class_name: str) -> Optional[Type[BaseFilter]]:
+    """
+    Dynamically import and return a filter class by its CamelCase name.
+
+    ``DateRangeFilter`` → ``new_app.services.filters.types.date_range_filter``
+    """
+    module_name = _camel_to_snake(class_name)
+    full_path = f"{_FILTER_MODULE}.{module_name}"
+    try:
+        module = importlib.import_module(full_path)
+        cls = getattr(module, class_name, None)
+        if cls and issubclass(cls, BaseFilter):
+            return cls
+        logger.error(
+            f"[FilterEngine] {full_path} does not export '{class_name}' "
+            f"as a BaseFilter subclass"
+        )
+    except ImportError as exc:
+        logger.error(f"[FilterEngine] Cannot import {full_path}: {exc}")
+    return None
 
 
 class FilterEngine:
@@ -67,9 +72,12 @@ class FilterEngine:
     Central filter orchestrator.
 
     Builds filter instances on-the-fly from cached DB rows +
-    FILTER_REGISTRY config.  Zero coupling — adding a new filter
-    only requires a DB row, a registry entry, and a class file.
+    class attributes.  Zero coupling — adding a new filter only
+    requires a DB row and a class file in services/filters/types/.
     """
+
+    def __init__(self) -> None:
+        self._class_cache: Dict[str, Type[BaseFilter]] = {}
 
     # ── Build instances ──────────────────────────────────────
 
@@ -79,7 +87,7 @@ class FilterEngine:
         filter_ids: Optional[List[int]] = None,
     ) -> List[BaseFilter]:
         """
-        Instantiate active filters from cache + registry.
+        Instantiate active filters from cache + class attributes.
 
         Args:
             parent_values: Parent filter values for cascade resolution.
@@ -91,7 +99,7 @@ class FilterEngine:
         Returns a list sorted by ``display_order``.
         """
         cached_filters = metadata_cache.get_filters()  # dict[int, dict]
-        instances: list[BaseFilter] = []
+        instances: List[BaseFilter] = []
 
         for _fid, row in sorted(
             cached_filters.items(), key=lambda kv: kv[1].get("display_order", 99)
@@ -99,31 +107,33 @@ class FilterEngine:
             # ── Whitelist check ──────────────────────────────
             if filter_ids is not None and row["filter_id"] not in filter_ids:
                 continue
+
             class_name = row["filter_name"]  # e.g. "DateRangeFilter"
-            registry = FILTER_REGISTRY.get(class_name)
-            if registry is None:
-                print(f"[FilterEngine] WARN: '{class_name}' not in FILTER_REGISTRY — skipped")
+
+            # ── Auto-discovery: resolve the class ────────────
+            cls = self._get_class(class_name)
+            if cls is None:
+                logger.warning(
+                    f"[FilterEngine] No class found for '{class_name}' — skipped. "
+                    f"Expected file: {_camel_to_snake(class_name)}.py"
+                )
                 continue
 
+            # ── Build FilterConfig from class attrs + DB row ──
             config = FilterConfig(
                 filter_id=row["filter_id"],
                 class_name=class_name,
-                filter_type=registry["filter_type"],
-                param_name=registry["param_name"],
+                filter_type=cls.filter_type,
+                param_name=cls.param_name,
                 display_order=row.get("display_order", 0),
                 description=row.get("description", ""),
-                placeholder=registry.get("placeholder"),
-                default_value=registry.get("default_value"),
-                required=registry.get("required", False),
-                options_source=registry.get("options_source"),
-                depends_on=registry.get("depends_on"),
-                ui_config=registry.get("ui_config", {}),
+                placeholder=cls.placeholder,
+                default_value=cls.default_value,
+                required=cls.required,
+                options_source=cls.options_source,
+                depends_on=cls.depends_on,
+                ui_config=dict(cls.ui_config),  # copy, not shared ref
             )
-
-            cls = _get_filter_class(config.filter_type)
-            if cls is None:
-                print(f"[FilterEngine] WARN: no class for type '{config.filter_type}'")
-                continue
 
             instances.append(cls(config))
 
@@ -139,10 +149,6 @@ class FilterEngine:
         """
         Return JSON-serializable list of filters with their
         resolved options (ready for frontend rendering).
-
-        Args:
-            parent_values: For cascade resolution.
-            filter_ids: Whitelist from ``layout_config.filters``.
         """
         return [f.to_dict(parent_values) for f in self.get_all(parent_values, filter_ids)]
 
@@ -190,8 +196,8 @@ class FilterEngine:
                 "cleaned": {"param_name": cleaned_value, ...},
             }
         """
-        errors: dict[str, str] = {}
-        cleaned: dict[str, Any] = {}
+        errors: Dict[str, str] = {}
+        cleaned: Dict[str, Any] = {}
 
         for flt in self.get_all():
             pname = flt.config.param_name
@@ -211,6 +217,17 @@ class FilterEngine:
             "errors": errors,
             "cleaned": cleaned,
         }
+
+    # ── Private ──────────────────────────────────────────────
+
+    def _get_class(self, class_name: str) -> Optional[Type[BaseFilter]]:
+        """Resolve and cache a filter class by CamelCase name."""
+        if class_name in self._class_cache:
+            return self._class_cache[class_name]
+        cls = _resolve_filter_class(class_name)
+        if cls:
+            self._class_cache[class_name] = cls
+        return cls
 
 
 # ── Singleton ────────────────────────────────────────────────

@@ -8,6 +8,9 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class MetricsSummary(BaseWidget):
+    required_columns = ["detected_at", "area_type", "line_id", "product_name", "product_weight"]
+    default_config   = {}
+    render           = "summary"
 
     def process(self) -> WidgetResult:
         df = self.df

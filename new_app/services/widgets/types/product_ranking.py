@@ -8,6 +8,9 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class ProductRanking(BaseWidget):
+    required_columns = ["product_name", "product_code", "product_color", "product_weight", "area_type"]
+    default_config   = {}
+    render           = "table"
 
     def process(self) -> WidgetResult:
         df = self.df

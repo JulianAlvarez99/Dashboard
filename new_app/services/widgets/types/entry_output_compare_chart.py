@@ -16,6 +16,11 @@ from new_app.services.widgets.helpers import (
 
 
 class EntryOutputCompareChart(BaseWidget):
+    required_columns = ["detected_at", "area_type", "line_id"]
+    default_config   = {}
+    render           = "chart"
+    chart_type       = "comparison_bar"
+    chart_height     = "400px"
 
     def process(self) -> WidgetResult:
         df = self.df

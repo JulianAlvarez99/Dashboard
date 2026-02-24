@@ -1,12 +1,16 @@
 """
-Base filter classes and dataclasses — Etapa 2 Foundation.
+Base filter classes and dataclasses.
 
 Defines the contract every filter must follow:
   - ``FilterOption``: single option for dropdowns/multiselects.
-  - ``FilterConfig``: merged config from DB + FILTER_REGISTRY.
-  - ``BaseFilter``: abstract base with validate / get_options / to_sql_clause.
+  - ``FilterConfig``: runtime config built from DB row + class attributes.
+  - ``BaseFilter``: abstract base — now self-describing via class attributes.
   - ``OptionsFilter``: base for dropdown/multiselect (loads from cache).
   - ``InputFilter``: base for text/number/daterange/toggle (no options).
+
+Auto-discovery: FilterEngine resolves the concrete class by converting
+``filter_name`` (CamelCase) to a snake_case module path and importing it.
+Class attributes replace FILTER_REGISTRY entirely.
 """
 
 from __future__ import annotations
@@ -82,6 +86,16 @@ class BaseFilter(ABC):
     """
     Abstract base for every filter type.
 
+    Class attributes (override in each concrete filter):
+      filter_type    : "daterange" | "dropdown" | "multiselect" | ...
+      param_name     : HTTP param name sent from the frontend.
+      options_source : cache key for dynamic options, or None.
+      default_value  : default when user provides nothing.
+      placeholder    : input placeholder text, or None.
+      required       : whether a value is mandatory.
+      depends_on     : param_name of parent filter for cascade, or None.
+      ui_config      : extra frontend rendering hints.
+
     Subclasses **must** implement:
       - ``validate(value)``  → bool
       - ``get_default()``    → Any
@@ -90,6 +104,16 @@ class BaseFilter(ABC):
       - ``get_options(parent_values)``  → list[FilterOption]
       - ``to_sql_clause(value)``        → tuple[str, dict] | None
     """
+
+    # ── Class-level configuration (auto-discovery) ─────────────
+    filter_type    : str               = ""
+    param_name     : str               = ""
+    options_source : Optional[str]     = None
+    default_value  : Any               = None
+    placeholder    : Optional[str]     = None
+    required       : bool              = False
+    depends_on     : Optional[str]     = None
+    ui_config      : Dict[str, Any]    = {}
 
     def __init__(self, config: FilterConfig) -> None:
         self.config = config

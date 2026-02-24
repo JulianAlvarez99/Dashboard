@@ -15,6 +15,9 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class EventFeed(BaseWidget):
+    required_columns = []
+    default_config   = {"max_items": 50}
+    render           = "feed"
 
     def process(self) -> WidgetResult:
         max_items = self.ctx.config.get("max_items", 50)

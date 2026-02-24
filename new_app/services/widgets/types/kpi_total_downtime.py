@@ -4,6 +4,9 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class KpiTotalDowntime(BaseWidget):
+    required_columns = []
+    default_config   = {}
+    render           = "kpi"
 
     def process(self) -> WidgetResult:
         dt = self.downtime_df

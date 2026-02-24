@@ -1,11 +1,13 @@
 """
-WidgetEngine — Dynamic widget instantiation via Registry Pattern.
+WidgetEngine — Dynamic widget instantiation via Auto-Discovery.
 
 Single Responsibility: given a list of widget class names, instantiate
 the correct concrete class and execute ``process()``.
 
-Uses ``WIDGET_REGISTRY`` for metadata and Python's module system for
-class resolution.  No hardcoded if/else chains.
+Auto-discovery pattern (no registry needed)::
+
+    class_name (DB) → CamelCase→snake_case → importlib → Widget class
+    Widget class carries its own metadata as class attributes.
 
 Usage::
 
@@ -29,7 +31,6 @@ from typing import Any, Dict, List, Optional, Type
 
 import pandas as pd
 
-from new_app.config.widget_registry import WIDGET_REGISTRY
 from new_app.services.widgets.base import BaseWidget, WidgetContext, WidgetResult
 
 logger = logging.getLogger(__name__)
@@ -43,8 +44,8 @@ class WidgetEngine:
     Dynamic widget resolver and executor.
 
     Pipeline per widget:
-      1. Look up metadata in WIDGET_REGISTRY.
-      2. Import the concrete class from ``services/widgets/types/``.
+      1. Resolve class by CamelCase→snake_case→importlib (no registry lookup).
+      2. Read metadata from class attributes (required_columns, default_config).
       3. Build WidgetContext with pre-scoped data.
       4. Call ``widget.process()`` → WidgetResult.
     """
@@ -101,37 +102,31 @@ class WidgetEngine:
         widget_catalog: Dict[int, Dict[str, Any]],
     ) -> Dict[str, Any]:
         """Process one widget and return its serialized result."""
-        # 1. Registry metadata
-        registry_entry = WIDGET_REGISTRY.get(class_name)
-        if not registry_entry:
-            logger.warning(f"[WidgetEngine] '{class_name}' not in WIDGET_REGISTRY")
-            return self._error_result(class_name, "Widget not registered")
-
-        # 2. Resolve widget_id and display_name from catalog
-        widget_id, display_name = self._resolve_catalog_info(
-            class_name, widget_catalog,
-        )
-
-        # 3. Import concrete class
+        # 1. Resolve concrete class (auto-discovery — no registry needed)
         widget_cls = self._resolve_class(class_name)
         if widget_cls is None:
             return self._error_result(
                 class_name, f"Class '{class_name}' not found in {_WIDGET_MODULE}",
             )
 
-        # 4. Build context with Data Scoping
+        # 2. Resolve widget_id and display_name from catalog
+        widget_id, display_name = self._resolve_catalog_info(
+            class_name, widget_catalog,
+        )
+
+        # 3. Build context — read metadata from class attributes
         ctx = WidgetContext(
             widget_id=widget_id,
             widget_name=class_name,
             display_name=display_name,
-            data=self._scope_data(class_name, registry_entry, detections_df),
+            data=self._scope_data(widget_cls, detections_df),
             downtime=downtime_df,
             lines_queried=lines_queried,
             params=cleaned,
-            config=registry_entry.get("default_config", {}),
+            config=dict(widget_cls.default_config),  # copy, not shared ref
         )
 
-        # 5. Execute
+        # 4. Execute
         try:
             widget = widget_cls(ctx)
             result = widget.process()
@@ -188,19 +183,19 @@ class WidgetEngine:
 
     @staticmethod
     def _scope_data(
-        class_name: str,
-        registry_entry: dict,
+        widget_cls: type,
         master_df: pd.DataFrame,
     ) -> pd.DataFrame:
         """
         Apply Data Scoping — return only required_columns.
 
-        If ``required_columns`` is empty, the widget gets the full DF.
+        Reads ``cls.required_columns`` class attribute directly.
+        If empty, the widget receives the full DataFrame.
         """
         if master_df.empty:
             return master_df
 
-        required = registry_entry.get("required_columns", [])
+        required = widget_cls.required_columns
         if not required:
             return master_df
 

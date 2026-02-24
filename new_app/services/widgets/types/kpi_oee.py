@@ -116,6 +116,9 @@ def _compute_oee(ctx: WidgetContext) -> Dict[str, Any]:
 
 
 class KpiOee(BaseWidget):
+    required_columns = ["area_type", "detected_at", "line_id"]
+    default_config   = {}
+    render           = "kpi_oee"
 
     def process(self) -> WidgetResult:
         calc = _compute_oee(self.ctx)
