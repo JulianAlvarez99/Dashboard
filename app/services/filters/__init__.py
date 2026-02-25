@@ -1,3 +1,0 @@
-"""
-Filters services module
-"""

@@ -1,3 +1,0 @@
-"""
-Routes module - Flask blueprints
-"""
