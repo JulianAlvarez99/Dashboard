@@ -1,160 +1,186 @@
 # TODO & Roadmap — Camet Analytics Dashboard
 
-Tareas pendientes organizadas por prioridad. Comparado contra la planificación original (`Planificacion.md`).
-
-**Última actualización:** 13 Febrero 2026
+Tareas pendientes por prioridad. Estado al **25 Febrero 2026**.
 
 ---
 
-## Prioridad Crítica
+## 🔴 Prioridad Crítica
 
-Funcionalidades que deberían implementarse antes de producción.
+### Seguridad de la API
 
-### Seguridad de la API (Phase 8)
-- [ ] **JWT Authentication para FastAPI** — La API está completamente abierta. Requiere:
-  - Crear middleware/dependency que valide JWT en cada request
-  - Endpoints: `POST /auth/token`, `POST /auth/refresh`, `GET /auth/me`
-  - Usar `pyjwt` (ya instalado, settings `JWT_SECRET_KEY`/`JWT_ALGORITHM` configurados)
-  - Inyectar tenant_id del token en las queries
-- [ ] **CSRF Protection** — `flask-wtf` instalado pero no activado
-  - Agregar `CSRFProtect(app)` en Flask
-  - Incluir `csrf_token()` en formularios
-- [ ] **Security Headers** — No hay middleware de headers
-  - X-Frame-Options: DENY
-  - Content-Security-Policy
-  - X-Content-Type-Options: nosniff
-  - Strict-Transport-Security (cuando HTTPS)
-- [ ] **Rate Limiting** — `slowapi` instalado pero no activado
-  - Aplicar a `/auth/login` (anti-brute-force)
-  - Aplicar a `/api/v1/*` (anti-abuse)
-- [ ] **Permisos por rol** — RBAC definido (5 roles) pero no aplicado
-  - Los endpoints no verifican `session["user"]["role"]`
-  - Crear decorador `@role_required("ADMIN", "MANAGER")`
-  - Restringir cache/refresh a ADMIN+
+- [ ] **JWT Authentication para FastAPI**
+  - La API está completamente abierta (sin auth).
+  - `pyjwt` ya instalado. Campos `JWT_SECRET_KEY` / `JWT_ALGORITHM` en Settings.
+  - Crear dependency `require_tenant` que valide JWT en cada request.
+  - Endpoints: `POST /auth/token`, `POST /auth/refresh`
+  - Inyectar `tenant_id` del token en `TenantContext`
 
-### Bug Conocido
-- [ ] **DatabaseManager.get_tenant_engine_by_name()** — Referencia `settings.DB_USER` / `settings.DB_PASSWORD` que no existen. Cambiar a `settings.TENANT_DB_USER` / `settings.TENANT_DB_PASSWORD`
+- [ ] **CSRF Protection**
+  - `flask-wtf` instalado pero no activado.
+  - Agregar `CSRFProtect(app)` en `flask_app.py`
+  - Incluir `csrf_token()` en formulario de login
+
+- [ ] **Rate Limiting**
+  - `slowapi` instalado pero no activado.
+  - Aplicar en `/auth/login` (anti-brute-force)
+  - Aplicar en `/api/v1/*` (anti-abuse)
+
+- [ ] **Security Headers**
+  - No hay middleware de headers HTTP.
+  - `X-Frame-Options: DENY`
+  - `Content-Security-Policy`
+  - `X-Content-Type-Options: nosniff`
+
+- [ ] **RBAC Enforcement en Endpoints**
+  - Los 5 roles están definidos: SUPER_ADMIN, ADMIN, MANAGER, OPERATOR, VIEWER
+  - Ningún endpoint verifica el rol del usuario actualmente.
+  - Crear dependency `@role_required("ADMIN")` en FastAPI
+  - Crear decorador Flask `@role_required("MANAGER")` para rutas SSR
+  - Restringir `/system/cache/refresh` a ADMIN+
 
 ---
 
-## Prioridad Alta
+## 🟠 Prioridad Alta
 
-Funcionalidades importantes para estabilidad y mantenimiento.
+### Suite de Tests (no existe `tests/`)
 
-### Tests (Nunca creados)
-- [ ] Crear directorio `tests/`
-- [ ] Tests unitarios para procesadores KPI (especialmente OEE)
-- [ ] Tests para `downtime_calculator.py` (edge cases: overnight, threshold exacto)
-- [ ] Tests para `FilterResolver` y `FilterFactory`
-- [ ] Tests de integración para el pipeline completo
-- [ ] Tests de seguridad (SQL injection, XSS)
-- [ ] Configurar `pytest` + `pytest-asyncio`
+- [ ] Crear directorio `tests/` con estructura básica
+- [ ] Tests unitarios para `_compute_oee()` (casos límite OEE)
+- [ ] Tests para `downtime_calculator.py` (gap analysis edge cases)
+- [ ] Tests para `FilterEngine.validate_input()`
+- [ ] Tests para `WidgetEngine` (auto-discovery, widget desconocido)
+- [ ] Tests de integración para el pipeline completo (`DashboardOrchestrator.execute()`)
+- [ ] Configurar `pytest` + `pytest-asyncio` + fixtures de DB
 
 ### Migrations
-- [ ] Configurar Alembic (`alembic` ya instalado)
-- [ ] Crear migrations iniciales para `camet_global` y `db_client_*`
-- [ ] Script de creación de tablas dinámicas (`detection_line_X`, `downtime_events_X`)
+
+- [ ] Configurar **Alembic** (instalado, no configurado)
+- [ ] Migration inicial para `camet_global`
+- [ ] Migration inicial para esquema base de `db_client_*`
+- [ ] Script para crear tablas dinámicas (`detection_line_X`, `downtime_events_X`)
 
 ### Scripts de Deploy
-- [ ] `scripts/init_db.py` — Inicialización de DB con seed data
-- [ ] `scripts/setup_production.sh` — Setup de producción
-- [ ] `scripts/backup_db.sh` — Backups automatizados
-- [ ] `passenger_wsgi.py` para cPanel
+
+- [ ] `scripts/init_db.py` — inicialización + seed de datos
+- [ ] `scripts/setup_production.sh` — setup de entorno producción
+- [ ] `passenger_wsgi.py` para cPanel deployment
+
+### Bug conocido
+
+- [ ] `DatabaseManager.get_tenant_engine_by_name()` referencia `settings.DB_USER` / `settings.DB_PASSWORD` que no existen. Cambiar a `settings.TENANT_DB_USER` / `settings.TENANT_DB_PASSWORD`.
 
 ---
 
-## Prioridad Media
+## 🟡 Prioridad Media
 
-Mejoras funcionales para usuarios.
+### Próximos Pasos Funcionales
 
-### CRUD de Configuración (Phase 2)
-- [ ] Endpoints para gestionar `production_line` (GET/POST/PUT/DELETE)
-- [ ] Endpoints para gestionar `area`, `product`, `shift`
-- [ ] Invalidación de cache automática al modificar datos
-- [ ] UI de administración para gestión de líneas/áreas/productos
+- [ ] **Downtime Automático con APScheduler**
+  - `apscheduler` instalado pero no activado.
+  - Background task cada 15 min: calcula gap downtime y persiste en `downtime_events_X`
+  - Endpoint manual: `POST /api/v1/system/downtime/recalculate`
 
-### Downtime Automático (Phase 4)
-- [ ] Background task con APScheduler para calcular downtimes cada 15 min
-- [ ] Guardar resultados calculados en `downtime_events_X`
-- [ ] Endpoint para recálculo manual
+- [ ] **CRUD de Configuración**
+  - Endpoints para gestionar `production_line` (GET/POST/PUT/DELETE)
+  - Endpoints para gestionar `area`, `product`, `shift`
+  - Invalidación de `MetadataCache` al modificar
 
-### Reportes y Exportación
-- [ ] Exportar dashboard a PDF
-- [ ] Exportar datos a Excel/CSV
-- [ ] Reportes programados por email
-- [ ] Comparación entre períodos
+- [ ] **Nuevos Widgets** (fácil de agregar gracias a auto-discovery)
+  - Widget de tendencia/sparklines
+  - Mapa de calor de producción (heatmap por hora × día)
+  - Widget de alertas activas
+  - Comparador de períodos (semana anterior vs actual)
 
-### Mejoras de UI
-- [ ] HTMX para actualizaciones parciales (sidebar, filtros cascade)
-- [ ] Lazy loading de widgets
-- [ ] Indicadores de tendencia (trend) en KPIs
-- [ ] Modo claro/oscuro persistente (actualmente solo oscuro)
+- [ ] **Nuevos Filtros**
+  - `FailureTypeFilter` — por tipo de falla
+  - `OperatorFilter` — filtrar por operario
+  - `PlantFilter` — preparación para multi-planta
+
+- [ ] **Exportación**
+  - Exportar dashboard a PDF
+  - Exportar datos a Excel/CSV desde endpoints existentes de raw_data
+  - Aprovechar `export.py` ya creado en `services/data/`
+
+- [ ] **Persistencia del Layout por Usuario**
+  - Guardar preferencias en `dashboard_template` por usuario (no solo por rol)
+  - Permitir drag & drop en el dashboard
+
+### UI/UX
+
+- [ ] Modo claro persistente (toggle guarda en localStorage)
+- [ ] Lazy loading de widgets (cargar por tab, no todo a la vez)
+- [ ] Indicadores de tendencia (▲▼) en KPIs
+- [ ] Actualización automática configurable (auto-refresh cada N minutos)
+- [ ] `new_app/static/js/modules/` — modularizar JavaScript
 
 ---
 
-## Prioridad Baja
-
-Features avanzados para el futuro.
+## 🟢 Prioridad Baja
 
 ### Alertas y Notificaciones
+
 - [ ] Sistema de alertas por email
 - [ ] Webhooks para eventos de downtime
-- [ ] Alertas de parada prolongada
-- [ ] Dashboard de alertas activas
+- [ ] Alertas de parada prolongada (>X minutos)
+- [ ] Panel de alertas activas en el dashboard
 
 ### Real-Time
-- [ ] WebSocket para actualizaciones en vivo
-- [ ] Server-Sent Events como alternativa
-- [ ] Auto-refresh configurable por widget
+
+- [ ] WebSocket o Server-Sent Events para actualizaciones en vivo
+- [ ] Remplazar auto-refresh manual por push del servidor
 
 ### Performance Avanzado
-- [ ] Particionamiento automático de tablas de detección (mensual)
-- [ ] Script de optimización de índices
-- [ ] Redis como cache layer (reemplazar in-memory)
-- [ ] Connection pool tuning (reemplazar NullPool en producción dedicada)
-- [ ] Middleware de monitoreo (X-Process-Time, slow query logging)
+
+- [ ] Redis como cache layer (reemplazar in-memory para multi-proceso)
+- [ ] `connection pool` tuning (reemplazar NullPool en hosting dedicado)
+- [ ] Middleware `X-Process-Time` para monitoreo de latencia
+- [ ] Particionamiento automático mensual (actualmente manual con `partition_manager.py`)
 
 ### Multi-Planta
-- [ ] Segmentación por planta
+
+- [ ] Segmentación por planta (campo `plant_id` en modelos)
 - [ ] Dashboards comparativos entre plantas
-- [ ] Switch de tenant dinámico
+- [ ] Switch de tenant dinámico desde la UI
 
-### Otros
-- [ ] 2FA (TOTP / SMS / códigos de recuperación)
-- [ ] Multi-idioma (i18n)
-- [ ] API pública con API keys
-- [ ] Machine learning: predicción de paradas, detección de anomalías
-- [ ] Archival de datos históricos (retención, compresión, cold storage)
+### Seguridad Avanzada
+
+- [ ] 2FA (TOTP / códigos de recuperación)
+- [ ] Sesiones con expiración configurable
+- [ ] `bleach` para sanitización de inputs de usuario (instalado, no usado)
+- [ ] Audit log más granular (qué filtros aplicó cada usuario)
+
+### Calidad de Código
+
+- [ ] Llenar `new_app/utils/` con utilidades extraídas de `helpers.py`
+- [ ] Implementar módulos JS en `new_app/static/js/modules/`
+- [ ] Typing completa (mypy / Pyright strict)
+- [ ] Pre-commit hooks (black, ruff, isort)
 
 ---
 
-## Paquetes Instalados sin Usar
+## 📦 Paquetes Instalados Sin Usar
 
-Estos paquetes están en `requirements.txt` pero no tienen código que los utilice:
-
-| Paquete | Uso previsto | Acción sugerida |
-|---------|-------------|-----------------|
-| `pyjwt` | JWT auth para API | Implementar JWT middleware |
-| `slowapi` | Rate limiting | Activar en endpoints |
-| `apscheduler` | Background tasks | Implementar downtime auto-calc |
-| `flask-wtf` | CSRF protection | Activar CSRFProtect |
-| `alembic` | DB migrations | Configurar y crear migrations |
+| Paquete | Uso Previsto | Acción |
+|---------|-------------|--------|
+| `pyjwt` | JWT auth para FastAPI | Implementar JWT middleware |
+| `slowapi` | Rate limiting | Activar en endpoints críticos |
+| `apscheduler` | Background tasks | Activar downtime auto-calc |
+| `flask-wtf` | CSRF protection | Activar `CSRFProtect(app)` |
+| `alembic` | DB migrations | Inicializar con `alembic init` |
 | `bleach` | XSS sanitization | Aplicar en inputs de usuario |
-| `cryptography` | Encrypt utilities | Evaluar necesidad |
+| `cryptography` | Crypto utilities | Evaluar necesidad real |
 
 ---
 
-## Directorios Planeados que No Existen
+## 📂 Directorios Vacíos / Faltantes
 
-| Directorio | Propósito | Prioridad |
-|------------|-----------|-----------|
-| `tests/` | Tests unitarios e integración | Alta |
-| `scripts/` | Setup, backup, deploy | Alta |
-| `app/middleware/` | JWT, rate limit, headers, audit | Crítica |
-| `migrations/` | Alembic DB migrations | Alta |
-| `app/utils/` | Utilities (partition manager, etc.) | Media |
-| `app/schemas/` | Pydantic schemas dedicados | Baja |
+| Directorio | Estado | Propósito |
+|------------|--------|-----------|
+| `new_app/utils/` | Existe pero vacío | Utilidades compartidas |
+| `new_app/static/js/modules/` | Existe pero vacío | Módulos JS |
+| `tests/` | No existe | Tests unitarios e integración |
+| `migrations/` | No existe | Alembic migrations |
 
 ---
 
-_TODO actualizado. Para detalles de la planificación original, ver [Planificacion.md](Planificacion.md)._
+_Última actualización: 25 Febrero 2026. Ver [README.md](README.md) para estado general._

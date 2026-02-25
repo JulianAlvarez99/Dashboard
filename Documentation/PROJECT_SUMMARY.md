@@ -2,15 +2,223 @@
 
 Estado actual de la implementación, estructura del código y decisiones técnicas.
 
-**Última actualización:** 13 Febrero 2026
+**Última actualización:** 25 Febrero 2026  
+**Módulo activo:** `new_app/`  
+**Entry point:** `run_new.py`
 
 ---
 
 ## 1. Estado General
 
-La plataforma está implementada en su ciclo funcional completo: login → dashboard → filtros → consulta → visualización de KPIs, gráficos y tablas. Falta implementar seguridad de la API (JWT), tests, migrations, rate limiting y funcionalidades avanzadas (reportes, alertas, 2FA).
+### Resumen Ejecutivo
 
-##  Estado del Proyecto: FUNCIONAL 
+La plataforma está en estado **completamente funcional**: login → dashboard → filtros → consulta → visualización de KPIs, gráficos y tablas. El ciclo completo funciona end-to-end.
+
+El proyecto fue **refactorizado** desde un módulo `app/` a `new_app/` con una arquitectura más modular y extensible. Los cambios principales fueron:
+
+- Adopción de un **patrón auto-discovery** para widgets y filtros (sin registros manuales)
+- Introducción del **DashboardOrchestrator** como coordinador central del pipeline
+- Separación en componentes con responsabilidad única: `DashboardContext`, `ResponseAssembler`, `DataBroker`, `WidgetResolver`
+- Soporte para widgets de **fuentes externas** (APIs externas via `DataBroker`)
+- Expansión de **18 widgets** y **16 filtros** concretos
+
+Lo que **falta** antes de producción: JWT para la API, CSRF, rate limiting, suite de tests, Alembic migrations.
+
+---
+
+## 2. Módulos Implementados
+
+### 2.1 Infraestructura Core (`new_app/core/`)
+
+| Archivo | Responsabilidad |
+|---------|----------------|
+| `config.py` | Pydantic Settings cargadas desde `.env` |
+| `database.py` | `DatabaseManager`: dual sync/async, NullPool, multi-tenant |
+| `cache.py` | `MetadataCache` singleton, carga on-demand tras login |
+| `auth.py` | Argon2 hash + `authenticate_user()` (sync) |
+
+**MetadataCache:** Carga toda la configuración de referencia del tenant en memoria al primer login. Evita queries repetidas para datos estáticos: líneas, áreas, productos, turnos, filtros, fallas, widget_catalog.
+
+### 2.2 Modelos ORM (`new_app/models/`)
+
+| Archivo | Tablas |
+|---------|--------|
+| `global_models.py` | `tenant`, `user`, `widget_catalog`, `dashboard_template`, `user_login`, `audit_log` |
+| `tenant_models.py` | `production_line`, `area`, `product`, `shift`, `filter`, `failure`, `incident` |
+
+Las tablas de datos (`detection_line_X`, `downtime_events_X`) son **dinámicas por línea** y no tienen modelos ORM — se acceden con SQL crudo + `query_builder.py`.
+
+### 2.3 API FastAPI (`new_app/api/v1/`)
+
+| Endpoint | Método | Descripción |
+|----------|--------|-------------|
+| `/api/v1/dashboard/data` | POST | Pipeline completo (todos los widgets) |
+| `/api/v1/dashboard/preview` | POST | Preview con widget_ids explícitos |
+| `/api/v1/filters/options/{filter_id}` | GET | Opciones de un filtro (cascade) |
+| `/api/v1/layout/full-config` | GET | Layout + widgets + filtros para el rol |
+| `/api/v1/broker/data` | POST | DataBroker directo |
+| `/api/v1/detections/*` | GET | Consulta de detecciones |
+| `/api/v1/system/health` | GET | Health check |
+| `/api/v1/system/cache/info` | GET | Estado del MetadataCache |
+| `/api/v1/system/cache/refresh` | POST | Recargar cache |
+
+### 2.4 Orchestrator (`new_app/services/orchestrator/`)
+
+| Archivo | Responsabilidad única |
+|---------|----------------------|
+| `pipeline.py` | `DashboardOrchestrator` — coordina las 7 fases |
+| `resolver.py` | `WidgetResolver` — layout → class names |
+| `context.py` | `DashboardContext` — contenedor inmutable de datos |
+| `assembler.py` | `ResponseAssembler` — construye el JSON final |
+
+### 2.5 Motor de Datos (`new_app/services/data/`)
+
+| Archivo | Responsabilidad |
+|---------|----------------|
+| `detection_service.py` | Fetch de detecciones (async, por línea) |
+| `detection_repository.py` | Queries de detecciones |
+| `downtime_service.py` | Merge DB downtime + gap analysis |
+| `downtime_repository.py` | Queries de downtime |
+| `downtime_calculator.py` | Algoritmo gap analysis (paradas calculadas) |
+| `enrichment.py` | App-side JOIN via MetadataCache |
+| `line_resolver.py` | Resuelve `line_id` → `[line_ids]` |
+| `query_builder.py` | SQL dinámico + partition HINTS |
+| `sql_clauses.py` | Cláusulas SQL reutilizables |
+| `table_resolver.py` | Nombre de tabla por línea |
+| `partition_manager.py` | Gestión particiones mensuales |
+| `export.py` | Exportación de datos |
+
+### 2.6 Motor de Filtros (`new_app/services/filters/`)
+
+**Auto-discovery:** `FilterEngine` convierte `filter_name` (DB) a módulo Python via `importlib`. Sin registro manual.
+
+- **16 filtros** implementados en `types/`
+- Clases base: `OptionsFilter`, `InputFilter`
+- Cascade: `depends_on = "line_id"` en la clase hija
+
+### 2.7 Motor de Widgets (`new_app/services/widgets/`)
+
+**Auto-discovery:** `WidgetEngine` convierte `widget_name` (DB) a módulo Python via `importlib`. Sin registro manual.
+
+- **18 widgets** implementados en `types/`
+- Clase base: `BaseWidget(ctx: WidgetContext) → WidgetResult`
+- Layout separado en `config/widget_layout.py` (tab, col_span, order)
+
+### 2.8 DataBroker (`new_app/services/broker/`)
+
+Clasifica widgets entre fuente `"internal"` (slice del DataFrame) o `"external"` (API externa). Las llamadas externas se hacen de forma **concurrente** con `asyncio`.
+
+Configuración de APIs externas: `new_app/config/external_apis.yml`
+
+### 2.9 Frontend Flask (`new_app/routes/`, `templates/`, `static/`)
+
+- **auth.py** → login, logout, `@login_required`
+- **dashboard.py** → renderiza `index.html` con layout_config del usuario
+- **templates/** → Jinja2 SSR; partials por tipo de widget
+- **static/js/** → Alpine.js (estado), Chart.js (gráficos), dashboard-orchestrator, data-engine, api-client
+
+---
+
+## 3. Principios de Diseño
+
+### Single Responsibility Principle (SRP)
+
+| Módulo | Responsabilidad |
+|--------|----------------|
+| `core/config.py` | Carga de settings |
+| `core/database.py` | Conexiones DB |
+| `core/cache.py` | Cache in-memory |
+| `orchestrator/pipeline.py` | Coordinar pipeline |
+| `orchestrator/resolver.py` | Layout → class names |
+| `orchestrator/assembler.py` | Serializar respuesta |
+| `data/downtime_calculator.py` | Gap analysis |
+| `widgets/engine.py` | Auto-discovery + ejecutar |
+| `filters/engine.py` | Auto-discovery + validar |
+| `broker/data_broker.py` | Rutear fuentes de datos |
+
+### Don't Repeat Yourself (DRY)
+
+- `_compute_oee()` compartido por `KpiOee`, `KpiAvailability`, `KpiPerformance`, `KpiQuality`
+- `DataAggregator` centraliza fetch + enrich
+- `BaseWidget._result()` y `_empty()` evitan repetición en cada widget
+- `FilterEngine` auto-discovery elimina registros manuales redundantes
+
+### Auto-Discovery Pattern
+
+- Widgets: `CamelCase → snake_case → importlib → BaseWidget subclass`
+- Filtros: `CamelCase → snake_case → importlib → BaseFilter subclass`
+- Agregar nuevo widget/filtro = 1 archivo `.py` + 1 INSERT en DB
+
+### Configuration over Code
+
+- Layout visual en `config/widget_layout.py` (no en la lógica del widget)
+- APIs externas en `config/external_apis.yml`
+- Qué widgets/filtros se muestran: DB (`dashboard_template.layout_config`)
+
+---
+
+## 4. Decisiones Técnicas Clave
+
+### NullPool en lugar de ConnectionPool
+**Por qué:** El hosting compartido (cPanel/Passenger) recicla procesos de forma agresiva. Un connection pool persistente causa errores `MySQL has gone away`. NullPool abre y cierra conexiones en cada request, más seguro en este entorno.
+
+### Tablas Dinámicas por Línea
+**Por qué:** Las líneas de producción generan volúmenes masivos. Una tabla única con `line_id` escalaría mal. Cada línea tiene su propia tabla `detection_line_{name}` con particionamiento mensual.
+
+### App-Side Joins con MetadataCache
+**Por qué:** Las tablas de detección son millones de filas. Un JOIN en SQL contra tablas de metadatos agrega latencia de I/O y dificulta el cacheo. Los joins se hacen en Pandas en memoria usando el MetadataCache, que es O(1) lookup.
+
+### MetadataCache On-Demand (no en startup)
+**Por qué:** El sistema es multi-tenant. No se sabe qué tenant conectará al iniciar. La cache se carga al primer login del tenant, no al arrancar el proceso.
+
+### Gap Analysis vs DB Downtime
+**Cómo funciona:** Si la diferencia entre dos detecciones consecutivas supera el umbral (segundos), se considera una parada. Las paradas calculadas se **fusionan** con las paradas manuales de DB, dando prioridad a las de DB en caso de solapamiento.
+
+### OEE per-line con `production_line.performance`
+**Por qué:** Cada línea tiene su propia tasa de producción esperada (productos/minuto). El rendimiento se calcula multiplicando el tiempo operativo de cada línea por su `performance`, y luego sumando.
+
+---
+
+## 5. Estado de Servidores
+
+| Servidor | Framework | Puerto | Auth | Estado |
+|----------|-----------|--------|------|--------|
+| API REST | FastAPI | 8000 | **Ninguna** (API abierta) | Funcional |
+| Frontend SSR | Flask | 5000 | Session + Argon2 | Funcional |
+
+---
+
+## 6. Dependencias Activas
+
+| Paquete | Uso real |
+|---------|---------|
+| `fastapi` | API REST |
+| `flask` | SSR + Auth |
+| `uvicorn` | ASGI server |
+| `sqlalchemy` | ORM (global + tenant) |
+| `aiomysql` | MySQL async |
+| `pymysql` | MySQL sync (auth) |
+| `pandas` | Procesamiento de datos |
+| `pydantic` / `pydantic-settings` | Validación y config |
+| `argon2-cffi` | Password hashing |
+| `httpx` | HTTP client (DataBroker externo) |
+| `python-dotenv` | `.env` loading |
+
+## 7. Dependencias Instaladas Sin Usar
+
+| Paquete | Uso Previsto |
+|---------|-------------|
+| `pyjwt` | JWT auth para FastAPI |
+| `slowapi` | Rate limiting |
+| `apscheduler` | Background tasks (downtime auto) |
+| `flask-wtf` | CSRF protection |
+| `alembic` | DB migrations |
+| `bleach` | XSS sanitization |
+| `cryptography` | Utilities cripto |
+
+---
+
+_Resumen actualizado al estado real del código en `new_app/`. Ver [TODO.md](TODO.md) para próximos pasos._ 
 
 El proyecto ha alcanzado un estado **completamente funcional** y está listo para despliegue en producción. Se han implementado todas las fases planificadas (1-7) con backend FastAPI, frontend Flask SSR, sistema de configuración dinámica, motor de widgets, cálculo de métricas OEE y gestión de paradas automatizada.
 

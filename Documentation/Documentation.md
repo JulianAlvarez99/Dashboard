@@ -2,7 +2,14 @@
 
 Guía técnica detallada de la plataforma. Cubre la lógica de widgets, filtros, cálculos industriales, flujo de datos, seguridad y decisiones de arquitectura.
 
-**Última actualización:** 13 Febrero 2026
+**Última actualización:** 25 Febrero 2026  
+**Módulo activo:** `new_app/` · **Entry point:** `run_new.py`
+
+> ⚠️ **Nota:** Este documento describe la arquitectura con terminología del módulo refactorizado. Para referencias estructurales más actualizadas, ver:
+> - [README.md](README.md) — Visión general y estructura de archivos
+> - [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) — Diagramas del pipeline actual
+> - [WIDGETS_AND_FILTERS.md](WIDGETS_AND_FILTERS.md) — Guía completa de widgets y filtros
+> - [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) — Estado de implementación
 
 ---
 
