@@ -1,12 +1,25 @@
 """System endpoints — health check, cache info, cache refresh."""
 
+import secrets
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
 from new_app.core.cache import metadata_cache
+from new_app.core.config import settings
 
 router = APIRouter(prefix="/system", tags=["system"])
+
+
+def require_internal_key(x_internal_key: str = Header(...)) -> None:
+    """
+    Dependency: validate the X-Internal-Key header.
+
+    Only internal callers (e.g. Flask login handler) should know
+    this key.  Protects cache load/refresh from unauthenticated use.
+    """
+    if not secrets.compare_digest(x_internal_key, settings.API_INTERNAL_KEY):
+        raise HTTPException(status_code=401, detail="Invalid internal key")
 
 
 @router.get("/health")
@@ -28,7 +41,10 @@ async def cache_info():
 
 
 @router.post("/cache/load/{db_name}")
-async def cache_load(db_name: str):
+async def cache_load(
+    db_name: str,
+    _: None = Depends(require_internal_key),
+):
     """Load cache for a specific tenant (called after login)."""
     await metadata_cache.load_for_tenant(db_name)
     return {
@@ -39,7 +55,10 @@ async def cache_load(db_name: str):
 
 
 @router.post("/cache/refresh")
-async def cache_refresh(db_name: Optional[str] = None):
+async def cache_refresh(
+    db_name: Optional[str] = None,
+    _: None = Depends(require_internal_key),
+):
     """Force-reload all cached metadata."""
     try:
         await metadata_cache.refresh(db_name)

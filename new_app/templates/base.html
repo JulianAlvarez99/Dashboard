@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  {% if access_token is defined and access_token %}
+  <meta name="api-token" content="{{ access_token }}">
+  {% endif %}
   <title>{% block title %}Camet Analytics{% endblock %}</title>
 
   <!-- Fonts: Fira Sans (body) + Fira Code (data/mono) -->

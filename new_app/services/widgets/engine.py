@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional, Type
 import pandas as pd
 
 from new_app.services.widgets.base import BaseWidget, WidgetContext, WidgetResult
+from new_app.utils.naming import camel_to_snake
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,8 @@ class WidgetEngine:
     def __init__(self) -> None:
         # Cache: class_name → class object (avoids repeated imports)
         self._class_cache: Dict[str, Type[BaseWidget]] = {}
+        # Reverse map: class_name → widget_id (built lazily, reset on cache reload)
+        self._class_to_id: Dict[str, int] = {}
 
     def process_widgets(
         self,
@@ -171,15 +174,10 @@ class WidgetEngine:
         """
         Convert CamelCase to snake_case for module resolution.
 
-        ``KpiTotalProduction``   → ``kpi_total_production``
-        ``ProductionTimeChart``  → ``production_time_chart``
+        Delegates to the canonical ``camel_to_snake`` utility (DRY).
+        ``KpiTotalProduction``  → ``kpi_total_production``
         """
-        result: List[str] = []
-        for i, ch in enumerate(class_name):
-            if ch.isupper() and i > 0:
-                result.append("_")
-            result.append(ch.lower())
-        return "".join(result)
+        return camel_to_snake(class_name)
 
     @staticmethod
     def _scope_data(
@@ -216,7 +214,7 @@ class WidgetEngine:
         for wid, info in widget_catalog.items():
             if info.get("widget_name") == class_name:
                 return wid, info.get("description", class_name)
-        # Fallback: use class_name as display
+        # Fallback: class_name as display, id=0
         return 0, class_name
 
     @staticmethod

@@ -7,15 +7,19 @@ Responsibilities:
 - Retrieve a user by ID (for session revalidation).
 """
 
+import logging
 from typing import Any, Dict, Optional
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from new_app.core.config import settings
 from new_app.models.global_models import Tenant, User
+
+logger = logging.getLogger(__name__)
 
 
 # ── Argon2 hasher (configured once) ─────────────────────────────
@@ -90,8 +94,15 @@ def authenticate_user(
                 "db_name": db_name,
             },
         }
+    except OperationalError as exc:
+        # DB connectivity issue — raise so the caller can show a proper error
+        logger.error("[AUTH] Database unreachable during authentication: %s", exc)
+        raise RuntimeError("Database unavailable") from exc
+    except SQLAlchemyError as exc:
+        logger.error("[AUTH] Authentication DB error: %s", exc)
+        return None
     except Exception as exc:
-        print(f"[AUTH] Authentication error: {exc}")
+        logger.error("[AUTH] Unexpected authentication error: %s", exc, exc_info=True)
         return None
 
 
@@ -127,6 +138,9 @@ def get_user_by_id(
                 "db_name": tenant_config.get("db_name", ""),
             },
         }
+    except OperationalError as exc:
+        logger.error("[AUTH] Database unreachable during user lookup: %s", exc)
+        raise RuntimeError("Database unavailable") from exc
     except Exception as exc:
-        print(f"[AUTH] User lookup error: {exc}")
+        logger.error("[AUTH] User lookup error: %s", exc, exc_info=True)
         return None

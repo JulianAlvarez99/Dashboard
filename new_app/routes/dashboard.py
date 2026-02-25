@@ -77,6 +77,7 @@ def index():
         role=role,
         grid_columns=GRID_COLUMNS,
         show_oee_tab=SHOW_OEE_TAB,
+        access_token=session.get("access_token", ""),
     )
 
 

@@ -8,31 +8,31 @@ Tareas pendientes por prioridad. Estado al **25 Febrero 2026**.
 
 ### Seguridad de la API
 
-- [ ] **JWT Authentication para FastAPI**
+- [X] **JWT Authentication para FastAPI**
   - La API está completamente abierta (sin auth).
   - `pyjwt` ya instalado. Campos `JWT_SECRET_KEY` / `JWT_ALGORITHM` en Settings.
   - Crear dependency `require_tenant` que valide JWT en cada request.
   - Endpoints: `POST /auth/token`, `POST /auth/refresh`
   - Inyectar `tenant_id` del token en `TenantContext`
 
-- [ ] **CSRF Protection**
+- [X] **CSRF Protection**
   - `flask-wtf` instalado pero no activado.
   - Agregar `CSRFProtect(app)` en `flask_app.py`
   - Incluir `csrf_token()` en formulario de login
 
-- [ ] **Rate Limiting**
+- [X] **Rate Limiting**
   - `slowapi` instalado pero no activado.
   - Aplicar en `/auth/login` (anti-brute-force)
   - Aplicar en `/api/v1/*` (anti-abuse)
 
-- [ ] **Security Headers**
+- [X] **Security Headers**
   - No hay middleware de headers HTTP.
   - `X-Frame-Options: DENY`
   - `Content-Security-Policy`
   - `X-Content-Type-Options: nosniff`
 
 - [ ] **RBAC Enforcement en Endpoints**
-  - Los 5 roles están definidos: SUPER_ADMIN, ADMIN, MANAGER, OPERATOR, VIEWER
+  - Los 3 roles están definidos: ADMIN, MANAGER, OPERATOR
   - Ningún endpoint verifica el rol del usuario actualmente.
   - Crear dependency `@role_required("ADMIN")` en FastAPI
   - Crear decorador Flask `@role_required("MANAGER")` para rutas SSR

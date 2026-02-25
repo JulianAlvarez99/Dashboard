@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import importlib
 import logging
-import re
 from typing import Any, Dict, List, Optional, Type
 
 from new_app.core.cache import metadata_cache
 from new_app.services.filters.base import BaseFilter, FilterConfig
+from new_app.utils.naming import camel_to_snake
 
 logger = logging.getLogger(__name__)
 
@@ -32,26 +32,14 @@ logger = logging.getLogger(__name__)
 _FILTER_MODULE = "new_app.services.filters.types"
 
 
-def _camel_to_snake(name: str) -> str:
-    """
-    Convert CamelCase class name to snake_case module file name.
-
-    ``DateRangeFilter``      → ``date_range_filter``
-    ``ProductionLineFilter`` → ``production_line_filter``
-    ``CurveTypeFilter``      → ``curve_type_filter``
-    """
-    s = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", name)
-    s = re.sub(r"([a-z\d])([A-Z])", r"\1_\2", s)
-    return s.lower()
-
-
 def _resolve_filter_class(class_name: str) -> Optional[Type[BaseFilter]]:
     """
     Dynamically import and return a filter class by its CamelCase name.
 
+    Delegates to the canonical ``camel_to_snake`` utility (DRY).
     ``DateRangeFilter`` → ``new_app.services.filters.types.date_range_filter``
     """
-    module_name = _camel_to_snake(class_name)
+    module_name = camel_to_snake(class_name)
     full_path = f"{_FILTER_MODULE}.{module_name}"
     try:
         module = importlib.import_module(full_path)
@@ -78,6 +66,13 @@ class FilterEngine:
 
     def __init__(self) -> None:
         self._class_cache: Dict[str, Type[BaseFilter]] = {}
+        # Cache built filter instances by filter_id (stable across requests;
+        # instances are stateless — parent_values only affect get_options()).
+        self._cached_instances: Dict[int, BaseFilter] = {}
+
+    def clear_instance_cache(self) -> None:
+        """Invalidate the instance cache — call after a cache reload."""
+        self._cached_instances.clear()
 
     # ── Build instances ──────────────────────────────────────
 
@@ -110,12 +105,18 @@ class FilterEngine:
 
             class_name = row["filter_name"]  # e.g. "DateRangeFilter"
 
+            # ── Instance cache hit ────────────────────────────
+            fid = row["filter_id"]
+            if fid in self._cached_instances:
+                instances.append(self._cached_instances[fid])
+                continue
+
             # ── Auto-discovery: resolve the class ────────────
             cls = self._get_class(class_name)
             if cls is None:
                 logger.warning(
                     f"[FilterEngine] No class found for '{class_name}' — skipped. "
-                    f"Expected file: {_camel_to_snake(class_name)}.py"
+                    f"Expected file: {camel_to_snake(class_name)}.py"
                 )
                 continue
 
@@ -135,7 +136,9 @@ class FilterEngine:
                 ui_config=dict(cls.ui_config),  # copy, not shared ref
             )
 
-            instances.append(cls(config))
+            instance = cls(config)
+            self._cached_instances[row["filter_id"]] = instance
+            instances.append(instance)
 
         return instances
 

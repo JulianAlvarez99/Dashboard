@@ -6,7 +6,9 @@ for all environment-dependent values.
 """
 
 from functools import lru_cache
+from typing import List
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -30,6 +32,12 @@ class Settings(BaseSettings):
     FLASK_SECRET_KEY: str = ""
     FLASK_PORT: int = 5000
     API_BASE_URL: str = "http://127.0.0.1:8000"
+    # Comma-separated list of allowed CORS origins for the FastAPI server.
+    # In production set to your actual domain, e.g.: https://yourdomain.com
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:5000,http://127.0.0.1:5000"
+    # Shared secret for internal FastAPI endpoints (cache load/refresh).
+    # Must be provided; Flask sends this in X-Internal-Key header.
+    API_INTERNAL_KEY: str = ""
 
     # ── Global Database (camet_global) ───────────────────────────
     GLOBAL_DB_HOST: str = "localhost"
@@ -48,6 +56,12 @@ class Settings(BaseSettings):
     # ── JWT (reserved for future API auth) ───────────────────────
     JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
+
+    # ── CORS origins (parsed property) ───────────────────────────
+    @property
+    def cors_origins(self) -> List[str]:
+        """Return CORS_ALLOWED_ORIGINS as a list."""
+        return [o.strip() for o in self.CORS_ALLOWED_ORIGINS.split(",") if o.strip()]
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
@@ -60,9 +74,52 @@ class Settings(BaseSettings):
     RATE_LIMIT_PER_MINUTE: int = 100
     SESSION_TIMEOUT_MINUTES: int = 30
 
+    # ── Data limits ──────────────────────────────────────────────
+    # Maximum rows fetched across all pagination batches.
+    # Reduce on shared hosting with tight RAM limits (e.g. 100_000).
+    MAX_EXPORT_ROWS: int = 100_000
+
+    # ── UI feature flags ─────────────────────────────────────────
+    SHOW_OEE_TAB: bool = False
+
     # ── Logging ──────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/app.log"
+
+    # ── Startup validators ────────────────────────────────────────
+
+    @field_validator("FLASK_SECRET_KEY", "SECRET_KEY")
+    @classmethod
+    def _require_flask_secrets(cls, v: str, info) -> str:
+        """Refuse to start if Flask/app secret keys are empty."""
+        if not v or not v.strip():
+            raise ValueError(
+                f"{info.field_name} must not be empty. "
+                "Set it in your .env file (min 32 random characters)."
+            )
+        return v
+
+    @field_validator("API_INTERNAL_KEY")
+    @classmethod
+    def _require_internal_key(cls, v: str, info) -> str:
+        """Refuse to start if API_INTERNAL_KEY is empty."""
+        if not v or not v.strip():
+            raise ValueError(
+                "API_INTERNAL_KEY must not be empty. "
+                "Set a strong random value in your .env file."
+            )
+        return v
+
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
+    def _require_jwt_secret(cls, v: str, info) -> str:
+        """Refuse to start if JWT_SECRET_KEY is empty."""
+        if not v or not v.strip():
+            raise ValueError(
+                "JWT_SECRET_KEY must not be empty. "
+                "Set a strong random value in your .env file (min 32 characters)."
+            )
+        return v
 
     # ── URL Builders ─────────────────────────────────────────────
 

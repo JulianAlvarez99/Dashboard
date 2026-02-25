@@ -7,7 +7,9 @@ After successful login the session stores:
   session["db_name"]  → tenant database name (for cache & queries)
 """
 
-from datetime import datetime
+import logging
+import threading
+from datetime import datetime, timezone
 from functools import wraps
 
 from flask import (
@@ -20,7 +22,11 @@ import httpx
 from new_app.core.auth import authenticate_user
 from new_app.core.config import get_settings
 from new_app.core.database import db_manager
+from new_app.core.jwt_utils import create_access_token
+from new_app.core.limiter import rate_limit
 from new_app.models.global_models import UserLogin
+
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
@@ -43,9 +49,50 @@ def get_current_user() -> dict | None:
     return session.get("user")
 
 
+# ── Private helpers ──────────────────────────────────────────────
+
+def _build_session(user_info: dict, login_id: int) -> None:
+    """Populate the Flask session with user data.
+
+    Calls ``session.clear()`` first to prevent session fixation attacks:
+    an attacker who possesses a pre-login session ID cannot reuse it
+    after the user authenticates.
+    """
+    session.clear()
+    session["user"] = user_info
+    session["db_name"] = user_info["tenant_info"].get("db_name", "")
+    session["login_id"] = login_id
+
+
+def _warmup_cache(db_name: str, api_internal_key: str, api_base_url: str) -> None:
+    """Send the cache-load request to FastAPI in a background thread.
+
+    Running this in a daemon thread means the user's login response is NOT
+    blocked while the cache warms up (which can take several seconds on
+    cold start).
+    """
+    try:
+        url = f"{api_base_url}/api/v1/system/cache/load/{db_name}"
+        resp = httpx.post(
+            url,
+            headers={"X-Internal-Key": api_internal_key},
+            timeout=30.0,
+        )
+        if resp.status_code == 200:
+            logger.info("[AUTH] Cache loaded for tenant '%s'", db_name)
+        else:
+            logger.warning(
+                "[AUTH] Cache load returned %s for tenant '%s'",
+                resp.status_code, db_name,
+            )
+    except Exception as exc:
+        logger.error("[AUTH] Cache warm-up failed for '%s': %s", db_name, exc)
+
+
 # ── Routes ───────────────────────────────────────────────────────
 
 @auth_bp.route("/login", methods=["GET", "POST"])
+@rate_limit(max_calls=10, window_seconds=60)
 def login():
     if request.method == "GET":
         return render_template("auth/login.html")
@@ -57,18 +104,38 @@ def login():
         flash("Ingrese usuario y contraseña", "error")
         return render_template("auth/login.html")
 
+    settings = get_settings()
+
     with db_manager.get_global_session_sync() as db:
-        user_info = authenticate_user(db, username, password)
+        try:
+            user_info = authenticate_user(db, username, password)
+        except RuntimeError:
+            # DB unavailable — raised by authenticate_user on OperationalError
+            flash("Error de conexión. Intente más tarde.", "error")
+            return render_template("auth/login.html")
 
         if user_info is None:
             flash("Usuario o contraseña incorrectos", "error")
+            logger.warning(
+                "[AUTH] Failed login attempt for '%s' from %s",
+                username, request.remote_addr,
+            )
+            # Audit: record failed attempt
+            try:
+                from new_app.services.audit.audit_service import audit_service  # noqa: PLC0415
+                with db_manager.get_global_session_sync() as _db:
+                    audit_service.log_login_failure(
+                        db=_db,
+                        username=username,
+                        ip=request.remote_addr or "unknown",
+                        reason="invalid_credentials",
+                    )
+            except Exception as _exc:
+                logger.error("[AUTH] AuditLog (login failure) failed: %s", _exc)
             return render_template("auth/login.html")
 
-        # ── Populate session ────────────────────────────────
-        session["user"] = user_info
-        session["db_name"] = user_info["tenant_info"].get("db_name", "")
-
-        # ── Audit login ─────────────────────────────────────
+        # ── Audit: record login session ──────────────────────
+        login_id = 0
         try:
             login_record = UserLogin(
                 user_id=user_info["user_id"],
@@ -78,23 +145,49 @@ def login():
             )
             db.add(login_record)
             db.commit()
-            session["login_id"] = login_record.login_id
+            login_id = login_record.login_id
         except Exception as exc:
-            print(f"[AUTH] Audit log failed: {exc}")
+            logger.error("[AUTH] UserLogin record failed: %s", exc)
 
-    # ── Trigger cache load for this tenant (via FastAPI) ──
+    # ── Write AuditLog (LOGIN_SUCCESS) ───────────────────────
+    try:
+        from new_app.services.audit.audit_service import audit_service  # noqa: PLC0415
+        with db_manager.get_global_session_sync() as db:
+            audit_service.log_login_success(
+                db=db,
+                user_id=user_info["user_id"],
+                ip=request.remote_addr or "unknown",
+                user_agent=request.headers.get("User-Agent", "")[:255],
+                tenant_id=user_info["tenant_id"],
+                username=user_info["username"],
+            )
+    except Exception as exc:
+        logger.error("[AUTH] AuditLog write failed: %s", exc)
+
+    # ── Populate session (session.clear() prevents session fixation) ─
+    _build_session(user_info, login_id)
+    # ── Issue JWT for FastAPI calls ───────────────────────────
+    try:
+        access_token = create_access_token(
+            user_id=user_info["user_id"],
+            username=user_info["username"],
+            role=user_info["role"],
+            db_name=user_info["tenant_info"]["db_name"],
+            tenant_id=user_info["tenant_id"],
+        )
+        session["access_token"] = access_token
+    except Exception as exc:
+        logger.error("[AUTH] JWT creation failed: %s", exc)
+        # Non-fatal: user is logged in via session; FastAPI calls will fail
+        # until the token issue is resolved (e.g., JWT_SECRET_KEY missing).
+    # ── Cache warm-up: non-blocking daemon thread ────────────
     db_name = session["db_name"]
     if db_name:
-        try:
-            settings = get_settings()
-            api_url = f"{settings.API_BASE_URL}/api/v1/system/cache/load/{db_name}"
-            resp = httpx.post(api_url, timeout=15.0)
-            if resp.status_code == 200:
-                print(f"[AUTH] Cache loaded for tenant '{db_name}'")
-            else:
-                print(f"[AUTH] Cache load returned {resp.status_code}")
-        except Exception as exc:
-            print(f"[AUTH] Cache load request failed: {exc}")
+        threading.Thread(
+            target=_warmup_cache,
+            args=(db_name, settings.API_INTERNAL_KEY, settings.API_BASE_URL),
+            daemon=True,
+        ).start()
 
     flash(f"Bienvenido, {user_info['username']}!", "success")
     return redirect(url_for("dashboard.index"))
@@ -103,15 +196,32 @@ def login():
 @auth_bp.route("/logout")
 def logout():
     login_id = session.get("login_id")
+    user_info = session.get("user")
+
+    # ── Audit: record logout timestamp on UserLogin row ──────
     if login_id:
         try:
             with db_manager.get_global_session_sync() as db:
                 rec = db.query(UserLogin).filter_by(login_id=login_id).first()
                 if rec:
-                    rec.logout_at = datetime.utcnow()
+                    rec.logout_at = datetime.now(timezone.utc)
                     db.commit()
         except Exception as exc:
-            print(f"[AUTH] Logout audit failed: {exc}")
+            logger.error("[AUTH] Logout audit (UserLogin) failed: %s", exc)
+
+    # ── Write AuditLog (LOGOUT) ──────────────────────────────
+    if user_info:
+        try:
+            from new_app.services.audit.audit_service import audit_service  # noqa: PLC0415
+            with db_manager.get_global_session_sync() as db:
+                audit_service.log_logout(
+                    db=db,
+                    user_id=user_info["user_id"],
+                    ip=request.remote_addr or "unknown",
+                    username=user_info["username"],
+                )
+        except Exception as exc:
+            logger.error("[AUTH] AuditLog write (logout) failed: %s", exc)
 
     session.clear()
     flash("Sesión cerrada exitosamente", "info")

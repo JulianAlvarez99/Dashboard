@@ -8,8 +8,12 @@ Responsibilities:
 """
 
 from flask import Flask, redirect, url_for
+from flask_wtf.csrf import CSRFProtect
 
 from new_app.core.config import settings
+
+# CSRF protection singleton — init_app(app) called inside create_flask_app()
+csrf = CSRFProtect()
 
 
 def create_flask_app() -> Flask:
@@ -23,6 +27,12 @@ def create_flask_app() -> Flask:
     app.config["SECRET_KEY"] = settings.FLASK_SECRET_KEY
     app.config["DEBUG"] = settings.DEBUG
     app.config["API_BASE_URL"] = settings.API_BASE_URL
+    # Flask-WTF CSRF
+    app.config["WTF_CSRF_ENABLED"] = True
+    app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # token valid 1 hour
+
+    # ── CSRF protection ──────────────────────────────────────
+    csrf.init_app(app)
 
     # ── Blueprints ───────────────────────────────────────────
     from new_app.routes.auth import auth_bp
@@ -48,6 +58,45 @@ def create_flask_app() -> Flask:
     @app.errorhandler(403)
     def forbidden(e):
         return _render_error(403, "Acceso denegado"), 403
+
+    # ── Security headers ─────────────────────────────────────
+    @app.after_request
+    def set_security_headers(response):
+        """
+        Inject hardening headers on every Flask response.
+
+        X-Frame-Options      — prevent clickjacking.
+        X-Content-Type-Options — prevent MIME sniffing.
+        Referrer-Policy      — limit referrer info on cross-origin navigation.
+        Permissions-Policy   — disable powerful browser APIs not used here.
+        Content-Security-Policy — restrict resource origins.
+
+        connect-src includes API_BASE_URL so the browser JS (api-client.js)
+        can reach FastAPI.  For production, restrict this to the real domain.
+        """
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-XSS-Protection", "1; mode=block")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "geolocation=(), microphone=(), camera=(), interest-cohort=()",
+        )
+        api_base = app.config.get("API_BASE_URL", "")
+        connect_src = f"'self' {api_base}".strip()
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' "
+                "https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com data:; "
+                "img-src 'self' data: blob:; "
+                f"connect-src {connect_src};"
+            ),
+        )
+        return response
 
     return app
 

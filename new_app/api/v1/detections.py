@@ -29,6 +29,7 @@ from new_app.api.v1.dependencies import (
     require_tenant,
     resolve_line_ids_from_cleaned,
 )
+from new_app.utils.request_helpers import build_filter_dict
 from new_app.services.data.detection_service import detection_service
 from new_app.services.data.enrichment import enrich_detections
 from new_app.services.data.export import format_datetime_columns, to_csv, to_excel_bytes
@@ -65,23 +66,11 @@ class DetectionCountResponse(BaseModel):
 # ── Helpers ──────────────────────────────────────────────────────
 
 def _build_cleaned(req: DetectionQueryRequest) -> Dict[str, Any]:
-    """Build the cleaned dict matching FilterEngine output shape."""
-    cleaned: Dict[str, Any] = {}
-    if req.daterange:
-        cleaned["daterange"] = req.daterange
-    if req.shift_id is not None:
-        cleaned["shift_id"] = req.shift_id
-    if req.area_ids:
-        cleaned["area_ids"] = req.area_ids
-    if req.product_ids:
-        cleaned["product_ids"] = req.product_ids
-    if req.line_id is not None:
-        cleaned["line_id"] = req.line_id
-    if req.line_ids is not None:
-        cleaned["line_ids"] = req.line_ids
-    if req.interval:
-        cleaned["interval"] = req.interval
-    return cleaned
+    """Build the cleaned dict matching FilterEngine output shape.
+
+    Delegates to the shared ``build_filter_dict`` utility (DRY).
+    """
+    return build_filter_dict(req)
 
 
 # ── Endpoints ────────────────────────────────────────────────────

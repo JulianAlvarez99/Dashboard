@@ -2,15 +2,15 @@
 Global Database Models — camet_global.
 
 Tables: tenant, user, widget_catalog, dashboard_template,
-        user_login, audit_log.
+        user_login, audit_log, user_query.
 """
 
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import List, Optional
 
 from sqlalchemy import (
-    BigInteger, Boolean, DateTime, ForeignKey, Integer,
-    String, JSON, func,
+    BigInteger, Boolean, Date, DateTime, ForeignKey, Integer,
+    String, JSON, Text, Time, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -104,7 +104,12 @@ class UserLogin(GlobalBase):
 
 
 class AuditLog(GlobalBase):
-    """Security / action audit log."""
+    """Security / action audit log.
+
+    ``user_id = 0`` is the convention for anonymous/unknown users
+    (e.g. a login attempt where the username was not found in the DB).
+    This avoids a migration to make user_id nullable.
+    """
     __tablename__ = "audit_log"
 
     log_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -113,7 +118,36 @@ class AuditLog(GlobalBase):
     )
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     ip_address: Mapped[str] = mapped_column(String(45), nullable=False)
-    details: Mapped[dict] = mapped_column(JSON, nullable=False)
+    details: Mapped[str] = mapped_column(Text, nullable=False)  # JSON-serialised dict
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp()
+    )
+
+
+class UserQuery(GlobalBase):
+    """Dashboard query activity log.
+
+    Maps to the existing ``user_query`` table in camet_global.
+
+    IMPORTANT: The column ``slq_query`` has a typo in the DB
+    (should be ``sql_query``).  The name is intentionally kept verbatim
+    to avoid a migration.  Do NOT rename it.
+    """
+    __tablename__ = "user_query"
+
+    query_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("user.user_id"), nullable=False
+    )
+    username: Mapped[str] = mapped_column(String(50), nullable=False)
+    slq_query: Mapped[str] = mapped_column(Text, nullable=False)          # typo in DB — kept
+    query_parameters: Mapped[str] = mapped_column(Text, nullable=False)   # JSON string
+    start_date: Mapped[date] = mapped_column(Date, nullable=False)
+    start_time: Mapped[time] = mapped_column(Time, nullable=False)
+    end_date: Mapped[date] = mapped_column(Date, nullable=False)
+    end_time: Mapped[time] = mapped_column(Time, nullable=False)
+    line: Mapped[str] = mapped_column(String(20), nullable=False)
+    interval_type: Mapped[str] = mapped_column(String(20), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp()
     )

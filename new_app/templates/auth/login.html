@@ -73,6 +73,7 @@
 
         <!-- Login form -->
         <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5" x-data="{ loading: false }" @submit="loading = true">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <div>
             <label for="username" class="block text-sm font-medium text-gray-300 mb-1.5">Usuario</label>
             <div class="relative">

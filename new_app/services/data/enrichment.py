@@ -17,7 +17,7 @@ Added columns:
 from __future__ import annotations
 
 import logging
-from typing import Callable, Dict, Tuple
+from typing import Any, Dict
 
 import pandas as pd
 
@@ -25,15 +25,16 @@ from new_app.core.cache import metadata_cache
 
 logger = logging.getLogger(__name__)
 
-# Type alias: (column_name, mapper_function) pairs
-ColumnMapper = Tuple[str, Callable]
 
+# ── Public API ───────────────────────────────────────────────────
 
 def enrich_detections(df: pd.DataFrame) -> pd.DataFrame:
     """
     Enrich a raw detection DataFrame with metadata from cache.
 
-    Uses vectorized ``Series.map()`` for performance on large DataFrames.
+    Uses vectorized ``Series.map(dict)`` — a flat lookup dict is
+    built once per column set, then Pandas applies it at C speed
+    (no per-row Python lambda overhead).
 
     Args:
         df: Raw DataFrame with at least ``area_id`` and ``product_id``.
@@ -53,6 +54,29 @@ def enrich_detections(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ── Vectorized helper ────────────────────────────────────────────
+
+def _map_column(
+    df: pd.DataFrame,
+    src_col: str,
+    cache: Dict[Any, Dict[str, Any]],
+    field: str,
+    default: Any,
+) -> "pd.Series":
+    """
+    Vectorized column derivation using a pre-built flat lookup dict.
+
+    Builds ``{id: value}`` once, then delegates to ``Series.map()``
+    which runs at C speed — avoids a Python function call per row.
+    """
+    lookup: Dict[Any, Any] = {k: v[field] for k, v in cache.items() if field in v}
+    result = df[src_col].map(lookup)
+    # fillna handles IDs not present in cache
+    if isinstance(default, (int, float)):
+        return result.fillna(default)
+    return result.fillna(default).astype(object)
+
+
 # ── Private enrichment steps ─────────────────────────────────────
 
 def _apply_area_columns(df: pd.DataFrame) -> None:
@@ -61,12 +85,8 @@ def _apply_area_columns(df: pd.DataFrame) -> None:
         return
 
     areas = metadata_cache.get_areas()
-    df["area_name"] = df["area_id"].map(
-        lambda x: areas.get(x, {}).get("area_name", "Desconocida")
-    )
-    df["area_type"] = df["area_id"].map(
-        lambda x: areas.get(x, {}).get("area_type", "unknown")
-    )
+    df["area_name"] = _map_column(df, "area_id", areas, "area_name", "Desconocida")
+    df["area_type"] = _map_column(df, "area_id", areas, "area_type", "unknown")
 
 
 def _apply_product_columns(df: pd.DataFrame) -> None:
@@ -75,18 +95,16 @@ def _apply_product_columns(df: pd.DataFrame) -> None:
         return
 
     products = metadata_cache.get_products()
-    df["product_name"] = df["product_id"].map(
-        lambda x: products.get(x, {}).get("product_name", "Desconocido")
-    )
-    df["product_code"] = df["product_id"].map(
-        lambda x: products.get(x, {}).get("product_code", "")
-    )
-    df["product_weight"] = df["product_id"].map(
-        lambda x: float(products.get(x, {}).get("product_weight", 0))
-    )
-    df["product_color"] = df["product_id"].map(
-        lambda x: products.get(x, {}).get("product_color", "#888888")
-    )
+    df["product_name"]   = _map_column(df, "product_id", products, "product_name",   "Desconocido")
+    df["product_code"]   = _map_column(df, "product_id", products, "product_code",   "")
+    df["product_color"]  = _map_column(df, "product_id", products, "product_color",  "#888888")
+    # product_weight needs numeric default — ensure float Series
+    weight_lookup = {
+        k: float(v.get("product_weight", 0))
+        for k, v in products.items()
+        if "product_weight" in v
+    }
+    df["product_weight"] = df["product_id"].map(weight_lookup).fillna(0.0)
 
 
 def _apply_line_columns(df: pd.DataFrame) -> None:
@@ -95,12 +113,8 @@ def _apply_line_columns(df: pd.DataFrame) -> None:
         return
 
     lines = metadata_cache.get_production_lines()
-    df["line_name"] = df["line_id"].map(
-        lambda x: lines.get(x, {}).get("line_name", "Desconocida")
-    )
-    df["line_code"] = df["line_id"].map(
-        lambda x: lines.get(x, {}).get("line_code", "")
-    )
+    df["line_name"] = _map_column(df, "line_id", lines, "line_name", "Desconocida")
+    df["line_code"]  = _map_column(df, "line_id", lines, "line_code",  "")
 
 
 def _ensure_datetime(df: pd.DataFrame) -> None:

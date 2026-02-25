@@ -14,6 +14,7 @@ Secondary endpoints:
 
 from __future__ import annotations
 
+import time as _time
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,6 +24,7 @@ from new_app.core.cache import metadata_cache
 from new_app.core.database import db_manager
 from new_app.api.v1.dependencies import TenantContext, require_tenant
 from new_app.services.orchestrator import dashboard_orchestrator
+from new_app.utils.request_helpers import build_filter_dict
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -115,44 +117,16 @@ def _extract_user_params(req: DashboardDataRequest) -> Dict[str, Any]:
     """
     Extract filter params from request body into a flat dict
     matching FilterEngine's expected ``user_params`` shape.
+
+    Delegates to the shared ``build_filter_dict`` utility (DRY).
     """
-    params: Dict[str, Any] = {}
-
-    if req.daterange is not None:
-        params["daterange"] = req.daterange
-    if req.line_id is not None:
-        params["line_id"] = req.line_id
-    if req.line_ids is not None:
-        params["line_ids"] = req.line_ids
-    if req.shift_id is not None:
-        params["shift_id"] = req.shift_id
-    if req.area_ids is not None:
-        params["area_ids"] = req.area_ids
-    if req.product_ids is not None:
-        params["product_ids"] = req.product_ids
-    if req.interval is not None:
-        params["interval"] = req.interval
-    if req.curve_type is not None:
-        params["curve_type"] = req.curve_type
-    if req.downtime_threshold is not None:
-        params["downtime_threshold"] = req.downtime_threshold
-    if req.show_downtime is not None:
-        params["show_downtime"] = req.show_downtime
-
-    return params
+    return build_filter_dict(req)
 
 
 def _resolve_tenant_id(req_tenant_id: Optional[int]) -> int:
-    """Resolve tenant_id from request or cache."""
+    """Resolve tenant_id from request body. Required — no fallback."""
     if req_tenant_id is not None:
         return req_tenant_id
-    # Attempt to infer from cache — look up in global metadata
-    db_name = metadata_cache.current_tenant
-    if db_name:
-        # Tenant ID is typically embedded in the session, but for now
-        # we use a placeholder. The real tenant_id comes from the
-        # Flask session → API request.
-        return 1  # fallback
     raise HTTPException(status_code=400, detail="tenant_id is required")
 
 
@@ -177,6 +151,8 @@ async def get_dashboard_data(
     role = request.role or "ADMIN"
     user_params = _extract_user_params(request)
 
+    t_start = _time.perf_counter()
+
     async with db_manager.get_tenant_session_by_name(ctx.db_name) as session:
         result = await dashboard_orchestrator.execute(
             session=session,
@@ -186,6 +162,25 @@ async def get_dashboard_data(
             widget_ids=request.widget_ids,
             include_raw=request.include_raw,
         )
+
+    duration_ms = int((_time.perf_counter() - t_start) * 1000)
+
+    # ── Fire-and-forget: log the query activity ───────────────
+    try:
+        from new_app.services.audit.query_log_service import query_log_service  # noqa: PLC0415
+        user = metadata_cache.get_current_user() if hasattr(metadata_cache, "get_current_user") else None
+        user_id = (user or {}).get("user_id", 0)
+        username = (user or {}).get("username", "unknown")
+        query_log_service.log_query_async(
+            user_id=user_id,
+            username=username,
+            filters=user_params,
+            line=str(request.line_id or request.line_ids or "all"),
+            interval_type=request.interval or "hour",
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass  # query log failure must never break the response
 
     return result
 

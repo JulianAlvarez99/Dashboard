@@ -11,12 +11,20 @@ Routes:
 
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from new_app.core.cache import metadata_cache
 from new_app.services.filters.engine import filter_engine
 
 router = APIRouter(prefix="/filters", tags=["filters"])
+
+
+# ── Shared dependency ─────────────────────────────────────────────
+
+def require_cache() -> None:
+    """FastAPI dependency — raises 503 if the MetadataCache is not loaded."""
+    if not metadata_cache.is_loaded:
+        raise HTTPException(status_code=503, detail="Cache not loaded — log in first")
 
 
 @router.get("/")
@@ -26,6 +34,7 @@ async def list_filters(
         description="Comma-separated filter IDs to whitelist (from layout_config). "
                     "Omit to return all active filters.",
     ),
+    _cache: None = Depends(require_cache),
 ):
     """
     Return active filters with resolved options (JSON-ready).
@@ -33,9 +42,6 @@ async def list_filters(
     When ``filter_ids`` is provided (e.g. ``?filter_ids=1,2,5``),
     only those filters are returned — driven by ``layout_config``.
     """
-    if not metadata_cache.is_loaded:
-        raise HTTPException(status_code=503, detail="Cache not loaded — log in first")
-
     ids_list: Optional[List[int]] = None
     if filter_ids:
         try:
@@ -49,6 +55,7 @@ async def list_filters(
 @router.get("/areas")
 async def get_areas(
     line_id: Optional[int] = Query(None, description="Filter areas by line_id"),
+    _cache: None = Depends(require_cache),
 ):
     """
     Return areas from cache, optionally filtered by line_id.
@@ -56,8 +63,6 @@ async def get_areas(
     This is a direct cache lookup — AreaFilter doesn't need to be
     active (filter_status=1) for this to work.
     """
-    if not metadata_cache.is_loaded:
-        raise HTTPException(status_code=503, detail="Cache not loaded")
     areas = metadata_cache.get_areas()
     if line_id is not None:
         areas = {k: v for k, v in areas.items() if v["line_id"] == line_id}
@@ -69,10 +74,11 @@ async def get_areas(
 
 
 @router.get("/{class_name}")
-async def get_filter(class_name: str):
+async def get_filter(
+    class_name: str,
+    _cache: None = Depends(require_cache),
+):
     """Return a single filter by class_name."""
-    if not metadata_cache.is_loaded:
-        raise HTTPException(status_code=503, detail="Cache not loaded")
     result = filter_engine.resolve_one(class_name)
     if result is None:
         raise HTTPException(status_code=404, detail=f"Filter '{class_name}' not found")
@@ -83,6 +89,7 @@ async def get_filter(class_name: str):
 async def get_filter_options(
     class_name: str,
     line_id: Optional[int] = Query(None, description="Parent line_id for cascade"),
+    _cache: None = Depends(require_cache),
 ):
     """
     Reload options for a filter — used for cascade dependencies.
@@ -90,9 +97,6 @@ async def get_filter_options(
     E.g. when the user selects a production line, the AreaFilter
     options are reloaded filtered by that ``line_id``.
     """
-    if not metadata_cache.is_loaded:
-        raise HTTPException(status_code=503, detail="Cache not loaded")
-
     flt = filter_engine.get_by_name(class_name)
     if flt is None:
         raise HTTPException(status_code=404, detail=f"Filter '{class_name}' not found")
@@ -106,7 +110,10 @@ async def get_filter_options(
 
 
 @router.post("/validate")
-async def validate_filters(params: Dict[str, Any]):
+async def validate_filters(
+    params: Dict[str, Any],
+    _cache: None = Depends(require_cache),
+):
     """
     Validate a complete set of user-chosen filter values.
 
@@ -120,6 +127,4 @@ async def validate_filters(params: Dict[str, Any]):
             "interval": "hour"
         }
     """
-    if not metadata_cache.is_loaded:
-        raise HTTPException(status_code=503, detail="Cache not loaded")
     return filter_engine.validate_input(params)

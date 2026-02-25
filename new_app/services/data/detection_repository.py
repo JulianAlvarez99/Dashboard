@@ -42,8 +42,12 @@ class DetectionRepository:
     No metadata enrichment occurs here (SRP separation).
     """
 
-    # Safety cap: absolute maximum rows across all pagination batches
-    MAX_TOTAL_ROWS = 2_000_000
+    # Safety cap: absolute maximum rows across all pagination batches.
+    # Reads from settings so it can be tuned via environment variable.
+    @property
+    def MAX_TOTAL_ROWS(self) -> int:  # noqa: N802
+        from new_app.core.config import get_settings  # lazy to avoid circular imports
+        return get_settings().MAX_EXPORT_ROWS
 
     # Rows per batch (matches QueryBuilder.DEFAULT_BATCH_SIZE)
     BATCH_SIZE = QueryBuilder.DEFAULT_BATCH_SIZE
