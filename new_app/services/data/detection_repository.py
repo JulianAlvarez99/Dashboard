@@ -102,11 +102,37 @@ class DetectionRepository:
                 result = await session.execute(text(sql), params)
                 rows = result.mappings().all()
             except Exception as exc:
-                # Table might not exist or be inaccessible
-                logger.error(
-                    f"[DetectionRepo] Error querying {table_name}: {exc}"
-                )
-                break
+                # MySQL 1735 = unknown partition. The partition was pruned for
+                # a month range that doesn't exist yet in this table. Retry
+                # the SAME batch without the partition hint so the full-scan
+                # path is used instead of failing entirely.
+                err_str = str(exc)
+                if partition_hint and "1735" in err_str:
+                    logger.warning(
+                        f"[DetectionRepo] Partition hint {partition_hint!r} not found "
+                        f"on {table_name} — retrying without hint"
+                    )
+                    sql_no_hint, params_no_hint = query_builder.build_detection_query(
+                        table_name=table_name,
+                        cleaned=cleaned,
+                        cursor_id=cursor_id,
+                        limit=batch_limit,
+                        partition_hint="",
+                    )
+                    try:
+                        result = await session.execute(text(sql_no_hint), params_no_hint)
+                        rows = result.mappings().all()
+                        partition_hint = ""  # don't retry with hint again
+                    except Exception as exc2:
+                        logger.error(
+                            f"[DetectionRepo] Error querying {table_name} (no-hint retry): {exc2}"
+                        )
+                        break
+                else:
+                    logger.error(
+                        f"[DetectionRepo] Error querying {table_name}: {exc}"
+                    )
+                    break
 
             if not rows:
                 break

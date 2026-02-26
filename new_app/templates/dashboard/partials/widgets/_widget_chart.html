@@ -4,8 +4,41 @@
 #}
 <div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty){% if w.downtime_only %} && !isMultiLine{% endif %}"
      x-cloak class="widget-card-body">
-  <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3"
-      x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+
+  {# ── Widget title row + line/bar toggle (only for production timeline) ── #}
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider"
+        x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+
+    {% if chart_type == 'line_chart' %}
+    {# Line ⇄ Bar toggle — only visible when data is loaded #}
+    <div class="chart-mode-toggle" x-show="widgetResults['{{ wid }}']?.data">
+      <button
+        class="chart-mode-btn"
+        :class="(chartModes['{{ wid }}'] || 'line') === 'line' ? 'chart-mode-btn--active' : ''"
+        @click="toggleWidgetMode('{{ wid }}', 'line')"
+        title="Vista de línea">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span>Línea</span>
+      </button>
+      <button
+        class="chart-mode-btn"
+        :class="(chartModes['{{ wid }}'] || 'line') === 'bar' ? 'chart-mode-btn--active' : ''"
+        @click="toggleWidgetMode('{{ wid }}', 'bar')"
+        title="Vista de barras">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+        <span>Barras</span>
+      </button>
+    </div>
+    {% endif %}
+  </div>
 
   {% if chart_type == 'comparison_bar' %}
   {# Entry / Output / Discard summary cards #}
@@ -31,4 +64,34 @@
   <div class="widget-chart-wrap" style="height:{{ chart_h }}">
     <canvas id="chart-{{ wid }}"></canvas>
   </div>
+
+  {% if chart_type == 'pie_chart' %}
+  {# ── Product distribution summary table ── #}
+  <div class="pie-table-wrap"
+       x-show="widgetResults['{{ wid }}']?.data?.table_rows?.length">
+    <table class="pie-table">
+      <thead>
+        <tr>
+          <th>Clase</th>
+          <th class="text-right">Uds.</th>
+          <th class="text-right">Peso&nbsp;(kg)</th>
+          <th class="text-right">%</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="row in (widgetResults['{{ wid }}']?.data?.table_rows || [])" :key="row.label">
+          <tr>
+            <td class="pie-table-label">
+              <span class="pie-table-dot" :style="'background:' + row.color"></span>
+              <span x-text="row.label"></span>
+            </td>
+            <td class="text-right font-mono" x-text="row.count.toLocaleString('es-AR')"></td>
+            <td class="text-right font-mono" x-text="row.weight_kg.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})"></td>
+            <td class="text-right font-mono pie-table-pct" x-text="row.pct.toFixed(1) + '%'"></td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </div>

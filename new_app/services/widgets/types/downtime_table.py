@@ -60,12 +60,12 @@ class DowntimeTable(BaseWidget):
 
             rows.append({
                 "start_time": (
-                    row["start_time"].strftime("%Y-%m-%d %H:%M")
+                    row["start_time"].strftime("%d-%m-%Y %H:%M")
                     if pd.notna(row.get("start_time"))
                     else ""
                 ),
                 "end_time": (
-                    row["end_time"].strftime("%Y-%m-%d %H:%M")
+                    row["end_time"].strftime("%d-%m-%Y %H:%M")
                     if pd.notna(row.get("end_time"))
                     else ""
                 ),

@@ -16,7 +16,7 @@
 
 /* Checkbox accent override for dark theme */
 input[type="checkbox"]:checked {
-  accent-color: #22C55E;
+  accent-color: var(--color-accent-500, #22C55E);
 }
 
 /* Date/time input color-scheme for dark mode */

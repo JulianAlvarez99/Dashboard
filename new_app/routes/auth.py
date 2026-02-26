@@ -9,6 +9,7 @@ After successful login the session stores:
 
 import logging
 import threading
+import time
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -69,24 +70,33 @@ def _warmup_cache(db_name: str, api_internal_key: str, api_base_url: str) -> Non
 
     Running this in a daemon thread means the user's login response is NOT
     blocked while the cache warms up (which can take several seconds on
-    cold start).
+    cold start).  Retries up to 5 times with exponential back-off so a
+    slow FastAPI start-up does not permanently break the first session.
     """
-    try:
-        url = f"{api_base_url}/api/v1/system/cache/load/{db_name}"
-        resp = httpx.post(
-            url,
-            headers={"X-Internal-Key": api_internal_key},
-            timeout=30.0,
-        )
-        if resp.status_code == 200:
-            logger.info("[AUTH] Cache loaded for tenant '%s'", db_name)
-        else:
-            logger.warning(
-                "[AUTH] Cache load returned %s for tenant '%s'",
-                resp.status_code, db_name,
+    url = f"{api_base_url}/api/v1/system/cache/load/{db_name}"
+    max_retries = 5
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = httpx.post(
+                url,
+                headers={"X-Internal-Key": api_internal_key},
+                timeout=30.0,
             )
-    except Exception as exc:
-        logger.error("[AUTH] Cache warm-up failed for '%s': %s", db_name, exc)
+            if resp.status_code == 200:
+                logger.info("[AUTH] Cache loaded for tenant '%s'", db_name)
+                return
+            logger.warning(
+                "[AUTH] Cache load returned %s for tenant '%s' (attempt %d/%d)",
+                resp.status_code, db_name, attempt, max_retries,
+            )
+        except Exception as exc:
+            logger.warning(
+                "[AUTH] Cache warm-up failed for '%s' (attempt %d/%d): %s",
+                db_name, attempt, max_retries, exc,
+            )
+        if attempt < max_retries:
+            time.sleep(2 ** attempt)  # 2, 4, 8, 16 s
+    logger.error("[AUTH] Cache warm-up exhausted %d retries for '%s'", max_retries, db_name)
 
 
 # ── Routes ───────────────────────────────────────────────────────

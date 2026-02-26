@@ -1,0 +1,143 @@
+/**
+ * theme.css — Camet Analytics Design Tokens
+ * ============================================================
+ * Single source of truth for ALL colors and visual tokens.
+ *
+ * To retheme the entire application, only edit this file.
+ *
+ * Usage in CSS:
+ *   background: var(--color-surface-900);
+ *   color:      var(--color-accent-500);
+ *
+ * Usage in JS (charts, dynamic styles):
+ *   const v = k => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+ *   v('--color-accent-500')   → "#22C55E"
+ */
+
+:root {
+
+  /* ── Surface (backgrounds, cards, borders) ───────────────── */
+  --color-surface-950: #020617;   /* page background (darkest) */
+  --color-surface-900: #0F172A;   /* widget / card background   */
+  --color-surface-800: #1E293B;   /* secondary card, header     */
+  --color-surface-700: #334155;   /* border, divider            */
+  --color-surface-600: #475569;   /* input placeholder, subtle  */
+
+  /* ── Accent (primary brand color — change ONE line to retheme) */
+  --color-accent-50:  #fdf0fa;
+  --color-accent-100: #fcdcf8;
+  --color-accent-400: #de4aca;
+  --color-accent-500: #c522af;    /* ← PRIMARY BRAND GREEN      */
+  --color-accent-600: #a3168b;
+  --color-accent-700: #801560;
+
+  /* ── Semantic colors ─────────────────────────────────────── */
+  --color-info:   #38BDF8;        /* info / blue                */
+  --color-warn:   #FBBF24;        /* warning / amber            */
+  --color-danger: #F87171;        /* error / red                */
+
+  /* ── Text ────────────────────────────────────────────────── */
+  --color-text-primary:   #F1F5F9;  /* headings, main content   */
+  --color-text-secondary: #94A3B8;  /* labels, captions         */
+  --color-text-muted:     #64748B;  /* hints, disabled          */
+  --color-text-faint:     #475569;  /* placeholders, very subtle */
+
+  /* ── Charts — grid & ticks ───────────────────────────────── */
+  --chart-grid:       rgba(148, 163, 184, 0.08);
+  --chart-tick:       #94A3B8;
+  --chart-tooltip-bg: rgba(2, 6, 23, 0.95);
+
+  /* ── Charts — production timeline line colors (up to 5 lines) */
+  --chart-line-1:    #22C55E;                   /* green  */
+  --chart-line-bg-1: rgba(34, 197, 94, 0.08);
+  --chart-line-2:    #38BDF8;                   /* cyan   */
+  --chart-line-bg-2: rgba(56, 189, 248, 0.08);
+  --chart-line-3:    #FBBF24;                   /* amber  */
+  --chart-line-bg-3: rgba(251, 191, 36, 0.08);
+  --chart-line-4:    #F87171;                   /* red    */
+  --chart-line-bg-4: rgba(248, 113, 113, 0.08);
+  --chart-line-5:    #A78BFA;                   /* violet */
+  --chart-line-bg-5: rgba(167, 139, 250, 0.08);
+
+  /* ── Charts — downtime annotation colors ─────────────────── */
+  --chart-dt-bg:                rgba(239, 68, 68, 0.15);
+  --chart-dt-border:            rgba(239, 68, 68, 0.6);
+  --chart-dt-label:             #FCA5A5;
+  --chart-dt-label-bg:          rgba(127, 29, 29, 0.85);
+  --chart-dt-incident-bg:       rgba(249, 115, 22, 0.15);
+  --chart-dt-incident-border:   rgba(249, 115, 22, 0.6);
+  --chart-dt-incident-label:    #FDBA74;
+  --chart-dt-incident-label-bg: rgba(124, 45, 18, 0.85);
+
+  /* ── Login page ───────────────────────────────────────────── */
+  /*
+   * --login-glass-opacity : tint layer over carousel
+   *   0   = fully transparent (carousel fully visible)
+   *   1   = opaque (carousel hidden behind solid color)
+   *   0.5 = half-transparent — recommended for legibility
+   */
+  --login-glass-opacity: 0.55;
+  --login-glass-blur:    8px;           /* backdrop-filter blur on the card */
+  --login-overlay-color: 2, 6, 23;      /* RGB of --color-surface-950        */
+  --login-card-bg:       rgba(15, 23, 42, 0.80);
+  --login-card-border:   rgba(51, 65, 85, 0.55);
+
+  /* ── Widget cards ─────────────────────────────────────────── */
+  --widget-card-bg:     #0F172A;
+  --widget-card-border: rgba(51, 65, 85, 0.5);
+
+  /*
+   * ── Widget hover glow ───────────────────────────────────
+   * Edit ONLY --widget-card-hover-rgb (R, G, B channels) to change
+   * the border highlight and glow that appear when hovering a card.
+   * Example values:
+   *   197, 34, 174   ← accent purple (current)
+   *    34, 197, 94   ← green
+   *    56, 189, 248  ← cyan
+   */
+  --widget-card-hover-rgb:    197, 34, 174;
+  --widget-card-hover-border: rgba(var(--widget-card-hover-rgb), 0.28);
+  --widget-card-hover-glow:   rgba(var(--widget-card-hover-rgb), 0.07);
+
+  /* ── Glow shadows ─────────────────────────────────────────── */
+  --shadow-glow-sm: 0 0 8px  rgba(34, 197, 94, 0.15);
+  --shadow-glow:    0 0 20px rgba(34, 197, 94, 0.2);
+
+  /* ── Chart mode toggle button ─────────────────────────────── */
+  --chart-toggle-bg:           rgba(30, 41, 59, 0.9);
+  --chart-toggle-border:       rgba(51, 65, 85, 0.7);
+  --chart-toggle-active-bg:    rgba(34, 197, 94, 0.15);
+  --chart-toggle-active-color: #4ADE80;
+
+  /* ── Auth flash / alert cards ─────────────────────────────── */
+  /*
+   * Controls the border and background of login alerts:
+   * - error  : wrong credentials, session expired
+   * - success: session closed successfully
+   * - warning: unusual state
+   * - info   : informational
+   */
+  --flash-error-bg:       rgba(248, 113, 113, 0.10);
+  --flash-error-border:   rgba(248, 113, 113, 0.35);
+  --flash-error-text:     #F87171;  /* = --color-danger  */
+
+  --flash-success-bg:     rgba(74, 222, 128, 0.10);
+  --flash-success-border: rgba(74, 222, 128, 0.35);
+  --flash-success-text:   #4ADE80;  /* = --color-accent-400 */
+
+  --flash-warn-bg:        rgba(251, 191, 36, 0.10);
+  --flash-warn-border:    rgba(251, 191, 36, 0.35);
+  --flash-warn-text:      #FBBF24;  /* = --color-warn    */
+
+  --flash-info-bg:        rgba(56, 189, 248, 0.10);
+  --flash-info-border:    rgba(56, 189, 248, 0.35);
+  --flash-info-text:      #38BDF8;  /* = --color-info    */
+
+  /* ── Dashboard layout borders ─────────────────────────────── */
+  /*
+   * --dashboard-sidebar-border: the line between the filter panel and the main content
+   * --dashboard-tab-border:     the bottom line under the Producción / OEE tabs
+   */
+  --dashboard-sidebar-border: rgba(51, 65, 85, 0.50);
+  --dashboard-tab-border:     rgba(51, 65, 85, 0.70);
+}

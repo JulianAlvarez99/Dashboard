@@ -123,7 +123,7 @@ const DashboardOrchestrator = {
             if (!meta) return;
             const chartType = ctx._CHART_TYPE_MAP[meta.widget_name];
             if (chartType) {
-                chartWidgets.push({ chartType: chartType, widgetData: wd });
+                chartWidgets.push({ chartType: chartType, widgetData: wd, wid });
             }
         });
 
@@ -131,12 +131,14 @@ const DashboardOrchestrator = {
 
         const isMulti = ctx.isMultiLine;
         const instances = ctx.chartInstances;
+        const modes = ctx.chartModes || {};
 
         // Double rAF ensures Alpine x-show toggles display block so charts have dimensions
         requestAnimationFrame(function () {
             requestAnimationFrame(function () {
                 chartWidgets.forEach(cw => {
-                    ChartRenderer.render(cw.chartType, cw.widgetData, instances, isMulti);
+                    const mode = modes[cw.wid] || 'line';
+                    ChartRenderer.render(cw.chartType, cw.widgetData, instances, isMulti, 0, mode);
                 });
             });
         });

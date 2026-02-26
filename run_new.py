@@ -9,6 +9,7 @@ Usage:
 """
 
 import signal
+import socket
 import subprocess
 import sys
 import time
@@ -19,13 +20,14 @@ from new_app.core.config import settings
 
 
 def run_fastapi() -> None:
-    """Start the FastAPI data-engine on port 8000."""
-    print("🚀 FastAPI → http://localhost:8000")
-    print("📄 Docs    → http://localhost:8000/api/docs")
+    """Start the FastAPI data-engine."""
+    port = settings.FASTAPI_PORT
+    print(f"🚀 FastAPI → http://localhost:{port}")
+    print(f"📄 Docs    → http://localhost:{port}/api/docs")
     uvicorn.run(
         "new_app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=settings.DEBUG,
     )
 
@@ -41,12 +43,13 @@ def run_flask() -> None:
 
 def run_both() -> None:
     """Launch FastAPI as a subprocess, Flask in the main process."""
+    api_port = settings.FASTAPI_PORT
     sep = "=" * 60
     print(sep)
     print("  Camet Analytics v2.0 — Starting both servers")
-    print(f"  API:  http://localhost:8000  (FastAPI)")
+    print(f"  API:  http://localhost:{api_port}  (FastAPI)")
     print(f"  Web:  http://localhost:{settings.FLASK_PORT}  (Flask)")
-    print(f"  Docs: http://localhost:8000/api/docs")
+    print(f"  Docs: http://localhost:{api_port}/api/docs")
     print(sep)
 
     api_proc = subprocess.Popen(
@@ -54,7 +57,18 @@ def run_both() -> None:
         stdout=sys.stdout,
         stderr=sys.stderr,
     )
-    time.sleep(2)
+
+    # Wait until FastAPI actually starts accepting connections (max 30 s)
+    print("  Waiting for FastAPI to be ready…", end="", flush=True)
+    for _ in range(60):
+        try:
+            with socket.create_connection(("127.0.0.1", api_port), timeout=0.5):
+                break
+        except OSError:
+            time.sleep(0.5)
+    else:
+        print(" TIMEOUT — FastAPI did not start in 30 s")
+    print(" ready.")
 
     def cleanup(signum=None, frame=None):
         print("\n🛑 Shutting down both servers …")

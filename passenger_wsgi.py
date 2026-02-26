@@ -57,10 +57,13 @@ def _start_fastapi() -> None:
     """
     Start the FastAPI (uvicorn) server as a background subprocess.
 
-    Binds to 127.0.0.1:8000 — only reachable from the local machine.
+    Binds to 127.0.0.1 — only reachable from the local machine.
+    Port is read from FASTAPI_PORT env var (default 8000).
     Uvicorn executable is resolved from the active virtualenv.
     """
     global _fastapi_proc
+
+    api_port = os.environ.get("FASTAPI_PORT", "8000")
 
     # Determine uvicorn binary path
     venv_bin = os.path.join(sys.prefix, "bin", "uvicorn")
@@ -74,7 +77,7 @@ def _start_fastapi() -> None:
         "new_app.main:create_fastapi_app",
         "--factory",
         "--host", "127.0.0.1",
-        "--port", "8000",
+        "--port", api_port,
         "--workers", "1",          # single worker — MetadataCache is process-local
         "--log-level", "info",
     ]
@@ -94,7 +97,7 @@ def _start_fastapi() -> None:
             f"FastAPI (uvicorn) failed to start — exit code {_fastapi_proc.returncode}"
         )
 
-    logger.info("FastAPI backend running on http://127.0.0.1:8000 (PID %d)", _fastapi_proc.pid)
+    logger.info("FastAPI backend running on http://127.0.0.1:%s (PID %d)", api_port, _fastapi_proc.pid)
 
 
 def _stop_fastapi() -> None:
@@ -125,4 +128,21 @@ except Exception as exc:
 # ── Flask WSGI application ────────────────────────────────────────
 from new_app.flask_app import create_flask_app  # noqa: E402
 
-application = create_flask_app()
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+
+def _not_found_app(environ, start_response):
+    start_response("404 Not Found", [("Content-Type", "text/plain")])
+    return [b"Not found"]
+
+_flask_app = create_flask_app()
+tenant_slug = os.environ.get("TENANT_SLUG", "").strip("/")
+
+if tenant_slug:
+    # Monta Flask bajo /clienteabc — Passenger ve el path completo
+    application = DispatcherMiddleware(
+        _not_found_app,           # responde 404 para "/"
+        {f"/{tenant_slug}": _flask_app}
+    )
+else:
+    application = _flask_app     # fallback raíz
+

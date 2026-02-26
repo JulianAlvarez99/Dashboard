@@ -75,6 +75,27 @@ const DashboardEvents = {
     },
 
     /**
+     * Toggle a production timeline widget between line and bar chart mode.
+     * Re-renders the chart immediately without re-fetching data.
+     *
+     * @param {string|number} wid  - Widget ID (matches widgetResults key)
+     * @param {string}        mode - 'line' | 'bar'
+     */
+    toggleWidgetMode(wid, mode) {
+        this.chartModes[wid] = mode;
+        const wd = this.widgetResults[wid];
+        if (!wd) return;
+        const isMulti = this.isMultiLine;
+        const instances = this.chartInstances;
+        // Double rAF ensures the canvas is visible if tab just became active
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                ChartRenderer.toggleChartMode(wid, mode, wd, instances, isMulti);
+            });
+        });
+    },
+
+    /**
      * Re-render line charts when curve_type changes.
      * Patches the new curve_type into the data so the config builder picks it
      * up on the next full render, then updates all charts.

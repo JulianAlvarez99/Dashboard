@@ -1,45 +1,39 @@
 {% extends "base.html" %}
 {% block title %}Iniciar sesión — Camet Analytics{% endblock %}
 
-{% block body %}
-<div class="flex min-h-screen" x-data="loginPage()">
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+{% endblock %}
 
-  <!-- ═══ LEFT: Image Carousel ═══════════════════════════════ -->
-  <div class="hidden lg:flex lg:w-1/2 xl:w-3/5 relative overflow-hidden bg-surface-950">
-    <!-- Slide images -->
+{% block body %}
+<div x-data="loginPage()">
+
+  <!-- ═══ LAYER 0: Full-screen image carousel ════════════════════ -->
+  <div class="login-carousel-bg">
     <template x-for="(slide, idx) in slides" :key="idx">
-      <div class="absolute inset-0 transition-all duration-700 ease-in-out flex items-center justify-center"
+      <div class="login-carousel-slide"
            :class="idx === current
              ? 'opacity-100 scale-100'
-             : (idx === prev ? 'opacity-0 scale-105' : 'opacity-0 scale-95')">
-        <img :src="slide.src" :alt="slide.alt"
-             class="w-full h-full object-contain p-12 select-none pointer-events-none"
-             draggable="false">
+             : (idx === prev ? 'opacity-0 scale-105' : 'opacity-0 scale-100')">
+        <img :src="slide.src" :alt="slide.alt" draggable="false">
       </div>
     </template>
-
-    <!-- Dot indicators -->
-    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-      <template x-for="(slide, idx) in slides" :key="'dot-' + idx">
-        <button @click="goTo(idx)"
-          class="w-2 h-2 rounded-full transition-all duration-300 cursor-pointer"
-          :class="idx === current
-            ? 'bg-accent-400 w-6'
-            : 'bg-surface-600 hover:bg-surface-500'">
-        </button>
-      </template>
-    </div>
-
-    <!-- Subtle gradient overlay on the right edge for seamless blend -->
-    <div class="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-surface-950 to-transparent"></div>
   </div>
 
-  <!-- ═══ RIGHT: Login Form ══════════════════════════════════ -->
-  <div class="flex items-center justify-center w-full lg:w-1/2 xl:w-2/5 px-6">
+  <!-- ═══ LAYER 1: Crystal-clear glass tint overlay ══════════════
+       Control transparency in theme.css → --login-glass-opacity
+       0 = fully transparent (image only)
+       1 = fully opaque (solid dark)                               -->
+  <div class="login-glass-overlay"></div>
+
+  <!-- ═══ LAYER 2: Centered form (above overlay) ════════════════ -->
+  <div class="login-form-wrapper">
     <div class="w-full max-w-sm animate-slide-up">
-      <!-- Card -->
-      <div class="bg-surface-800 border border-surface-700 rounded-2xl shadow-xl p-8 relative overflow-hidden">
-        <!-- Subtle top accent bar -->
+
+      <!-- Glassmorphism card -->
+      <div class="login-card rounded-2xl p-8 relative overflow-hidden">
+
+        <!-- Top accent bar -->
         <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-accent-500 to-transparent"></div>
 
         <!-- Logo / Title -->
@@ -57,10 +51,10 @@
         <div class="mb-5 space-y-2 animate-fade-in">
           {% for category, message in messages %}
           <div class="flex items-center gap-2 text-sm px-3 py-2.5 rounded-lg
-            {% if category == 'error' %}bg-danger/10 text-danger border border-danger/20
-            {% elif category == 'success' %}bg-accent/10 text-accent-400 border border-accent/20
-            {% elif category == 'warning' %}bg-warn/10 text-warn border border-warn/20
-            {% else %}bg-info/10 text-info border border-info/20{% endif %}">
+            {% if category == 'error' %}flash-error
+            {% elif category == 'success' %}flash-success
+            {% elif category == 'warning' %}flash-warning
+            {% else %}flash-info{% endif %}">
             {% if category == 'error' %}<i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
             {% elif category == 'success' %}<i data-lucide="check-circle-2" class="w-4 h-4 shrink-0"></i>
             {% else %}<i data-lucide="info" class="w-4 h-4 shrink-0"></i>{% endif %}
@@ -72,32 +66,36 @@
         {% endwith %}
 
         <!-- Login form -->
-        <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5" x-data="{ loading: false }" @submit="loading = true">
+        <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5"
+              x-data="{ loading: false }" @submit="loading = true">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
           <div>
             <label for="username" class="block text-sm font-medium text-gray-300 mb-1.5">Usuario</label>
             <div class="relative">
               <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-600"></i>
               <input
                 type="text" id="username" name="username" required autofocus
-                class="w-full pl-10 pr-3 py-2.5 bg-surface-900 border border-surface-600 rounded-lg
+                class="w-full pl-10 pr-3 py-2.5 bg-surface-900/70 border border-surface-600 rounded-lg
                        text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-500/40
                        focus:border-accent-500 outline-none transition-all duration-200"
                 placeholder="Ingrese su usuario">
             </div>
           </div>
+
           <div>
             <label for="password" class="block text-sm font-medium text-gray-300 mb-1.5">Contraseña</label>
             <div class="relative">
               <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-600"></i>
               <input
                 type="password" id="password" name="password" required
-                class="w-full pl-10 pr-3 py-2.5 bg-surface-900 border border-surface-600 rounded-lg
+                class="w-full pl-10 pr-3 py-2.5 bg-surface-900/70 border border-surface-600 rounded-lg
                        text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-500/40
                        focus:border-accent-500 outline-none transition-all duration-200"
                 placeholder="Ingrese su contraseña">
             </div>
           </div>
+
           <button
             type="submit"
             :disabled="loading"
@@ -105,11 +103,16 @@
                    text-white font-semibold rounded-lg transition-all duration-200
                    shadow-glow-sm hover:shadow-glow cursor-pointer flex items-center justify-center gap-2">
             <template x-if="!loading">
-              <span class="flex items-center gap-2"><i data-lucide="log-in" class="w-4 h-4"></i>Iniciar sesión</span>
+              <span class="flex items-center gap-2">
+                <i data-lucide="log-in" class="w-4 h-4"></i>Iniciar sesión
+              </span>
             </template>
             <template x-if="loading">
               <span class="flex items-center gap-2">
-                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/></svg>
+                <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                </svg>
                 Verificando…
               </span>
             </template>
@@ -119,10 +122,24 @@
         <p class="text-center text-xs text-gray-500 mt-8">
           &copy; 2026 Camet Robótica. Todos los derechos reservados.
         </p>
-      </div>
+      </div><!-- /login-card -->
+    </div><!-- /max-w-sm -->
+
+    <!-- Carousel dot indicators (below card) -->
+    <div class="flex items-center gap-3 mt-6">
+      <template x-for="(slide, idx) in slides" :key="'dot-' + idx">
+        <button @click="goTo(idx)"
+                :class="idx === current ? 'login-dot active' : 'login-dot'"
+                :aria-label="'Ir a slide ' + (idx + 1)">
+        </button>
+      </template>
+      <!-- Slide counter -->
+      <span class="login-slide-badge ml-2"
+            x-text="(current + 1) + ' / ' + slides.length"></span>
     </div>
-  </div>
-</div>
+
+  </div><!-- /login-form-wrapper -->
+</div><!-- /root -->
 
 <script>
 function loginPage() {

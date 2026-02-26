@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     )
 
     # ── Application ──────────────────────────────────────────────
-    APP_NAME: str = "CametAnalytics"
+    APP_NAME: str = "Camet Robotica"
     APP_ENV: str = "development"
     DEBUG: bool = False
     SECRET_KEY: str = ""
@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     # ── Flask ────────────────────────────────────────────────────
     FLASK_SECRET_KEY: str = ""
     FLASK_PORT: int = 5000
+    FASTAPI_PORT: int = 8000
     API_BASE_URL: str = "http://127.0.0.1:8000"
     # Comma-separated list of allowed CORS origins for the FastAPI server.
     # In production set to your actual domain, e.g.: https://yourdomain.com
@@ -122,6 +123,13 @@ class Settings(BaseSettings):
         return v
 
     # ── URL Builders ─────────────────────────────────────────────
+    TENANT_SLUG: str = "clienteabc"  # desde .env, sin slashes
+
+    @property
+    def base_path(self) -> str:
+        slug = self.TENANT_SLUG.strip("/")
+        return f"/{slug}" if slug else "/"
+
 
     def _build_url(self, driver: str, user: str, password: str,
                    host: str, port: int, db_name: str) -> str:

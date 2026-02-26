@@ -84,42 +84,72 @@ def index():
 # ── Internal helpers ─────────────────────────────────────────────
 
 def _fetch_layout(api_base: str, tenant_id, role: str):
-    """Load layout config from the FastAPI layout endpoint."""
-    try:
-        url = (
-            f"{api_base}/api/v1/layout/config"
-            f"?tenant_id={tenant_id}&role={role}"
-        )
-        resp = httpx.get(url, timeout=10.0, follow_redirects=True)
-        if resp.status_code == 200:
-            data = resp.json()
-            logger.info(
-                f"[DASHBOARD] Layout loaded: "
-                f"{len(data.get('enabled_widget_ids', []))} widgets, "
-                f"{len(data.get('enabled_filter_ids', []))} filters"
+    """Load layout config from the FastAPI layout endpoint.
+
+    Retries up to 3 times with 2-second gaps so a briefly-unavailable
+    FastAPI (e.g. slow cold-start) does not break the first page load.
+    """
+    import time
+    url = (
+        f"{api_base}/api/v1/layout/config"
+        f"?tenant_id={tenant_id}&role={role}"
+    )
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = httpx.get(url, timeout=10.0, follow_redirects=True)
+            if resp.status_code == 200:
+                data = resp.json()
+                logger.info(
+                    "[DASHBOARD] Layout loaded: %d widgets, %d filters",
+                    len(data.get("enabled_widget_ids", [])),
+                    len(data.get("enabled_filter_ids", [])),
+                )
+                return data
+            logger.warning(
+                "[DASHBOARD] Layout API returned %s (attempt %d/%d)",
+                resp.status_code, attempt, max_retries,
             )
-            return data
-        logger.warning(f"[DASHBOARD] Layout API returned {resp.status_code}")
-    except Exception as exc:
-        logger.error(f"[DASHBOARD] Failed to load layout: {exc}")
+        except Exception as exc:
+            logger.warning(
+                "[DASHBOARD] Failed to load layout (attempt %d/%d): %s",
+                attempt, max_retries, exc,
+            )
+        if attempt < max_retries:
+            time.sleep(2)
+    logger.error("[DASHBOARD] Could not load layout after %d attempts", max_retries)
     return None
 
 
 def _fetch_filters(api_base: str, filter_ids: list):
-    """Load resolved filters from the FastAPI filters endpoint."""
-    try:
-        url = f"{api_base}/api/v1/filters/"
-        if filter_ids:
-            ids_param = ",".join(str(i) for i in filter_ids)
-            url += f"?filter_ids={ids_param}"
-        resp = httpx.get(url, timeout=10.0, follow_redirects=True)
-        if resp.status_code == 200:
-            data = resp.json()
-            logger.info(f"[DASHBOARD] Loaded {len(data)} filters")
-            return data
-        logger.warning(f"[DASHBOARD] Filters API returned {resp.status_code}")
-    except Exception as exc:
-        logger.error(f"[DASHBOARD] Failed to load filters: {exc}")
+    """Load resolved filters from the FastAPI filters endpoint.
+
+    Retries up to 3 times with 2-second gaps.
+    """
+    import time
+    url = f"{api_base}/api/v1/filters/"
+    if filter_ids:
+        url += f"?filter_ids={','.join(str(i) for i in filter_ids)}"
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = httpx.get(url, timeout=10.0, follow_redirects=True)
+            if resp.status_code == 200:
+                data = resp.json()
+                logger.info("[DASHBOARD] Loaded %d filters", len(data))
+                return data
+            logger.warning(
+                "[DASHBOARD] Filters API returned %s (attempt %d/%d)",
+                resp.status_code, attempt, max_retries,
+            )
+        except Exception as exc:
+            logger.warning(
+                "[DASHBOARD] Failed to load filters (attempt %d/%d): %s",
+                attempt, max_retries, exc,
+            )
+        if attempt < max_retries:
+            time.sleep(2)
+    logger.error("[DASHBOARD] Could not load filters after %d attempts", max_retries)
     return []
 
 

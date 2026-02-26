@@ -9,7 +9,8 @@ Responsibilities:
 
 from flask import Flask, redirect, url_for
 from flask_wtf.csrf import CSRFProtect
-
+from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from new_app.core.config import settings
 
 # CSRF protection singleton — init_app(app) called inside create_flask_app()
@@ -24,13 +25,41 @@ def create_flask_app() -> Flask:
         static_folder="static",
     )
 
+    tenant_slug = settings.TENANT_SLUG.strip("/")
+    is_production = not settings.DEBUG
+
+    app.config["APPLICATION_ROOT"] = f"/{tenant_slug}" if tenant_slug else "/"
+    app.config["PREFERRED_URL_SCHEME"] = "https" if is_production else "http"
     app.config["SECRET_KEY"] = settings.FLASK_SECRET_KEY
     app.config["DEBUG"] = settings.DEBUG
     app.config["API_BASE_URL"] = settings.API_BASE_URL
+
+    # SESSION_COOKIE_PATH:
+    #   - Production + subpath: restrict cookie to /{slug}/ so it's only sent
+    #     to Flask (not to other apps on the same domain).
+    #   - Development / root path: leave as "/" so the cookie is sent on every
+    #     request to the server — required for CSRF to work on plain HTTP dev.
+    #
+    # If this is set to "/clienteabc/" but Flask is running at root "/" in dev,
+    # the browser won't send the cookie on POST /auth/login → "CSRF session
+    # token is missing".
+    if tenant_slug and is_production:
+        app.config["SESSION_COOKIE_PATH"] = f"/{tenant_slug}/"
+    else:
+        app.config["SESSION_COOKIE_PATH"] = "/"
+
+    # SESSION_COOKIE_SECURE:
+    #   Must be False on HTTP (dev). A Secure cookie is silently dropped by the
+    #   browser on plain HTTP → session disappears → CSRF token missing on POST.
+    app.config["SESSION_COOKIE_SECURE"] = is_production
+    app.config["SESSION_COOKIE_HTTPONLY"] = True     # no accesible desde JS
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"   # protección CSRF adicional
+
     # Flask-WTF CSRF
     app.config["WTF_CSRF_ENABLED"] = True
     app.config["WTF_CSRF_TIME_LIMIT"] = 3600  # token valid 1 hour
 
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
     # ── CSRF protection ──────────────────────────────────────
     csrf.init_app(app)
 
@@ -83,7 +112,7 @@ def create_flask_app() -> Flask:
             "geolocation=(), microphone=(), camera=(), interest-cohort=()",
         )
         api_base = app.config.get("API_BASE_URL", "")
-        connect_src = f"'self' {api_base}".strip()
+        connect_src = f"'self' {api_base} https://cdn.jsdelivr.net https://cdn.tailwindcss.com https://unpkg.com".strip()
         response.headers.setdefault(
             "Content-Security-Policy",
             (

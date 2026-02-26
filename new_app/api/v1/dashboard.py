@@ -168,12 +168,12 @@ async def get_dashboard_data(
     # ── Fire-and-forget: log the query activity ───────────────
     try:
         from new_app.services.audit.query_log_service import query_log_service  # noqa: PLC0415
-        user = metadata_cache.get_current_user() if hasattr(metadata_cache, "get_current_user") else None
-        user_id = (user or {}).get("user_id", 0)
-        username = (user or {}).get("username", "unknown")
+        # ctx is the TenantContext built by require_tenant() from the JWT —
+        # it already carries the real user_id and username decoded from the
+        # Bearer token.  No need for metadata_cache.get_current_user().
         query_log_service.log_query_async(
-            user_id=user_id,
-            username=username,
+            user_id=ctx.user_id,
+            username=ctx.username,
             filters=user_params,
             line=str(request.line_id or request.line_ids or "all"),
             interval_type=request.interval or "hour",

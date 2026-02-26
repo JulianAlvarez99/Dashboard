@@ -46,7 +46,7 @@ Expects: widgets (list of enriched widget dicts from route)
 
 
   <!-- ── Tab switcher (Producción / OEE) ─────────────────────── -->
-  <div class="flex overflow-x-auto gap-0.5 mb-5 border-b border-surface-700 scrollbar-none" x-show="filtersApplied"
+  <div class="flex overflow-x-auto gap-0.5 mb-5 border-b tab-divider scrollbar-none" x-show="filtersApplied"
     x-cloak>
     <button @click="activeTab='produccion'" :class="activeTab==='produccion'
               ? 'border-b-2 border-accent-400 text-white pb-2'

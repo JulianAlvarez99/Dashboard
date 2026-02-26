@@ -11,6 +11,19 @@
 
 aside {
   min-width: 0;
+  /* Tailwind's border-surface-700/60 opacity modifier doesn't work with CSS
+     vars. Set the border colour here so it reads from theme.css. */
+  border-right-color: var(--dashboard-sidebar-border) !important;
+}
+
+/* ─── Tab switcher divider ─────────────────────────────────────── */
+/*
+ * The tab row uses Tailwind `border-b border-surface-700`.
+ * Tailwind resolves surface-700 as a CSS var; applying border-bottom-color
+ * here reinforces theming and ensures it reads from theme.css.
+ */
+.tab-divider {
+  border-bottom-color: var(--dashboard-tab-border);
 }
 
 /* Mobile / tablet: sidebar is a fixed drawer */

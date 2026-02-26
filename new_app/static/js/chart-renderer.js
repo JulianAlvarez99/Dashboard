@@ -16,9 +16,10 @@ const ChartRenderer = {
    * @param {Object}  chartInstances - Map of canvasId → Chart instance
    * @param {boolean} isMultiLine    - Whether multi-line mode is active
    * @param {number}  _attempt       - Internal retry counter
+   * @param {string}  mode           - For line_chart: 'line' (default) | 'bar'
    * @returns {Chart|null}
    */
-  render(chartType, widgetData, chartInstances, isMultiLine, _attempt) {
+  render(chartType, widgetData, chartInstances, isMultiLine, _attempt, mode) {
     if (!widgetData || !widgetData.data) return null;
 
     const canvasId = `chart-${widgetData.widget_id}`;
@@ -28,21 +29,26 @@ const ChartRenderer = {
     if (!canvas || canvas.offsetWidth === 0) {
       const attempt = (_attempt || 0) + 1;
       if (attempt <= 10) {
-        setTimeout(() => this.render(chartType, widgetData, chartInstances, isMultiLine, attempt), 60);
+        setTimeout(() => this.render(chartType, widgetData, chartInstances, isMultiLine, attempt, mode), 60);
       }
       return null;
     }
 
     // Destroy existing chart on this canvas
+    // Alpine wraps stored objects in a reactive Proxy — use Alpine.raw() so
+    // Chart.js destroy() receives the real class instance (not the proxy).
     if (chartInstances[canvasId]) {
-      chartInstances[canvasId].destroy();
+      const rawChart = (typeof Alpine !== 'undefined' && Alpine.raw)
+        ? Alpine.raw(chartInstances[canvasId])
+        : chartInstances[canvasId];
+      rawChart.destroy();
       delete chartInstances[canvasId];
     }
 
-    const resetBtn = this._createZoomToolbar(canvas, chartType);
+    const resetBtn = this._createZoomToolbar(canvas, chartType, mode);
 
     // Delegate to the config builder
-    const config = ChartConfigBuilder.getConfig(chartType, widgetData.data, resetBtn, isMultiLine);
+    const config = ChartConfigBuilder.getConfig(chartType, widgetData.data, resetBtn, isMultiLine, mode);
     if (!config) return null;
 
     const chart = new Chart(canvas.getContext('2d'), config);
@@ -57,8 +63,22 @@ const ChartRenderer = {
     return chart;
   },
 
+  /**
+   * Toggle between 'line' and 'bar' view for a production timeline chart.
+   * Re-renders the chart in-place, preserving all data, annotations and zoom.
+   *
+   * @param {string}  widgetId       - Widget ID (string or number)
+   * @param {string}  mode           - 'line' | 'bar'
+   * @param {Object}  widgetData     - The stored widget data from API (widgetResults[id])
+   * @param {Object}  chartInstances - Map of canvasId → Chart instance
+   * @param {boolean} isMultiLine    - Whether multi-line mode is active
+   */
+  toggleChartMode(widgetId, mode, widgetData, chartInstances, isMultiLine) {
+    this.render('line_chart', widgetData, chartInstances, isMultiLine, 0, mode);
+  },
+
   /** Create zoom toolbar above the canvas. */
-  _createZoomToolbar(canvas, chartType) {
+  _createZoomToolbar(canvas, chartType, mode) {
     const zoomable = ['line_chart', 'bar_chart', 'comparison_bar', 'scatter_chart'];
     if (!zoomable.includes(chartType)) return null;
 
@@ -73,8 +93,13 @@ const ChartRenderer = {
     toolbar.className = 'chart-zoom-toolbar';
     toolbar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:4px 8px 2px;font-size:10px;color:#475569;';
 
+    // Hint text differs for bar mode (no pan in bar mode)
+    const hintText = (chartType === 'line_chart' && mode === 'bar')
+        ? 'Ctrl+rueda: zoom · Doble-clic: reset'
+        : 'Arrastrar: mover · Ctrl+rueda: zoom · Doble-clic: reset';
+
     const hint = document.createElement('span');
-    hint.textContent = 'Arrastrar: mover · Ctrl+rueda: zoom · Ctrl+arrastrar: seleccionar · Doble-clic: reset';
+    hint.textContent = hintText;
     hint.style.opacity = '0.7';
 
     const btn = document.createElement('button');
@@ -137,7 +162,12 @@ const ChartRenderer = {
   /** Destroy all chart instances. */
   destroyAll(chartInstances) {
     Object.keys(chartInstances).forEach(key => {
-      if (chartInstances[key]) chartInstances[key].destroy();
+      if (chartInstances[key]) {
+        const raw = (typeof Alpine !== 'undefined' && Alpine.raw)
+          ? Alpine.raw(chartInstances[key])
+          : chartInstances[key];
+        raw.destroy();
+      }
     });
     Object.keys(chartInstances).forEach(k => delete chartInstances[k]);
   },

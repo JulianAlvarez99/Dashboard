@@ -89,6 +89,9 @@ function dashboardApp() {
     // Widget data from API
     widgetResults: {},
     chartInstances: {},
+    // Chart display mode per widget — 'line' | 'bar' (only applies to line_chart type)
+    // Change via toggle buttons in the widget header.
+    chartModes: {},
     queryMetadata: {
       total_detections: null,
       elapsed_ms: null,

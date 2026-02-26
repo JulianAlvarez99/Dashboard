@@ -13,6 +13,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+  <!-- Design tokens: all colors/sizes as CSS custom properties (edit theme.css to retheme) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+
   <!-- Tailwind CSS (CDN — zero build step) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -26,28 +29,28 @@
         extend: {
           colors: {
             surface: {
-              950: '#020617',
-              900: '#0F172A',
-              800: '#1E293B',
-              700: '#334155',
-              600: '#475569',
+              950: 'var(--color-surface-950)',
+              900: 'var(--color-surface-900)',
+              800: 'var(--color-surface-800)',
+              700: 'var(--color-surface-700)',
+              600: 'var(--color-surface-600)',
             },
             accent: {
-              DEFAULT: '#22C55E',
-              50:  '#F0FDF4',
-              100: '#DCFCE7',
-              400: '#4ADE80',
-              500: '#22C55E',
-              600: '#16A34A',
-              700: '#15803D',
+              DEFAULT: 'var(--color-accent-500)',
+              50:  'var(--color-accent-50)',
+              100: 'var(--color-accent-100)',
+              400: 'var(--color-accent-400)',
+              500: 'var(--color-accent-500)',
+              600: 'var(--color-accent-600)',
+              700: 'var(--color-accent-700)',
             },
-            info:    '#38BDF8',
-            warn:    '#FBBF24',
-            danger:  '#F87171',
+            info:    'var(--color-info)',
+            warn:    'var(--color-warn)',
+            danger:  'var(--color-danger)',
           },
           boxShadow: {
-            'glow-sm': '0 0 8px rgba(34,197,94,0.15)',
-            'glow':    '0 0 20px rgba(34,197,94,0.2)',
+            'glow-sm': '0 0 8px color-mix(in srgb, var(--color-accent-500) 15%, transparent)',
+            'glow':    '0 0 20px color-mix(in srgb, var(--color-accent-500) 20%, transparent)',
           },
           animation: {
             'fade-in': 'fadeIn 0.3s ease-out',
@@ -89,11 +92,11 @@
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
     ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #0F172A; }
-    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    ::-webkit-scrollbar-track { background: var(--color-surface-900); }
+    ::-webkit-scrollbar-thumb { background: var(--color-surface-700); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--color-surface-600); }
     .focus-ring:focus-visible {
-      outline: 2px solid #22C55E;
+      outline: 2px solid var(--color-accent-500);
       outline-offset: 2px;
     }
     @media (prefers-reduced-motion: reduce) {
