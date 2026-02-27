@@ -105,6 +105,8 @@ function dashboardApp() {
     // ── Raw data buffers (Etapa 3 — client-side re-aggregation) ──
     _rawData: null,
     _rawDowntime: null,
+    // ── Lazy loading: tabs ya renderizadas ──
+    _renderedTabs: null,  // se inicializa como Set en el primer uso
     _shiftWindows: {},
     _lineConfig: {},
 

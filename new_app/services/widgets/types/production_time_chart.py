@@ -214,8 +214,19 @@ class ProductionTimeChart(BaseWidget):
         show_downtime: bool,
         global_series: pd.Series,
     ) -> List[Dict[str, Any]]:
-        """Downtime annotation events for the line chart overlay."""
-        if not show_downtime or not self.has_downtime:
+        """
+        Downtime annotation events for the line chart overlay.
+
+        Reglas de visibilidad:
+          · source='db'         → SIEMPRE visible (independiente de show_downtime)
+          · source='calculated' → solo si show_downtime=True
+        
+        Colores por visual_type:
+          · 'db_confirmed'   → verde  (registrada con reason_code)
+          · 'db_unconfirmed' → naranja (registrada sin reason_code)
+          · 'calculated'     → rojo   (gap analysis)
+        """
+        if not self.has_downtime:
             return []
 
         dt_df = self.downtime_df
@@ -229,6 +240,12 @@ class ProductionTimeChart(BaseWidget):
             if pd.isna(evt_start) or pd.isna(evt_end):
                 continue
 
+            source = evt.get("source", "db")
+
+            # Paradas calculadas solo si el filtro show_downtime está activo
+            if source == "calculated" and not show_downtime:
+                continue
+
             start_idx = find_nearest_label_index(label_list, evt_start)
             end_idx = find_nearest_label_index(label_list, evt_end)
             duration_min = round(evt.get("duration", 0) / 60.0, 1)
@@ -238,6 +255,14 @@ class ProductionTimeChart(BaseWidget):
             incident = incidents.get(int(reason_code)) if has_incident else None
             desc = incident["description"] if incident else ""
 
+            # Determinar visual_type para el frontend
+            if source == "db" and has_incident:
+                visual_type = "db_confirmed"    # verde
+            elif source == "db":
+                visual_type = "db_unconfirmed"  # naranja
+            else:
+                visual_type = "calculated"       # rojo
+
             events.append({
                 "xMin": start_idx,
                 "xMax": end_idx,
@@ -246,7 +271,9 @@ class ProductionTimeChart(BaseWidget):
                 "duration_min": duration_min,
                 "reason": desc,
                 "has_incident": bool(has_incident),
-                "source": evt.get("source", "db"),
+                "source": source,
+                "visual_type": visual_type,
+                "is_manual": bool(evt.get("is_manual", False)),
                 "line_name": evt.get("line_name", ""),
             })
 

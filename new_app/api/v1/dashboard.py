@@ -71,6 +71,9 @@ class DashboardDataRequest(BaseModel):
     show_downtime: Optional[bool] = Field(
         False, description="Include downtime overlay on charts.",
     )
+    charts: Optional[Dict[str, str]] = Field(
+        None, description="Base64 encoded chart images (dict mapping widget_id to base64 string).",
+    )
 
     # Auth context (sent by Flask frontend)
     tenant_id: Optional[int] = Field(
@@ -313,3 +316,46 @@ async def preview_widgets(
         )
 
     return result
+
+from fastapi.responses import Response as FastAPIResponse
+
+@router.post("/export/pdf")
+async def export_dashboard_pdf(
+    request: DashboardDataRequest,
+    tenant_ctx: TenantContext = Depends(require_tenant),
+):
+    """Exportar el dashboard actual a PDF."""
+    # Reutiliza el mismo pipeline que /dashboard/data
+    async with db_manager.get_tenant_session_by_name(tenant_ctx.db_name) as session:
+        result = await dashboard_orchestrator.execute(
+            session=session,
+            user_params=build_filter_dict(request),
+            tenant_id=tenant_ctx.tenant_id,
+            role=tenant_ctx.role,
+            widget_ids=request.widget_ids,
+            include_raw=request.include_raw,
+        )
+
+    from new_app.services.data.export import to_pdf_bytes
+    import pandas as pd
+
+    # Reconstruir DataFrames desde raw si están disponibles
+    raw_dt = result.get("raw_downtime") or []
+    downtime_df = pd.DataFrame(raw_dt) if raw_dt else None
+    if downtime_df is not None and not downtime_df.empty:
+        for col in ("start_time","end_time"):
+            if col in downtime_df.columns:
+                downtime_df[col] = pd.to_datetime(downtime_df[col], errors="coerce")
+
+    pdf_bytes = to_pdf_bytes(
+        widgets=result.get("widgets", {}),
+        metadata=result.get("metadata", {}),
+        downtime_df=downtime_df,
+        charts=request.charts,
+    )
+
+    return FastAPIResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="dashboard.pdf"'},
+    )

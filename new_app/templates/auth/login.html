@@ -11,8 +11,7 @@
   <!-- ═══ LAYER 0: Full-screen image carousel ════════════════════ -->
   <div class="login-carousel-bg">
     <template x-for="(slide, idx) in slides" :key="idx">
-      <div class="login-carousel-slide"
-           :class="idx === current
+      <div class="login-carousel-slide" :class="idx === current
              ? 'opacity-100 scale-100'
              : (idx === prev ? 'opacity-0 scale-105' : 'opacity-0 scale-100')">
         <img :src="slide.src" :alt="slide.alt" draggable="false">
@@ -34,11 +33,14 @@
       <div class="login-card rounded-2xl p-8 relative overflow-hidden">
 
         <!-- Top accent bar -->
-        <div class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-accent-500 to-transparent"></div>
+        <div
+          class="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-accent-500 to-transparent">
+        </div>
 
         <!-- Logo / Title -->
         <div class="text-center mb-8">
-          <div class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent-500/10 border border-accent-500/20 mb-4">
+          <div
+            class="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-accent-500/10 border border-accent-500/20 mb-4">
             <i data-lucide="activity" class="w-6 h-6 text-accent-400"></i>
           </div>
           <h1 class="text-2xl font-bold text-white tracking-tight">Camet Analytics</h1>
@@ -66,17 +68,15 @@
         {% endwith %}
 
         <!-- Login form -->
-        <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5"
-              x-data="{ loading: false }" @submit="loading = true">
+        <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-5" x-data="{ loading: false }"
+          @submit="loading = true">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
           <div>
             <label for="username" class="block text-sm font-medium text-gray-300 mb-1.5">Usuario</label>
             <div class="relative">
               <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-600"></i>
-              <input
-                type="text" id="username" name="username" required autofocus
-                class="w-full pl-10 pr-3 py-2.5 bg-surface-900/70 border border-surface-600 rounded-lg
+              <input type="text" id="username" name="username" required autofocus class="w-full pl-10 pr-3 py-2.5 bg-surface-900/70 border border-surface-600 rounded-lg
                        text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-500/40
                        focus:border-accent-500 outline-none transition-all duration-200"
                 placeholder="Ingrese su usuario">
@@ -87,19 +87,14 @@
             <label for="password" class="block text-sm font-medium text-gray-300 mb-1.5">Contraseña</label>
             <div class="relative">
               <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-600"></i>
-              <input
-                type="password" id="password" name="password" required
-                class="w-full pl-10 pr-3 py-2.5 bg-surface-900/70 border border-surface-600 rounded-lg
+              <input type="password" id="password" name="password" required class="w-full pl-10 pr-3 py-2.5 bg-surface-900/70 border border-surface-600 rounded-lg
                        text-white placeholder-gray-500 focus:ring-2 focus:ring-accent-500/40
                        focus:border-accent-500 outline-none transition-all duration-200"
                 placeholder="Ingrese su contraseña">
             </div>
           </div>
 
-          <button
-            type="submit"
-            :disabled="loading"
-            class="w-full py-2.5 bg-accent-600 hover:bg-accent-500 disabled:opacity-60 disabled:cursor-not-allowed
+          <button type="submit" :disabled="loading" class="w-full py-2.5 bg-accent-600 hover:bg-accent-500 disabled:opacity-60 disabled:cursor-not-allowed
                    text-white font-semibold rounded-lg transition-all duration-200
                    shadow-glow-sm hover:shadow-glow cursor-pointer flex items-center justify-center gap-2">
             <template x-if="!loading">
@@ -110,8 +105,8 @@
             <template x-if="loading">
               <span class="flex items-center gap-2">
                 <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
                 </svg>
                 Verificando…
               </span>
@@ -128,53 +123,55 @@
     <!-- Carousel dot indicators (below card) -->
     <div class="flex items-center gap-3 mt-6">
       <template x-for="(slide, idx) in slides" :key="'dot-' + idx">
-        <button @click="goTo(idx)"
-                :class="idx === current ? 'login-dot active' : 'login-dot'"
-                :aria-label="'Ir a slide ' + (idx + 1)">
+        <button @click="goTo(idx)" :class="idx === current ? 'login-dot active' : 'login-dot'"
+          :aria-label="'Ir a slide ' + (idx + 1)">
         </button>
       </template>
       <!-- Slide counter -->
-      <span class="login-slide-badge ml-2"
-            x-text="(current + 1) + ' / ' + slides.length"></span>
+      <span class="login-slide-badge ml-2" x-text="(current + 1) + ' / ' + slides.length"></span>
     </div>
 
   </div><!-- /login-form-wrapper -->
 </div><!-- /root -->
 
 <script>
-function loginPage() {
-  const basePath = '{{ url_for("static", filename="images/carousel/") }}';
-  return {
-    slides: [
-      { src: basePath + 'slide_1.svg', alt: 'Monitoreo en Tiempo Real' },
-      { src: basePath + 'slide_2.svg', alt: 'KPIs y Métricas Clave' },
-      { src: basePath + 'slide_3.svg', alt: 'Dashboard Configurable' },
-    ],
-    current: 0,
-    prev: 2,
-    timer: null,
+  function loginPage() {
+    const basePath = '{{ url_for("static", filename="images/carousel/") }}';
+    return {
+      slides: [
+        { src: basePath + 'camet_robtica_sas_cover.jpg', alt: 'Camet Robótica' },
+        { src: basePath + 'maquina2.jpg', alt: 'Camet Robótica' },
+        { src: basePath + 'maquina.jpg', alt: 'Camet Robótica' },
 
-    init() {
-      this.startAutoplay();
-    },
+        // { src: basePath + 'slide_1.svg', alt: 'Monitoreo en Tiempo Real' },
+        // { src: basePath + 'slide_2.svg', alt: 'KPIs y Métricas Clave' },
+        // { src: basePath + 'slide_3.svg', alt: 'Dashboard Configurable' },
+      ],
+      current: 0,
+      prev: 2,
+      timer: null,
 
-    startAutoplay() {
-      this.timer = setInterval(() => this.next(), 5000);
-    },
+      init() {
+        this.startAutoplay();
+      },
 
-    next() {
-      this.prev = this.current;
-      this.current = (this.current + 1) % this.slides.length;
-    },
+      startAutoplay() {
+        this.timer = setInterval(() => this.next(), 5000);
+      },
 
-    goTo(idx) {
-      if (idx === this.current) return;
-      clearInterval(this.timer);
-      this.prev = this.current;
-      this.current = idx;
-      this.startAutoplay();
-    },
-  };
-}
+      next() {
+        this.prev = this.current;
+        this.current = (this.current + 1) % this.slides.length;
+      },
+
+      goTo(idx) {
+        if (idx === this.current) return;
+        clearInterval(this.timer);
+        this.prev = this.current;
+        this.current = idx;
+        this.startAutoplay();
+      },
+    };
+  }
 </script>
 {% endblock %}

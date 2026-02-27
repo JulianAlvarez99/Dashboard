@@ -1,18 +1,18 @@
 {# ── Table Widget partial (downtime_table & product_ranking) ──
-     Expects: wid from parent loop
-     Data shape: { columns: [{key, label}], rows: [{...}], total_production? }
+Expects: wid from parent loop
+Data shape: { columns: [{key, label}], rows: [{...}], total_production? }
 #}
-<div x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty){% if w.downtime_only %} && !isMultiLine{% endif %}"
-     x-cloak class="widget-card-body">
+<div
+  x-show="widgetResults['{{ wid }}'] && widgetResults['{{ wid }}'].data && !(widgetResults['{{ wid }}'].metadata && widgetResults['{{ wid }}'].metadata.empty){% if w.downtime_only %} && !isMultiLine{% endif %}"
+  x-cloak class="widget-card-body">
   <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3"
-      x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+    x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
 
   {# Total production summary for product_ranking #}
-  <p x-show="widgetResults['{{ wid }}']?.data?.total_production"
-     class="mb-2 text-sm text-gray-500">
+  <p x-show="widgetResults['{{ wid }}']?.data?.total_production" class="mb-2 text-sm text-gray-500">
     Producción total:
     <span class="font-semibold text-white"
-          x-text="widgetResults['{{ wid }}']?.data?.total_production?.toLocaleString('es-AR')"></span>
+      x-text="widgetResults['{{ wid }}']?.data?.total_production?.toLocaleString('es-AR')"></span>
   </p>
 
   <div class="overflow-x-auto overflow-y-auto" style="max-height: 400px">
@@ -33,7 +33,8 @@
                 <template x-if="col.key === 'percentage'">
                   <div class="flex items-center gap-2">
                     <div class="w-16 bg-surface-700 rounded-full h-1.5">
-                      <div class="bg-accent-500 h-1.5 rounded-full" :style="'width:' + Math.min(row[col.key], 100) + '%'"></div>
+                      <div class="bg-accent-500 h-1.5 rounded-full"
+                        :style="'width:' + Math.min(row[col.key], 100) + '%'"></div>
                     </div>
                     <span x-text="row[col.key] + '%'"></span>
                   </div>
@@ -41,13 +42,26 @@
                 {# Product name with color dot #}
                 <template x-if="col.key === 'product_name'">
                   <span class="flex items-center gap-2">
-                    <span class="w-2.5 h-2.5 rounded-full inline-block" :style="'background:' + (row.product_color || '#888')"></span>
+                    <span class="w-2.5 h-2.5 rounded-full inline-block"
+                      :style="'background:' + (row.product_color || '#888')"></span>
                     <span x-text="row[col.key]"></span>
                   </span>
                 </template>
+                {# source_badge cell #}
+                <template x-if="col.key === 'source_badge'">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold" :class="{
+                      'bg-green-900/40 text-green-400':  row.source_badge === 'db_confirmed',
+                      'bg-orange-900/40 text-orange-400': row.source_badge === 'db_unconfirmed',
+                      'bg-red-900/40 text-red-400':      row.source_badge === 'calculated'
+                    }" x-text="row.source_badge === 'db_confirmed'   ? 'Registrada ✓'
+                          : row.source_badge === 'db_unconfirmed' ? 'Registrada'
+                          : 'Calculada'">
+                  </span>
+                </template>
                 {# Default cell #}
-                <template x-if="col.key !== 'percentage' && col.key !== 'product_name'">
-                  <span x-text="typeof row[col.key] === 'number' ? row[col.key].toLocaleString('es-AR') : row[col.key]"></span>
+                <template x-if="col.key !== 'percentage' && col.key !== 'product_name' && col.key !== 'source_badge'">
+                  <span
+                    x-text="typeof row[col.key] === 'number' ? row[col.key].toLocaleString('es-AR') : row[col.key]"></span>
                 </template>
               </td>
             </template>
@@ -57,7 +71,7 @@
         <template x-if="!widgetResults['{{ wid }}']?.data?.rows || widgetResults['{{ wid }}'].data.rows.length === 0">
           <tr>
             <td :colspan="(widgetResults['{{ wid }}']?.data?.columns || []).length"
-                class="px-4 py-6 text-center text-gray-500">
+              class="px-4 py-6 text-center text-gray-500">
               No hay datos disponibles
             </td>
           </tr>
@@ -65,8 +79,7 @@
       </tbody>
     </table>
   </div>
-  <p x-show="widgetResults['{{ wid }}']?.metadata?.total_rows > 0"
-     class="mt-2 text-[10px] text-gray-500">
+  <p x-show="widgetResults['{{ wid }}']?.metadata?.total_rows > 0" class="mt-2 text-[10px] text-gray-500">
     Total: <span x-text="widgetResults['{{ wid }}']?.metadata?.total_rows"></span> registros
   </p>
 </div>

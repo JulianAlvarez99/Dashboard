@@ -184,6 +184,16 @@ class DowntimeService:
         if "source" not in df.columns:
             df["source"] = "db"
 
+        # Safe fallback for reason and is_manual since they are omitted from schema
+        if "reason" not in df.columns:
+            if "reason_code" in df.columns:
+                df["reason"] = df["reason_code"].apply(lambda x: f"Código {int(x)}" if pd.notna(x) else "Desconocido")
+            else:
+                df["reason"] = "Desconocido"
+                
+        if "is_manual" not in df.columns:
+            df["is_manual"] = False
+
         return df
 
     @staticmethod

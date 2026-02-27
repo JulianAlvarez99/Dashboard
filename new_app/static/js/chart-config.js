@@ -55,33 +55,59 @@ const ChartConfigBuilder = {
     buildDowntimeAnnotations(downtimeEvents) {
         if (!downtimeEvents || !downtimeEvents.length) return {};
         const annotations = {};
-        // Read colors from CSS vars → follows theme.css changes automatically
-        const bg      = this._cssVar('--chart-dt-bg',                 'rgba(239,68,68,0.15)');
-        const bdr     = this._cssVar('--chart-dt-border',             'rgba(239,68,68,0.6)');
-        const lc      = this._cssVar('--chart-dt-label',              '#fca5a5');
-        const lb      = this._cssVar('--chart-dt-label-bg',           'rgba(127,29,29,0.85)');
-        const ibg     = this._cssVar('--chart-dt-incident-bg',        'rgba(249,115,22,0.15)');
-        const ibdr    = this._cssVar('--chart-dt-incident-border',    'rgba(249,115,22,0.6)');
-        const ilc     = this._cssVar('--chart-dt-incident-label',     '#fdba74');
-        const ilb     = this._cssVar('--chart-dt-incident-label-bg',  'rgba(124,45,18,0.85)');
+
+        // Parada calculada (gap analysis) — ROJO
+        const calcBg = this._cssVar('--chart-dt-bg', 'rgba(239,68,68,0.15)');
+        const calcBdr = this._cssVar('--chart-dt-border', 'rgba(239,68,68,0.6)');
+        const calcLc = this._cssVar('--chart-dt-label', '#fca5a5');
+        const calcLb = this._cssVar('--chart-dt-label-bg', 'rgba(127,29,29,0.85)');
+
+        // Parada registrada SIN motivo — NARANJA
+        const unconfBg = this._cssVar('--chart-dt-incident-bg', 'rgba(249,115,22,0.15)');
+        const unconfBdr = this._cssVar('--chart-dt-incident-border', 'rgba(249,115,22,0.6)');
+        const unconfLc = this._cssVar('--chart-dt-incident-label', '#fdba74');
+        const unconfLb = this._cssVar('--chart-dt-incident-label-bg', 'rgba(124,45,18,0.85)');
+
+        // Parada registrada CON motivo — VERDE
+        const confBg = this._cssVar('--chart-dt-confirmed-bg', 'rgba(34,197,94,0.15)');
+        const confBdr = this._cssVar('--chart-dt-confirmed-border', 'rgba(34,197,94,0.6)');
+        const confLc = this._cssVar('--chart-dt-confirmed-label', '#86efac');
+        const confLb = this._cssVar('--chart-dt-confirmed-label-bg', 'rgba(20,83,45,0.85)');
+
         downtimeEvents.forEach((evt, i) => {
-            const incident = !!evt.has_incident;
+            // Leer visual_type del backend; fallback para datos sin el campo nuevo
+            let vtype = evt.visual_type;
+            if (!vtype) {
+                if (evt.source === 'db' && evt.has_incident) vtype = 'db_confirmed';
+                else if (evt.source === 'db') vtype = 'db_unconfirmed';
+                else vtype = 'calculated';
+            }
+
+            let bg, bdr, lc, lb, icon;
+            if (vtype === 'db_confirmed') {
+                bg = confBg; bdr = confBdr; lc = confLc; lb = confLb; icon = '✓';
+            } else if (vtype === 'db_unconfirmed') {
+                bg = unconfBg; bdr = unconfBdr; lc = unconfLc; lb = unconfLb; icon = '⏺';
+            } else {
+                bg = calcBg; bdr = calcBdr; lc = calcLc; lb = calcLb; icon = '⏸';
+            }
+
             annotations[`dt_${i}`] = {
                 type: 'box',
                 xMin: evt.xMin,
                 xMax: Math.max(evt.xMax, evt.xMin + 0.5),
                 yMin: 0,
-                backgroundColor: incident ? ibg  : bg,
-                borderColor:     incident ? ibdr : bdr,
+                backgroundColor: bg,
+                borderColor: bdr,
                 borderWidth: 1,
                 borderDash: [4, 2],
                 label: {
                     display: true,
-                    content: `\u23F8 ${evt.duration_min}min`,
+                    content: `${icon} ${evt.duration_min}min`,
                     position: 'start',
                     font: { size: 9, weight: 'bold' },
-                    color: incident ? ilc : lc,
-                    backgroundColor: incident ? ilb : lb,
+                    color: lc,
+                    backgroundColor: lb,
                     padding: { top: 2, bottom: 2, left: 4, right: 4 },
                     borderRadius: 3,
                 },
@@ -117,15 +143,15 @@ const ChartConfigBuilder = {
      * downtime annotations, zoom/pan, and scale styling.
      */
     buildLineConfig(data, resetBtn, isMultiLine, mode) {
-        const asBar     = mode === 'bar';
+        const asBar = mode === 'bar';
         const curveType = data.curve_type || 'smooth';
-        const curve     = this._curveProps(curveType);
-        const stacked   = curveType === 'stacked';
+        const curve = this._curveProps(curveType);
+        const stacked = curveType === 'stacked';
         const classDetails = data.class_details || {};
-        const multi     = (data.datasets || []).length > 1;
-        const dtEvts    = data.downtime_events || [];
-        const showDt    = data.show_downtime !== false;
-        const dtAnnot   = (isMultiLine || !showDt) ? {} : this.buildDowntimeAnnotations(dtEvts);
+        const multi = (data.datasets || []).length > 1;
+        const dtEvts = data.downtime_events || [];
+        const showDt = data.show_downtime !== false;
+        const dtAnnot = (isMultiLine || !showDt) ? {} : this.buildDowntimeAnnotations(dtEvts);
 
         // Dataset colors: use CSS vars for first 5 datasets, fallback to hardcoded
         const lineColors = [
@@ -142,33 +168,33 @@ const ChartConfigBuilder = {
         const datasets = (data.datasets || []).map((ds, i) => {
             const [lc, bg] = lineColors[i % lineColors.length];
             const borderColor = ds.borderColor || lc;
-            const bgColor    = ds.backgroundColor || bg;
+            const bgColor = ds.backgroundColor || bg;
 
             if (asBar) {
                 // Bar mode: solid fill with slight transparency, rounded tops
                 return {
-                    label:           ds.label || 'Producción',
-                    data:            ds.data  || [],
+                    label: ds.label || 'Producción',
+                    data: ds.data || [],
                     backgroundColor: borderColor.startsWith('#')
                         ? borderColor + 'CC'   // add ~80% opacity to hex color
                         : borderColor,
-                    borderColor:     borderColor,
-                    borderWidth:     1,
-                    borderRadius:    4,
-                    borderSkipped:   false,
+                    borderColor: borderColor,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false,
                 };
             }
             return {
-                label:           ds.label || 'Producción',
-                data:            ds.data  || [],
+                label: ds.label || 'Producción',
+                data: ds.data || [],
                 borderColor,
                 backgroundColor: stacked ? bgColor : (ds.fill !== undefined && ds.fill ? bgColor : bgColor),
-                fill:            stacked ? 'origin' : (ds.fill !== undefined ? ds.fill : false),
-                tension:         curve.tension,
-                stepped:         curve.stepped,
-                pointRadius:     2,
+                fill: stacked ? 'origin' : (ds.fill !== undefined ? ds.fill : false),
+                tension: curve.tension,
+                stepped: curve.stepped,
+                pointRadius: 2,
                 pointHoverRadius: 6,
-                borderWidth:     2,
+                borderWidth: 2,
             };
         });
 
@@ -190,11 +216,11 @@ const ChartConfigBuilder = {
         return {
             type: asBar ? 'bar' : 'line',
             data: {
-                labels:   data.labels || [],
+                labels: data.labels || [],
                 datasets,
             },
             options: {
-                responsive:          true,
+                responsive: true,
                 maintainAspectRatio: false,
                 interaction: asBar
                     ? { mode: 'index', intersect: false }
@@ -204,11 +230,11 @@ const ChartConfigBuilder = {
                         display: multi,
                         position: 'top',
                         labels: {
-                            color:          tickColor,
-                            usePointStyle:  true,
-                            pointStyle:     asBar ? 'rect' : 'circle',
-                            padding:        16,
-                            font:           { size: 11 },
+                            color: tickColor,
+                            usePointStyle: true,
+                            pointStyle: asBar ? 'rect' : 'circle',
+                            padding: 16,
+                            font: { size: 11 },
                         },
                     },
                     tooltip: {
@@ -221,13 +247,13 @@ const ChartConfigBuilder = {
                 scales: {
                     x: {
                         stacked: asBar ? false : stacked,
-                        grid:    { color: gridColor, display: !asBar },
-                        ticks:   { color: tickColor, maxTicksLimit: 14, font: { size: 10 } },
+                        grid: { color: gridColor, display: !asBar },
+                        ticks: { color: tickColor, maxTicksLimit: 14, font: { size: 10 } },
                     },
                     y: {
                         stacked: asBar ? false : stacked,
-                        grid:    { color: gridColor },
-                        ticks:   { color: tickColor, font: { size: 10 } },
+                        grid: { color: gridColor },
+                        ticks: { color: tickColor, font: { size: 10 } },
                         beginAtZero: true,
                     },
                 },

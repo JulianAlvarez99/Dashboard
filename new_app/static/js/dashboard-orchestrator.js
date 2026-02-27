@@ -47,6 +47,8 @@ const DashboardOrchestrator = {
             ctx.isMultiLine = result.metadata?.is_multi_line || false;
 
             ChartRenderer.destroyAll(ctx.chartInstances);
+            // Resetear tabs renderizadas para lazy loading
+            ctx._renderedTabs = new Set();
 
             ctx.widgetResults = result.widgets || {};
             ctx.hasData = Object.keys(ctx.widgetResults).length > 0;
@@ -55,7 +57,7 @@ const DashboardOrchestrator = {
             ctx.filterCount = this._countActiveFilters(ctx.params);
             ctx.lastUpdate = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
-            this.renderAllCharts(ctx);
+            this._renderTabCharts(ctx, ctx.activeTab);
 
             ctx.$nextTick(function () {
                 if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -108,7 +110,8 @@ const DashboardOrchestrator = {
         });
 
         ChartRenderer.destroyAll(ctx.chartInstances);
-        this.renderAllCharts(ctx);
+        ctx._renderedTabs = new Set();
+        this._renderTabCharts(ctx, ctx.activeTab);
     },
 
     /**
@@ -211,5 +214,66 @@ const DashboardOrchestrator = {
             body.show_downtime = true;
 
         return body;
+    },
+
+    /**
+     * Lazy load: renderizar solo los widgets de una tab específica.
+     * Usa _widgetMeta para filtrar por tab (mismo campo que widget_layout.py).
+     */
+    _renderTabCharts(ctx, tab) {
+        if (!ctx.hasData) return;
+
+        // Inicializar Set si no existe
+        if (!(ctx._renderedTabs instanceof Set)) {
+            ctx._renderedTabs = new Set();
+        }
+
+        const widgetMeta = ctx._widgetMeta || {};
+        const chartTypeMap = ctx._CHART_TYPE_MAP || {};
+        const isMulti = ctx.isMultiLine;
+        const instances = ctx.chartInstances;
+        const modes = ctx.chartModes || {};
+
+        // Construir lista de widgets de este tab
+        const tabCharts = [];
+        Object.keys(ctx.widgetResults).forEach(wid => {
+            const wd = ctx.widgetResults[wid];
+            if (!wd || !wd.data) return;
+            const meta = widgetMeta[parseInt(wid)] || widgetMeta[wid];
+            if (!meta) return;
+            // Filtrar por tab: si el widget no tiene tab definido, pertenece a 'produccion'
+            const widgetTab = meta.tab || 'produccion';
+            if (widgetTab !== tab) return;
+            const chartType = chartTypeMap[meta.widget_name] || chartTypeMap[wid];
+            if (!chartType) return;
+            tabCharts.push({ chartType, widgetData: wd, wid });
+        });
+
+        if (tabCharts.length === 0) return;
+
+        // Double rAF — esperar que Alpine muestre el DOM del tab
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                tabCharts.forEach(cw => {
+                    const mode = modes[cw.wid] || 'line';
+                    ChartRenderer.render(cw.chartType, cw.widgetData, instances, isMulti, 0, mode);
+                });
+            });
+        });
+
+        ctx._renderedTabs.add(tab);
+        console.log(`[Lazy] Tab '${tab}': ${tabCharts.length} charts renderizados`);
+    },
+
+    /**
+     * Hook para llamar al cambiar de tab. Renderiza la tab si no fue renderizada aún.
+     * Llamar desde el @click del botón de tab en el template.
+     */
+    onTabChange(ctx) {
+        if (!ctx.hasData) return;
+        if (!(ctx._renderedTabs instanceof Set)) ctx._renderedTabs = new Set();
+        const tab = ctx.activeTab;
+        if (ctx._renderedTabs.has(tab)) return; // ya renderizada
+        this._renderTabCharts(ctx, tab);
     }
 };

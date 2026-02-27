@@ -20,7 +20,7 @@ flask==3.0.2
 sqlalchemy[asyncio]>=2.0.36  # Actualizado para compatibilidad con Python 3.14
 aiomysql==0.2.0
 alembic>=1.14.0  # Actualizado para Python 3.14
-asyncmy==0.2.9
+# asyncmy==0.2.9 # [REMOVIDO] Causa errores de compilación en cPanel, se usa aiomysql.
 
 # ============================================================================
 # DATA PROCESSING
@@ -120,7 +120,7 @@ a2wsgi==1.10.0
 # xlsxwriter==3.1.9
 
 # PDF generation
-# reportlab==4.0.9
+reportlab>=4.0
 # weasyprint==60.2
 
 # Logging avanzado

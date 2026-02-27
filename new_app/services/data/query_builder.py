@@ -145,7 +145,7 @@ class QueryBuilder:
         sql = (
             "SELECT event_id, last_detection_id, start_time, end_time, "
             "TIMESTAMPDIFF(SECOND, start_time, end_time) AS duration_seconds, "
-            "reason_code, reason, is_manual, created_at "
+            "reason_code, created_at "
             f"FROM {table_name} WHERE event_id > :cursor_id"
         )
         params: Dict[str, Any] = {"cursor_id": cursor_id}

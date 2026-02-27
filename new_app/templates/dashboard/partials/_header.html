@@ -1,7 +1,8 @@
 {# ── Dashboard Header ──
-     Expects: user (dict from session context)
+Expects: user (dict from session context)
 #}
-<header class="bg-surface-900 border-b border-surface-700/60 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+<header
+  class="bg-surface-900 border-b border-surface-700/60 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
   <div class="flex items-center gap-3">
     <div class="flex items-center gap-2">
       <div class="w-8 h-8 rounded-lg bg-accent-500/10 border border-accent-500/20 flex items-center justify-center">
@@ -25,11 +26,13 @@
         <i data-lucide="user" class="w-3.5 h-3.5 text-gray-400"></i>
       </div>
       <span class="text-sm text-gray-300 hidden sm:block">{{ user.username }}</span>
-      <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-accent-500/10 text-accent-400 font-medium uppercase tracking-wider">{{ user.role }}</span>
+      <span
+        class="text-[10px] px-1.5 py-0.5 rounded-md bg-accent-500/10 text-accent-400 font-medium uppercase tracking-wider">{{
+        user.role }}</span>
     </div>
     <a href="{{ url_for('auth.logout') }}"
-       class="text-sm text-gray-500 hover:text-danger transition-colors duration-200 cursor-pointer flex items-center gap-1"
-       title="Cerrar sesión">
+      class="text-sm text-gray-500 hover:text-danger transition-colors duration-200 cursor-pointer flex items-center gap-1"
+      title="Cerrar sesión">
       <i data-lucide="log-out" class="w-4 h-4"></i>
     </a>
   </div>

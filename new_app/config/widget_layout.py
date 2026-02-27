@@ -49,7 +49,7 @@ WIDGET_LAYOUT: dict[str, dict] = {
 
     # ── Tab: Producción ───────────────────────────────────────────────────
     "ProductionTimeChart":      {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 4},
-    "ProductDistributionChart": {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 5},
+    "ProductDistributionChart": {"tab": "produccion", "col_span": 3, "row_span": 2, "order": 5},
     "ProductRanking":           {"tab": "produccion", "col_span": 1, "row_span": 2, "order": 6},
     "KpiTotalProduction":       {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 7},
     "KpiTotalWeight":           {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 8},
@@ -59,7 +59,7 @@ WIDGET_LAYOUT: dict[str, dict] = {
     "AreaDetectionChart":       {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 11},
     "EntryOutputCompareChart":  {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 12},
     "ScatterChart":             {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 13, "downtime_only": True},
-    "DowntimeTable":            {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 14, "downtime_only": True},
+    "DowntimeTable":            {"tab": "produccion", "col_span": 3, "row_span": 2, "order": 14, "downtime_only": True},
     "MetricsSummary":           {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 15},
     "EventFeed":                {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 16},
 }
