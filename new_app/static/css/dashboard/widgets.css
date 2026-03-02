@@ -101,12 +101,11 @@
 
 /* Pie chart table: sticky header always visible, no filter effect */
 .pie-table-wrap {
-  margin-top: 0.5rem;
-  max-height: 200px;        /* more rows visible, scrolls when needed */
+  max-height: 280px;        /* tall enough to show all classes without cutting */
   overflow-y: auto;
-  overflow-x: hidden;
-  border-top: 1px solid var(--widget-card-border, rgba(51, 65, 85, 0.5));
-  padding-top: 0.375rem;
+  overflow-x: auto;
+  border-left: 10px solid var(--widget-card-border, rgba(51, 65, 85, 0.5));
+  padding-left: 1.75rem;
   background: var(--widget-card-bg, #0F172A);
   scrollbar-width: thin;
   scrollbar-color: var(--color-surface-700) transparent;
@@ -167,7 +166,8 @@
 
 .pie-table th:first-child,
 .pie-table td:first-child {
-  width: 55%;         /* give the label column most of the space */
+  width: 1px;         /* shrink to content — browser expands to fit text */
+  white-space: nowrap;
 }
 
 .pie-table-label span:last-child {

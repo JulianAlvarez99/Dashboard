@@ -138,6 +138,52 @@
 <body class="bg-surface-950 text-gray-100 font-sans min-h-screen flex flex-col antialiased">
   {% block body %}{% endblock %}
 
+  {# ── Session-expired modal ─────────────────────────────────────────────── #}
+  <div id="session-expired-overlay"
+    style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(5,10,20,0.85);backdrop-filter:blur(4px)"
+    aria-modal="true" role="alertdialog" aria-labelledby="session-expired-title">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+                background:#0F172A;border:1px solid rgba(51,65,85,0.7);border-radius:1rem;
+                padding:2.5rem 2rem;max-width:26rem;width:90%;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,0.6)">
+      <!-- Icon -->
+      <div style="display:inline-flex;align-items:center;justify-content:center;
+                  width:3rem;height:3rem;border-radius:50%;
+                  background:rgba(239,68,68,0.15);margin-bottom:1.25rem">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+          fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <!-- Heading -->
+      <h2 id="session-expired-title"
+        style="font-size:1.1rem;font-weight:600;color:#F1F5F9;margin:0 0 0.5rem">
+        Sesión expirada
+      </h2>
+      <!-- Body -->
+      <p style="font-size:0.85rem;color:#94A3B8;margin:0 0 1.75rem;line-height:1.6">
+        Tu sesión ha caducado. Por favor, iniciá sesión nuevamente para continuar.
+      </p>
+      <!-- CTA -->
+      <a href="/auth/login"
+        style="display:inline-block;padding:0.6rem 1.75rem;border-radius:0.5rem;
+               background:var(--color-accent-500,#c52294);color:#fff;
+               font-size:0.875rem;font-weight:600;text-decoration:none;
+               transition:opacity 0.15s ease"
+        onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+        Iniciar sesión
+      </a>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('session:expired', function () {
+      var overlay = document.getElementById('session-expired-overlay');
+      if (overlay) overlay.style.display = 'block';
+    });
+  </script>
+
   {% block scripts %}
   <script>
     document.addEventListener('DOMContentLoaded', () => lucide.createIcons());

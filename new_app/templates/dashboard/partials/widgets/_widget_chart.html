@@ -59,37 +59,43 @@ Data shape: { labels?, datasets, curve_type?, class_details?, summary? }
   </div>
   {% endif %}
 
+  {% if chart_type == 'pie_chart' %}
+  {# ── Pie chart + table side by side ── #}
+  <div class="flex items-stretch" style="gap:0">
+    <div class="widget-chart-wrap" style="height:{{ chart_h }};width:50%;flex-shrink:0">
+      <canvas id="chart-{{ wid }}"></canvas>
+    </div>
+    {# ── Product distribution summary table ── #}
+    <div class="pie-table-wrap self-center" style="width:50%" x-show="widgetResults['{{ wid }}']?.data?.table_rows?.length">
+      <table class="pie-table">
+        <thead>
+          <tr>
+            <th class="text-left">Clase</th>
+            <th class="text-right">Uds.</th>
+            <th class="text-right">Peso&nbsp;(kg)</th>
+            <th class="text-right">%</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template x-for="row in (widgetResults['{{ wid }}']?.data?.table_rows || [])" :key="row.label">
+            <tr>
+              <td class="pie-table-label">
+                <span class="pie-table-dot" :style="'background:' + row.color"></span>
+                <span x-text="row.label"></span>
+              </td>
+              <td class="text-right font-mono" x-text="row.count.toLocaleString('es-AR')"></td>
+              <td class="text-right font-mono"
+                x-text="row.weight_kg.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})"></td>
+              <td class="text-right font-mono pie-table-pct" x-text="row.pct.toLocaleString('es-AR', {minimumFractionDigits:1, maximumFractionDigits:1}) + '%'"></td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
   <div class="widget-chart-wrap" style="height:{{ chart_h }}">
     <canvas id="chart-{{ wid }}"></canvas>
-  </div>
-
-  {% if chart_type == 'pie_chart' %}
-  {# ── Product distribution summary table ── #}
-  <div class="pie-table-wrap" x-show="widgetResults['{{ wid }}']?.data?.table_rows?.length">
-    <table class="pie-table">
-      <thead>
-        <tr>
-          <th>Clase</th>
-          <th class="text-right">Uds.</th>
-          <th class="text-right">Peso&nbsp;(kg)</th>
-          <th class="text-right">%</th>
-        </tr>
-      </thead>
-      <tbody>
-        <template x-for="row in (widgetResults['{{ wid }}']?.data?.table_rows || [])" :key="row.label">
-          <tr>
-            <td class="pie-table-label">
-              <span class="pie-table-dot" :style="'background:' + row.color"></span>
-              <span x-text="row.label"></span>
-            </td>
-            <td class="text-right font-mono" x-text="row.count.toLocaleString('es-AR')"></td>
-            <td class="text-right font-mono"
-              x-text="row.weight_kg.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2})"></td>
-            <td class="text-right font-mono pie-table-pct" x-text="row.pct.toFixed(1) + '%'"></td>
-          </tr>
-        </template>
-      </tbody>
-    </table>
   </div>
   {% endif %}
 </div>

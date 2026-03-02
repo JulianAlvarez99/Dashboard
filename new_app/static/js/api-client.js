@@ -35,6 +35,18 @@ function _apiHeaders(extra = {}) {
     return headers;
 }
 
+/**
+ * Fire a custom event when the server returns 401 (token expired / missing).
+ * The modal in base.html listens for this event.
+ *
+ * @param {Response} response
+ */
+function _handleSessionExpiry(response) {
+    if (response.status === 401) {
+        window.dispatchEvent(new CustomEvent('session:expired'));
+    }
+}
+
 const DashboardAPI = {
     /**
      * Validate filter states against backend validation schemas.
@@ -50,6 +62,7 @@ const DashboardAPI = {
             headers: _apiHeaders(),
             body: JSON.stringify(params),
         });
+        _handleSessionExpiry(response);
         return response.json();
     },
 
@@ -64,6 +77,7 @@ const DashboardAPI = {
         const response = await fetch(`${apiBase}/api/v1/filters/areas?line_id=${lineId}`, {
             headers: _apiHeaders(),
         });
+        _handleSessionExpiry(response);
         if (!response.ok) throw new Error('Failed to fetch areas for line');
         return response.json();
     },
@@ -81,6 +95,8 @@ const DashboardAPI = {
             headers: _apiHeaders(),
             body: JSON.stringify(body),
         });
+
+        _handleSessionExpiry(response);
 
         if (!response.ok) {
             throw new Error(`API error: ${response.status} ${response.statusText}`);
