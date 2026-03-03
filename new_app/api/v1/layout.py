@@ -42,37 +42,3 @@ async def get_layout_config(
             detail=f"No dashboard template for tenant_id={tenant_id}, role={role}",
         )
     return result
-
-
-@router.get("/widgets")
-async def get_layout_widgets(
-    tenant_id: int = Query(..., description="Tenant ID"),
-    role: str = Query(..., description="User role"),
-):
-    """Return only the resolved widget list for a tenant + role."""
-    _check_cache()
-
-    result = await layout_service.get_resolved_layout(tenant_id, role)
-    if result is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No dashboard template for tenant_id={tenant_id}, role={role}",
-        )
-    return result["widgets"]
-
-
-@router.get("/filters")
-async def get_layout_filter_ids(
-    tenant_id: int = Query(..., description="Tenant ID"),
-    role: str = Query(..., description="User role"),
-):
-    """Return the enabled filter IDs for a tenant + role."""
-    _check_cache()
-
-    config = await layout_service.get_layout_config(tenant_id, role)
-    if config is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"No dashboard template for tenant_id={tenant_id}, role={role}",
-        )
-    return {"enabled_filter_ids": config.enabled_filter_ids}

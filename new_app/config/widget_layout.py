@@ -42,26 +42,26 @@ SHOW_OEE_TAB: bool = _get_show_oee_tab()
 WIDGET_LAYOUT: dict[str, dict] = {
 
     # ── Tab: OEE ─────────────────────────────────────────────────────────
-    "KpiOee":               {"tab": "oee",        "col_span": 1, "row_span": 1, "order": 0},
-    "KpiAvailability":      {"tab": "oee",        "col_span": 1, "row_span": 1, "order": 1},
-    "KpiPerformance":       {"tab": "oee",        "col_span": 1, "row_span": 1, "order": 2},
-    "KpiQuality":           {"tab": "oee",        "col_span": 1, "row_span": 1, "order": 3},
+    "KpiOee":               {"tab": "oee",        "col_span": 1, "row_span": 1, "order": 0,  "render": "kpi_oee",   "chart_type": "",             "chart_height": "250px"},
+    "KpiAvailability":      {"tab": "oee",        "col_span": 1, "row_span": 1, "order": 1,  "render": "kpi",       "chart_type": "",             "chart_height": "250px"},
+    "KpiPerformance":       {"tab": "oee",        "col_span": 1, "row_span": 1, "order": 2,  "render": "kpi",       "chart_type": "",             "chart_height": "250px"},
+    "KpiQuality":           {"tab": "oee",        "col_span": 1, "row_span": 1, "order": 3,  "render": "kpi",       "chart_type": "",             "chart_height": "250px"},
 
     # ── Tab: Producción ───────────────────────────────────────────────────
-    "ProductionTimeChart":      {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 4},
-    "ProductDistributionChart": {"tab": "produccion", "col_span": 3, "row_span": 2, "order": 5},
-    "ProductRanking":           {"tab": "produccion", "col_span": 1, "row_span": 2, "order": 6},
-    "KpiTotalProduction":       {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 7},
-    "KpiTotalWeight":           {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 8},
-    "KpiTotalDowntime":         {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 9,  "downtime_only": True},
-    "LineStatusIndicator":      {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 10},
-    "KpiRejectedRate":          {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 17},
-    "AreaDetectionChart":       {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 11},
-    "EntryOutputCompareChart":  {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 12},
-    "ScatterChart":             {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 13, "downtime_only": True},
-    "DowntimeTable":            {"tab": "produccion", "col_span": 3, "row_span": 2, "order": 14, "downtime_only": True},
-    "MetricsSummary":           {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 15},
-    "EventFeed":                {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 16},
+    "ProductionTimeChart":      {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 4,  "render": "chart",     "chart_type": "line_chart",   "chart_height": "600px"},
+    "ProductDistributionChart": {"tab": "produccion", "col_span": 3, "row_span": 2, "order": 5,  "render": "chart",     "chart_type": "pie_chart",    "chart_height": "320px"},
+    "ProductRanking":           {"tab": "produccion", "col_span": 1, "row_span": 2, "order": 6,  "render": "table",     "chart_type": "",             "chart_height": "250px"},
+    "KpiTotalProduction":       {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 7,  "render": "kpi",       "chart_type": "",             "chart_height": "250px"},
+    "KpiTotalWeight":           {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 8,  "render": "kpi",       "chart_type": "",             "chart_height": "250px"},
+    "KpiTotalDowntime":         {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 9,  "render": "kpi",       "chart_type": "",             "chart_height": "250px", "downtime_only": True},
+    "LineStatusIndicator":      {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 10, "render": "indicator", "chart_type": "",             "chart_height": "250px"},
+    "KpiRejectedRate":          {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 17, "render": "kpi",       "chart_type": "",             "chart_height": "250px"},
+    "AreaDetectionChart":       {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 11, "render": "chart",     "chart_type": "bar_chart",    "chart_height": "280px"},
+    "EntryOutputCompareChart":  {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 12, "render": "chart",     "chart_type": "comparison_bar","chart_height": "400px"},
+    "ScatterChart":             {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 13, "render": "chart",     "chart_type": "scatter_chart","chart_height": "300px",  "downtime_only": True},
+    "DowntimeTable":            {"tab": "produccion", "col_span": 3, "row_span": 2, "order": 14, "render": "table",     "chart_type": "",             "chart_height": "250px",  "downtime_only": True},
+    "MetricsSummary":           {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 15, "render": "summary",   "chart_type": "",             "chart_height": "250px"},
+    "EventFeed":                {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 16, "render": "feed",      "chart_type": "",             "chart_height": "250px"},
 }
 
 # Number of grid columns (used in template)

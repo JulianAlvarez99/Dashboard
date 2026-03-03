@@ -280,6 +280,18 @@ class MetadataCache:
     def get_widget(self, widget_id: int) -> Optional[dict]:
         return self.get_widget_catalog().get(widget_id)
 
+    # Layout config (per tenant + role, warmed up at login)
+    def set_layout(self, tenant_id: int, role: str, layout: dict) -> None:
+        """Cache a resolved layout config for a tenant+role pair."""
+        key = f"layout:{tenant_id}:{role.upper()}"
+        self._cache[key] = CacheEntry(data=layout)
+
+    def get_layout(self, tenant_id: int, role: str) -> Optional[dict]:
+        """Return cached layout or None if not yet loaded."""
+        key = f"layout:{tenant_id}:{role.upper()}"
+        entry = self._cache.get(key)
+        return entry.data if entry else None
+
     # ─────────────────────────────────────────────────────────────
     #  MANAGEMENT
     # ─────────────────────────────────────────────────────────────

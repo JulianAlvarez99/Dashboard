@@ -19,7 +19,7 @@ const DashboardOrchestrator = {
 
         try {
             const normalizedParams = this._normalizeParams(ctx.params);
-            const valResult = await DashboardAPI.validateFilters(ctx.apiBase, normalizedParams);
+            const valResult = this._validateParamsLocally(normalizedParams);
 
             if (!valResult.valid) {
                 console.warn('[Filters] Validation errors:', valResult.errors);
@@ -156,6 +156,64 @@ const DashboardOrchestrator = {
             if (out[k] === '') out[k] = null;
         }
         return out;
+    },
+
+    /**
+     * Validación local de parámetros — reemplaza el round-trip HTTP a
+     * /api/v1/filters/validate. Solo verifica las reglas que el browser
+     * puede evaluar sin consultar el servidor.
+     *
+     * Retorna el mismo shape que DashboardAPI.validateFilters():
+     *   { valid: boolean, errors: { param_name: "mensaje" } }
+     *
+     * La validación profunda (tipos, rangos, existencia en DB) sigue
+     * ocurriendo en el backend dentro de DashboardOrchestrator.execute().
+     *
+     * @param {Object} params - Parámetros normalizados
+     * @returns {{ valid: boolean, errors: Object }}
+     */
+    _validateParamsLocally(params) {
+        const errors = {};
+
+        // Regla 1: daterange obligatorio con start_date y end_date
+        const dr = params.daterange;
+        if (!dr || typeof dr !== 'object') {
+            errors['daterange'] = 'El rango de fechas es obligatorio';
+        } else {
+            if (!dr.start_date || !/^\d{4}-\d{2}-\d{2}$/.test(dr.start_date)) {
+                errors['daterange'] = 'Fecha de inicio inválida (formato YYYY-MM-DD)';
+            } else if (!dr.end_date || !/^\d{4}-\d{2}-\d{2}$/.test(dr.end_date)) {
+                errors['daterange'] = 'Fecha de fin inválida (formato YYYY-MM-DD)';
+            } else if (dr.start_date > dr.end_date) {
+                errors['daterange'] = 'La fecha de inicio debe ser anterior a la fecha de fin';
+            }
+        }
+
+        // Regla 2: line_id obligatorio (null o vacío no permitido)
+        const lid = params.line_id;
+        if (lid === null || lid === undefined || lid === '') {
+            errors['line_id'] = 'Seleccioná una línea de producción';
+        }
+
+        // Regla 3: interval debe ser uno de los valores conocidos
+        const validIntervals = ['minute', '15min', 'hour', 'day', 'week', 'month'];
+        if (params.interval && !validIntervals.includes(params.interval)) {
+            errors['interval'] = `Intervalo inválido: ${params.interval}`;
+        }
+
+        // Regla 4: downtime_threshold si está presente debe ser número positivo
+        const dt = params.downtime_threshold;
+        if (dt !== null && dt !== undefined) {
+            const parsed = Number(dt);
+            if (isNaN(parsed) || parsed < 0) {
+                errors['downtime_threshold'] = 'El umbral de parada debe ser un número positivo';
+            }
+        }
+
+        return {
+            valid: Object.keys(errors).length === 0,
+            errors,
+        };
     },
 
     _countActiveFilters(params) {

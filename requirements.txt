@@ -19,7 +19,7 @@ flask==3.0.2
 # ============================================================================
 sqlalchemy[asyncio]>=2.0.36  # Actualizado para compatibilidad con Python 3.14
 aiomysql==0.2.0
-alembic>=1.14.0  # Actualizado para Python 3.14
+# alembic>=1.14.0  # DB migrations — pendiente setup
 # asyncmy==0.2.9 # [REMOVIDO] Causa errores de compilación en cPanel, se usa aiomysql.
 
 # ============================================================================
@@ -40,7 +40,7 @@ argon2-cffi==23.1.0
 # REEMPLAZO: Se eliminó python-jose (abandonado).
 # PyJWT maneja todo lo necesario para JWT de forma segura.
 pyjwt==2.8.0
-cryptography>=42.0.5
+# cryptography>=42.0.5  # Dependencia transitiva de argon2-cffi — no requerir directamente
 
 # ============================================================================
 # VALIDATION & SERIALIZATION
@@ -53,18 +53,18 @@ jsonschema==4.21.1
 # ============================================================================
 # CSRF & FORMS (Solo si usas Flask/Jinja2)
 # ============================================================================
-flask-wtf==1.2.1
-wtforms==3.1.2
+# flask-wtf==1.2.1  # CSRF protection — pendiente implementar
+# wtforms==3.1.2    # Forms — pendiente implementar
 
 # ============================================================================
 # RATE LIMITING
 # ============================================================================
-slowapi==0.1.9
+# slowapi==0.1.9  # Reemplazado por new_app/core/fastapi_limiter.py (custom sliding-window)
 
 # ============================================================================
 # BACKGROUND TASKS
 # ============================================================================
-apscheduler==3.10.4
+# apscheduler==3.10.4  # Background tasks — pendiente downtime auto-detection
 
 # ============================================================================
 # MONITORING & SYSTEM
@@ -85,7 +85,7 @@ pytz==2024.1
 # ============================================================================
 # SANITIZATION
 # ============================================================================
-bleach==6.1.0
+# bleach==6.1.0  # XSS sanitization — no se usa actualmente, removido
 
 # ============================================================================
 # DEVELOPMENT & TESTING

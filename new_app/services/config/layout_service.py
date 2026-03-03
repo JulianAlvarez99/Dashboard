@@ -113,7 +113,7 @@ class LayoutService:
             raw_config=raw,
         )
 
-    def resolve_widgets(
+    def _resolve_widgets(
         self,
         widget_ids: List[int],
     ) -> List[ResolvedWidget]:
@@ -160,7 +160,7 @@ class LayoutService:
         if config is None:
             return None
 
-        widgets = self.resolve_widgets(config.enabled_widget_ids)
+        widgets = self._resolve_widgets(config.enabled_widget_ids)
 
         return {
             "tenant_id": config.tenant_id,

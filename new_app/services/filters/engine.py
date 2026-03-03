@@ -66,9 +66,10 @@ class FilterEngine:
 
     def __init__(self) -> None:
         self._class_cache: Dict[str, Type[BaseFilter]] = {}
-        # Cache built filter instances by filter_id (stable across requests;
-        # instances are stateless — parent_values only affect get_options()).
-        self._cached_instances: Dict[int, BaseFilter] = {}
+        # Cache built filter instances by subset key.
+        # key = tuple(sorted(filter_ids)) when a whitelist is used, or "ALL".
+        # value = {class_name: BaseFilter instance}
+        self._cached_instances: Dict = {}  # cache_key → {class_name: BaseFilter}
 
     def clear_instance_cache(self) -> None:
         """Invalidate the instance cache — call after a cache reload."""
@@ -93,8 +94,17 @@ class FilterEngine:
 
         Returns a list sorted by ``display_order``.
         """
+        # ── Subset cache key ────────────────────────────────────────────────
+        # The same (tenant, role) always sends the same filter_ids, so we
+        # return the pre-built subset dict directly on cache hit.
+        cache_key = tuple(sorted(filter_ids)) if filter_ids else "ALL"
+
+        if cache_key in self._cached_instances and parent_values is None:
+            return list(self._cached_instances[cache_key].values())
+
+        # ── Build instances ─────────────────────────────────────────────────
         cached_filters = metadata_cache.get_filters()  # dict[int, dict]
-        instances: List[BaseFilter] = []
+        instances: Dict[str, BaseFilter] = {}  # class_name → instance
 
         for _fid, row in sorted(
             cached_filters.items(), key=lambda kv: kv[1].get("display_order", 99)
@@ -104,12 +114,6 @@ class FilterEngine:
                 continue
 
             class_name = row["filter_name"]  # e.g. "DateRangeFilter"
-
-            # ── Instance cache hit ────────────────────────────
-            fid = row["filter_id"]
-            if fid in self._cached_instances:
-                instances.append(self._cached_instances[fid])
-                continue
 
             # ── Auto-discovery: resolve the class ────────────
             cls = self._get_class(class_name)
@@ -137,10 +141,13 @@ class FilterEngine:
             )
 
             instance = cls(config)
-            self._cached_instances[row["filter_id"]] = instance
-            instances.append(instance)
+            instances[class_name] = instance
 
-        return instances
+        # Cache the built subset (only when parent_values don't affect state)
+        if parent_values is None:
+            self._cached_instances[cache_key] = instances
+
+        return list(instances.values())
 
     # ── Resolve to JSON ──────────────────────────────────────
 

@@ -20,7 +20,6 @@ from flask import Blueprint, render_template, session
 from new_app.routes.auth import login_required, get_current_user
 from new_app.core.config import get_settings
 from new_app.config.widget_layout    import WIDGET_LAYOUT, GRID_COLUMNS, SHOW_OEE_TAB
-from new_app.services.widgets.engine import widget_engine
 
 logger = logging.getLogger(__name__)
 
@@ -157,26 +156,25 @@ def _enrich_widgets(widgets_data: list):
     """
     Add frontend rendering metadata to each widget dict.
 
-    Render behavior  → read from widget class attributes (auto-discovery).
-    Layout positions → read from WIDGET_LAYOUT.
+    Both render behavior and layout positions come from WIDGET_LAYOUT
+    (no importlib / auto-discovery needed here).
     Mutates ``widgets_data`` in place.
     """
     for idx, w in enumerate(widgets_data):
         if not isinstance(w, dict):
             continue
         class_name = w.get("widget_name", "")
-
-        # Behavior: resolve class and read its class attributes
-        cls = widget_engine._resolve_class(class_name)
-        w["render_type"]  = cls.render       if cls else "unknown"
-        w["chart_type"]   = cls.chart_type   if cls else ""
-        w["chart_height"] = cls.chart_height if cls else "250px"
-
-        # Layout: read from WIDGET_LAYOUT
         layout = WIDGET_LAYOUT.get(class_name, {})
-        w["tab"]          = layout.get("tab", "produccion")
-        w["order"]        = layout.get("order", idx)
-        w["downtime_only"]= layout.get("downtime_only", False)
+
+        # Render metadata — from WIDGET_LAYOUT (no importlib)
+        w["render_type"]  = layout.get("render", "kpi")
+        w["chart_type"]   = layout.get("chart_type", "")
+        w["chart_height"] = layout.get("chart_height", "250px")
+
+        # Layout metadata
+        w["tab"]           = layout.get("tab", "produccion")
+        w["order"]         = layout.get("order", idx)
+        w["downtime_only"] = layout.get("downtime_only", False)
 
         # Build CSS Grid placement style
         col_span = layout.get("col_span", 1)

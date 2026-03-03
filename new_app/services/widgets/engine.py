@@ -57,6 +57,15 @@ class WidgetEngine:
         # Reverse map: class_name → widget_id (built lazily, reset on cache reload)
         self._class_to_id: Dict[str, int] = {}
 
+    def _ensure_reverse_map(self, widget_catalog: Dict[int, Dict[str, Any]]) -> None:
+        """Build class_name → widget_id reverse map once per catalog load."""
+        if self._class_to_id:
+            return  # already built
+        for wid, info in widget_catalog.items():
+            name = info.get("widget_name", "")
+            if name:
+                self._class_to_id[name] = wid
+
     def process_widgets(
         self,
         widget_names: List[str],
@@ -205,15 +214,16 @@ class WidgetEngine:
 
         return master_df[available] if available else master_df
 
-    @staticmethod
     def _resolve_catalog_info(
+        self,
         class_name: str,
         widget_catalog: Dict[int, Dict[str, Any]],
     ) -> tuple[int, str]:
-        """Find widget_id and display_name from the cached catalog."""
-        for wid, info in widget_catalog.items():
-            if info.get("widget_name") == class_name:
-                return wid, info.get("description", class_name)
+        """Find widget_id and display_name from the cached catalog (O(1))."""
+        self._ensure_reverse_map(widget_catalog)
+        wid = self._class_to_id.get(class_name)
+        if wid is not None:
+            return wid, widget_catalog[wid].get("description", class_name)
         # Fallback: class_name as display, id=0
         return 0, class_name
 

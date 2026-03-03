@@ -75,12 +75,14 @@ class DashboardDataRequest(BaseModel):
         None, description="Base64 encoded chart images (dict mapping widget_id to base64 string).",
     )
 
-    # Auth context (sent by Flask frontend)
+    # Auth context — DEPRECATED: these fields are ignored.
+    # tenant_id and role are always taken from the validated JWT (TenantContext).
+    # Kept for backwards compatibility with external clients only.
     tenant_id: Optional[int] = Field(
-        None, description="Tenant ID. Falls back to cached tenant.",
+        None, description="[DEPRECATED] Ignored. Tenant is resolved from JWT.",
     )
     role: Optional[str] = Field(
-        None, description="User role. Defaults to 'ADMIN'.",
+        None, description="[DEPRECATED] Ignored. Role is resolved from JWT.",
     )
 
     # Raw data mode (for client-side re-aggregation without re-query)
@@ -126,13 +128,6 @@ def _extract_user_params(req: DashboardDataRequest) -> Dict[str, Any]:
     return build_filter_dict(req)
 
 
-def _resolve_tenant_id(req_tenant_id: Optional[int]) -> int:
-    """Resolve tenant_id from request body. Required — no fallback."""
-    if req_tenant_id is not None:
-        return req_tenant_id
-    raise HTTPException(status_code=400, detail="tenant_id is required")
-
-
 # ── Endpoints ────────────────────────────────────────────────────
 
 @router.post("/data", response_model=DashboardDataResponse)
@@ -150,8 +145,9 @@ async def get_dashboard_data(
       4. Execute all widgets via WidgetEngine.
       5. Return unified JSON response.
     """
-    tenant_id = _resolve_tenant_id(request.tenant_id)
-    role = request.role or "ADMIN"
+    # tenant_id and role come from the validated JWT — never from the body
+    tenant_id = ctx.tenant_id
+    role = ctx.role
     user_params = _extract_user_params(request)
 
     t_start = _time.perf_counter()
@@ -253,8 +249,9 @@ async def get_dashboard_data_get(
                 status_code=400, detail="Invalid widget_ids format",
             )
 
-    tid = _resolve_tenant_id(tenant_id)
-    user_role = role or "ADMIN"
+    # tenant_id and role come from the validated JWT — never from query params
+    tid = ctx.tenant_id
+    user_role = ctx.role
 
     async with db_manager.get_tenant_session_by_name(ctx.db_name) as session:
         result = await dashboard_orchestrator.execute(

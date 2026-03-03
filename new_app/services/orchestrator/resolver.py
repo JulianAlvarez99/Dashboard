@@ -78,7 +78,24 @@ async def _resolve_from_layout(
     role: str,
     catalog: Dict[int, Dict[str, Any]],
 ) -> tuple[List[str], Dict[int, Dict[str, Any]]]:
-    """Load the layout template and resolve its widget IDs."""
+    """Load the layout template and resolve its widget IDs.
+
+    Checks MetadataCache first (populated during login warmup) to avoid
+    a DB round-trip on every request after the first.
+    """
+    # ── Fast path: use warmed-up layout cache ────────────────
+    cached = metadata_cache.get_layout(tenant_id, role)
+    if cached is not None:
+        enabled_ids: List[int] = cached.get("enabled_widget_ids", [])
+        if enabled_ids:
+            names = _ids_to_names(enabled_ids, catalog)
+            return names, catalog
+        logger.warning(
+            f"[WidgetResolver] Cached layout for tenant={tenant_id}, "
+            f"role={role} has no enabled_widget_ids"
+        )
+
+    # ── Fallback: DB query (cold start or cache miss) ────────
     layout_config = await layout_service.get_layout_config(tenant_id, role)
 
     if layout_config is None or not layout_config.has_widgets:

@@ -65,7 +65,8 @@ def _build_session(user_info: dict, login_id: int) -> None:
     session["login_id"] = login_id
 
 
-def _warmup_cache(db_name: str, api_internal_key: str, api_base_url: str) -> None:
+def _warmup_cache(db_name: str, api_internal_key: str, api_base_url: str,
+                  tenant_id: int = 0, role: str = "ADMIN") -> None:
     """Send the cache-load request to FastAPI in a background thread.
 
     Running this in a daemon thread means the user's login response is NOT
@@ -84,6 +85,23 @@ def _warmup_cache(db_name: str, api_internal_key: str, api_base_url: str) -> Non
             )
             if resp.status_code == 200:
                 logger.info("[AUTH] Cache loaded for tenant '%s'", db_name)
+                # ── Warm up layout cache ──────────────────────────────
+                if tenant_id:
+                    try:
+                        layout_url = (
+                            f"{api_base_url}/api/v1/layout/config"
+                            f"?tenant_id={tenant_id}&role={role}"
+                        )
+                        layout_resp = httpx.get(layout_url, timeout=10.0)
+                        if layout_resp.status_code == 200:
+                            from new_app.core.cache import metadata_cache  # noqa: PLC0415
+                            metadata_cache.set_layout(tenant_id, role, layout_resp.json())
+                            logger.info(
+                                "[AUTH] Layout cached for tenant=%s role=%s",
+                                tenant_id, role,
+                            )
+                    except Exception as exc:
+                        logger.warning("[AUTH] Layout cache warmup failed: %s", exc)
                 return
             logger.warning(
                 "[AUTH] Cache load returned %s for tenant '%s' (attempt %d/%d)",
@@ -196,6 +214,10 @@ def login():
         threading.Thread(
             target=_warmup_cache,
             args=(db_name, settings.API_INTERNAL_KEY, settings.API_BASE_URL),
+            kwargs={
+                "tenant_id": user_info["tenant_id"],
+                "role": user_info.get("role", "ADMIN"),
+            },
             daemon=True,
         ).start()
 

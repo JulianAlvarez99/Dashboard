@@ -1,6 +1,6 @@
 """Concrete filter types — auto-imported by the engine."""
 
-from new_app.services.filters.types.daterange import DateRangeFilter
+from new_app.services.filters.types.date_range_filter import DateRangeFilter
 from new_app.services.filters.types.dropdown import DropdownFilter
 from new_app.services.filters.types.multiselect import MultiselectFilter
 from new_app.services.filters.types.text import TextFilter

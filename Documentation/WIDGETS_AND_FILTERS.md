@@ -425,6 +425,63 @@ VALUES ('ProductionLineFilter', '{"groups": [{"alias": "Zona A", "line_ids": [1,
 
 El `layout_config.filters` del template debe incluir el `filter_id` del nuevo filtro.
 
+#### Paso 4: Agregar el campo al modelo Pydantic
+
+**`new_app/api/v1/dashboard.py`**
+
+```python
+class DashboardDataRequest(BaseModel):
+    # ...existing fields...
+    mi_param: Optional[TuTipo] = None   # ← agregar el nuevo campo
+```
+
+Sin este paso, aunque el frontend envíe el valor, **Pydantic lo descarta silenciosamente** antes de que llegue al endpoint.
+
+#### Paso 5: Mapearlo en `build_filter_dict()`
+
+**`new_app/utils/request_helpers.py`**
+
+```python
+def build_filter_dict(req) -> Dict[str, Any]:
+    mapping = {
+        # ...existing fields...
+        "mi_param": "mi_param",   # ← agregar aquí
+    }
+```
+
+Sin este paso, el valor llega al endpoint pero **nunca entra al `FilterEngine`**.
+
+#### Paso 6: Implementar `to_sql_clause()` en la clase
+
+Si la clase base no genera la cláusula SQL automáticamente, agregarla explícitamente:
+
+```python
+class MiFiltro(DropdownFilter):
+    # ...
+
+    def to_sql_clause(self, value):
+        if not value:
+            return None, {}
+        return "mi_columna = :mi_param", {"mi_param": value}
+```
+
+Sin este paso, el valor llega al `FilterEngine` pero **no genera ninguna condición SQL**.
+
+---
+
+> ⚠️ **Trampa frecuente:** El auto-discovery hace que el filtro **aparezca en la UI** con solo crear el archivo `.py` y registrarlo en la DB. Esto lleva a pensar que está funcionando, cuando en realidad los pasos 4, 5 y 6 son los que conectan la selección del usuario con la query a la base de datos. Un filtro sin esos tres pasos es **decorativo**.
+>
+> El flujo completo de un parámetro es:
+> ```
+> Alpine params.mi_param
+>     → body HTTP (solo si _buildRequestBody lo incluye)
+>     → DashboardDataRequest.mi_param (solo si el campo Pydantic existe)
+>     → build_filter_dict() (solo si está en el mapping)
+>     → FilterEngine
+>     → to_sql_clause() → WHERE mi_columna = :mi_param
+> ```
+> Si cualquier eslabón falta, el filtro no tiene efecto.
+
 ¡Listo! El `FilterEngine` lo descubrirá automáticamente.
 
 ---

@@ -20,6 +20,7 @@ from starlette.responses import Response
 from new_app.core.cache import metadata_cache
 from new_app.core.config import settings
 from new_app.core.database import db_manager
+from new_app.core.fastapi_limiter import RateLimitMiddleware
 from new_app.api.v1 import api_router
 from new_app.config.widget_layout import validate_layout_consistency
 
@@ -81,6 +82,10 @@ def create_fastapi_app() -> FastAPI:
         allow_methods=["GET", "POST"],
         allow_headers=["*"],
     )
+
+    # Rate limiting — sliding-window per IP.
+    # Executes before CORS (outermost, registered last).
+    app.add_middleware(RateLimitMiddleware)
 
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
