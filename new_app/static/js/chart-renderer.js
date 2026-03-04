@@ -2,7 +2,8 @@
  * Chart Renderer — Chart.js rendering and lifecycle
  *
  * Exposes a clean interface to render, update, or destroy charts.
- * Delegates the Chart.js configuration building to `ChartConfigBuilder` (chart-config.js).
+ * Delegates the Chart.js configuration building to widget-specific
+ * builders in WidgetChartBuilders (new system) or ChartConfigBuilder (fallback).
  */
 const ChartRenderer = {
 
@@ -23,6 +24,7 @@ const ChartRenderer = {
     if (!widgetData || !widgetData.data) return null;
 
     const canvasId = `chart-${widgetData.widget_id}`;
+    const widgetName = widgetData.widget_name;  // comes from API result
     const canvas = document.getElementById(canvasId);
 
     // Retry up to 10 times if canvas not yet in DOM
@@ -45,10 +47,25 @@ const ChartRenderer = {
       delete chartInstances[canvasId];
     }
 
-    const resetBtn = this._createZoomToolbar(canvas, chartType, mode);
+    // ── Resolve builder ──────────────────────────────────────────
+    const builder = (typeof WidgetChartBuilders !== 'undefined')
+                    ? WidgetChartBuilders[widgetName]
+                    : null;
 
-    // Delegate to the config builder
-    const config = ChartConfigBuilder.getConfig(chartType, widgetData.data, resetBtn, isMultiLine, mode);
+    if (!builder || typeof builder.buildConfig !== 'function') {
+      console.warn(`[ChartRenderer] No builder found for widget: ${widgetName}`);
+      return null;
+    }
+
+    const resetBtn = builder.zoomable ? this._createZoomToolbar(canvas, chartType, mode) : null;
+
+    const config = builder.buildConfig(widgetData.data, {
+      resetBtn: resetBtn,
+      isMultiLine: isMultiLine,
+      mode: mode,
+      widgetId: widgetData.widget_id
+    });
+
     if (!config) return null;
 
     const chart = new Chart(canvas.getContext('2d'), config);
@@ -74,7 +91,13 @@ const ChartRenderer = {
    * @param {boolean} isMultiLine    - Whether multi-line mode is active
    */
   toggleChartMode(widgetId, mode, widgetData, chartInstances, isMultiLine) {
-    this.render('line_chart', widgetData, chartInstances, isMultiLine, 0, mode);
+    const widgetName = widgetData?.widget_name;
+    const builder = (typeof WidgetChartBuilders !== 'undefined')
+                    ? WidgetChartBuilders[widgetName]
+                    : null;
+    // Only re-render if the widget declares that it supports toggle
+    if (builder && !builder.toggleable) return;
+    this.render(widgetData?.chart_type || 'line_chart', widgetData, chartInstances, isMultiLine, 0, mode);
   },
 
   /** Create zoom toolbar above the canvas. */

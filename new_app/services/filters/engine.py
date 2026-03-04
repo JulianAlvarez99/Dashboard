@@ -138,13 +138,18 @@ class FilterEngine:
                 options_source=cls.options_source,
                 depends_on=cls.depends_on,
                 ui_config=dict(cls.ui_config),  # copy, not shared ref
+                pydantic_type=cls.pydantic_type,           # Fase 1
+                js_behavior=dict(cls.js_behavior),         # Fase 1 (copy)
             )
 
             instance = cls(config)
             instances[class_name] = instance
 
-        # Cache the built subset (only when parent_values don't affect state)
-        if parent_values is None:
+        # Cache the built subset only when results are non-empty and
+        # parent_values don't affect state.  An empty dict means the
+        # metadata cache wasn't loaded yet — don't persist it so the
+        # next call retries against the now-populated cache.
+        if parent_values is None and instances:
             self._cached_instances[cache_key] = instances
 
         return list(instances.values())
@@ -189,6 +194,31 @@ class FilterEngine:
                 return f
         return None
 
+    def get_all_classes(self) -> List[Type[BaseFilter]]:
+        """
+        Return all active filter classes (not instances) ordered by display_order.
+
+        Used by: dynamic Pydantic model builder, generic build_filter_dict.
+        Adding a new filter only requires a DB row + class file — zero code here.
+        """
+        cached_filters = metadata_cache.get_filters()
+        classes: List[Type[BaseFilter]] = []
+        seen: set = set()
+
+        for _fid, row in sorted(
+            cached_filters.items(),
+            key=lambda kv: kv[1].get("display_order", 99),
+        ):
+            class_name = row["filter_name"]
+            if class_name in seen:
+                continue
+            cls = self._get_class(class_name)
+            if cls is not None:
+                classes.append(cls)
+                seen.add(class_name)
+
+        return classes
+
     # ── Validation ───────────────────────────────────────────
 
     def validate_input(
@@ -206,19 +236,41 @@ class FilterEngine:
                 "cleaned": {"param_name": cleaned_value, ...},
             }
         """
+        from new_app.services.filters.base import OptionsFilter
+        
+        # DEBUG
+        print(f"[validate_input] user_params={user_params}")
+
         errors: Dict[str, str] = {}
         cleaned: Dict[str, Any] = {}
 
-        for flt in self.get_all():
+        all_filters = self.get_all()
+        print(f"[validate_input] all_filters count={len(all_filters)}")
+
+        for flt in all_filters:
             pname = flt.config.param_name
             raw = user_params.get(pname)
+            print(f"[validate_input] {pname}: raw from params={raw!r}")
 
             # Use default if nothing provided
             if raw is None:
                 raw = flt.get_default()
+                print(f"[validate_input] {pname}: using default={raw!r}")
 
             if not flt.validate(raw):
-                errors[pname] = f"Valor inválido para {flt.config.class_name}"
+                # For options-based filters: if options couldn't be loaded
+                # (metadata cache not yet ready), pass the raw value through
+                # rather than blocking the request.  The value will still reach
+                # the DB query layer which does its own safety checks.
+                if isinstance(flt, OptionsFilter) and not flt.get_options():
+                    logger.warning(
+                        "[FilterEngine] %s: options unavailable — "
+                        "passing raw value %r through without validation",
+                        flt.config.class_name, raw,
+                    )
+                    cleaned[pname] = raw
+                else:
+                    errors[pname] = f"Valor inválido para {flt.config.class_name}"
             else:
                 cleaned[pname] = raw
 

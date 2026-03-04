@@ -2,7 +2,7 @@
 
 Estado actual de la implementación, estructura del código y decisiones técnicas.
 
-**Última actualización:** 25 Febrero 2026  
+**Última actualización:** 4 Marzo 2026  
 **Módulo activo:** `new_app/`  
 **Entry point:** `run_new.py`
 
@@ -100,9 +100,13 @@ Las tablas de datos (`detection_line_X`, `downtime_events_X`) son **dinámicas p
 
 **Auto-discovery:** `WidgetEngine` convierte `widget_name` (DB) a módulo Python via `importlib`. Sin registro manual.
 
-- **18 widgets** implementados en `types/`
+- **17 widgets** implementados en `types/`
 - Clase base: `BaseWidget(ctx: WidgetContext) → WidgetResult`
-- Layout separado en `config/widget_layout.py` (tab, col_span, order)
+- Layout **embebido en la clase** (`tab`, `col_span`, `row_span`, `order`, `downtime_only`)
+- Widgets de tipo `chart` incluyen atributo `js_inline` con el builder Chart.js
+- `WidgetEngine.get_class(name)` y `get_js_inline_blocks()` para acceso externo
+- `WidgetResult.widget_name` = nombre de la **clase Python** (para lookup `WidgetChartBuilders` en JS)
+- `WidgetResult.metadata["display_name"]` = nombre legible de la DB
 
 ### 2.8 DataBroker (`new_app/services/broker/`)
 
@@ -113,9 +117,10 @@ Configuración de APIs externas: `new_app/config/external_apis.yml`
 ### 2.9 Frontend Flask (`new_app/routes/`, `templates/`, `static/`)
 
 - **auth.py** → login, logout, `@login_required`
-- **dashboard.py** → renderiza `index.html` con layout_config del usuario
+- **dashboard.py** → renderiza `index.html`, recopila `js_inline` de los widgets del layout e inyecta `WidgetChartBuilders` en el HTML
 - **templates/** → Jinja2 SSR; partials por tipo de widget
-- **static/js/** → Alpine.js (estado), Chart.js (gráficos), dashboard-orchestrator, data-engine, api-client
+- **static/js/chart-renderer.js** → `render()` usa `WidgetChartBuilders[widgetName]` para construir la config Chart.js
+- **static/js/chart-config.js** → solo utilidades compartidas (`_cssVar`, `_curveProps`, `buildDowntimeAnnotations`, etc.)
 
 ---
 
@@ -151,8 +156,10 @@ Configuración de APIs externas: `new_app/config/external_apis.yml`
 
 ### Configuration over Code
 
-- Layout visual en `config/widget_layout.py` (no en la lógica del widget)
+- Layout visual **en la propia clase del widget** (`tab`, `col_span`, `order`, etc.) — no en archivos externos
+- Builder Chart.js **en la propia clase** via `js_inline` — cada widget es completamente autónomo
 - APIs externas en `config/external_apis.yml`
+- `config/widget_layout.py` → solo `GRID_COLUMNS` y `SHOW_OEE_TAB`
 - Qué widgets/filtros se muestran: DB (`dashboard_template.layout_config`)
 
 ---

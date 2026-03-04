@@ -7,7 +7,12 @@
     {{ f.description or f.class_name }}
   </label>
   <div class="flex items-center gap-2">
-    <input type="number" x-model.number="params.{{ f.param_name }}"
+    <input type="number"
+      :value="filterStates['{{ f.param_name }}']?.value"
+      @input="
+        filterStates['{{ f.param_name }}'].value =
+          $event.target.value !== '' ? Number($event.target.value) : null;
+      "
       {% if f.ui_config.get('min') is not none %}min="{{ f.ui_config.min }}"{% endif %}
       {% if f.ui_config.get('step') %}step="{{ f.ui_config.step }}"{% endif %}
       placeholder="{{ f.placeholder or '' }}"

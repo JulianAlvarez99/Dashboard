@@ -43,8 +43,37 @@
 <script src="{{ url_for('static', filename='js/api-client.js') }}"></script>
 <script src="{{ url_for('static', filename='js/data-engine.js') }}"></script>
 <script src="{{ url_for('static', filename='js/chart-config.js') }}"></script>
+<!-- Widget Chart Builders (auto-injected from widget class js_inline) -->
+<script>
+'use strict';
+// Global registry: widget_name → { zoomable, toggleable, buildConfig }
+// Populated by each chart widget's js_inline block.
+var WidgetChartBuilders = {};
+{% if widget_inline_js %}
+{{ widget_inline_js | safe }}
+{% endif %}
+</script>
 <script src="{{ url_for('static', filename='js/chart-renderer.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard-orchestrator.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard-events.js') }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard-app.js') }}"></script>
+{% if filter_inline_js %}
+{# ── Filter Handlers — auto-injected from filter class js_inline ── #}
+<script>
+(function() {
+  'use strict';
+  try {
+    var _filterHandlers = {
+      {{ filter_inline_js | safe }}
+    };
+    var _original = window.dashboardApp;
+    window.dashboardApp = function() {
+      return Object.assign(_original(), _filterHandlers);
+    };
+  } catch(e) {
+    console.error('[FilterHandlers] Failed to inject handlers:', e);
+  }
+})();
+</script>
+{% endif %}
 {% endblock %}

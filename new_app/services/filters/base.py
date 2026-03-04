@@ -58,6 +58,12 @@ class FilterConfig:
     options_source: Optional[str] = None
     depends_on: Optional[str] = None
     ui_config: Dict[str, Any] = field(default_factory=dict)
+    pydantic_type: str = "Any"
+    js_behavior: Dict[str, str] = field(default_factory=lambda: {
+        "serialize": "raw",
+        "include_if": "truthy",
+        "on_change": "",
+    })
 
     # ── Serialization ──
 
@@ -75,6 +81,8 @@ class FilterConfig:
             "options_source": self.options_source,
             "depends_on": self.depends_on,
             "ui_config": self.ui_config,
+            "pydantic_type": self.pydantic_type,
+            "js_behavior": self.js_behavior,
         }
 
 
@@ -115,6 +123,15 @@ class BaseFilter(ABC):
     depends_on     : Optional[str]     = None
     ui_config      : Dict[str, Any]    = {}
 
+    # ── Frontend contract (Fase 1 — filter_refactor_plan) ────
+    pydantic_type : str           = "Any"
+    js_behavior   : Dict[str,str] = {
+        "serialize":  "raw",
+        "include_if": "truthy",
+        "on_change":  "",
+    }
+    js_inline     : Optional[str] = None
+
     def __init__(self, config: FilterConfig) -> None:
         self.config = config
 
@@ -143,11 +160,12 @@ class BaseFilter(ABC):
         return None
 
     def to_dict(self, parent_values: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """Full serialization including resolved options."""
+        """Full serialization including resolved options and frontend contract."""
         out = self.config.to_dict()
         opts = self.get_options(parent_values)
         out["options"] = [o.to_dict() for o in opts]
         out["default_value"] = self.get_default()
+        out["js_inline"] = type(self).js_inline  # class-level attribute, None or str
         return out
 
 
@@ -177,10 +195,16 @@ class OptionsFilter(BaseFilter):
         self,
         parent_values: Optional[Dict[str, Any]] = None,
     ) -> List[FilterOption]:
-        if parent_values is None and self._cached_options is not None:
+        if parent_values is None and self._cached_options:
+            # Only use the cache when it is non-empty.
+            # An empty list means the metadata cache was not yet loaded when
+            # options were first requested — we must retry rather than return
+            # a stale empty result.
             return self._cached_options
         opts = self._load_options(parent_values)
-        if parent_values is None:
+        if parent_values is None and opts:
+            # Only persist non-empty results so that the next call retries if
+            # the metadata cache was empty at the time of the first load.
             self._cached_options = opts
         return opts
 

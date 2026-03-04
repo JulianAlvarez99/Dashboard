@@ -1,6 +1,6 @@
 # TODO & Roadmap — Camet Analytics Dashboard
 
-Tareas pendientes por prioridad. Estado al **25 Febrero 2026**.
+Tareas pendientes por prioridad. Estado al **4 Marzo 2026**.
 
 ---
 
@@ -42,15 +42,16 @@ Tareas pendientes por prioridad. Estado al **25 Febrero 2026**.
 
 ## 🟠 Prioridad Alta
 
-### Suite de Tests (no existe `tests/`)
+### Suite de Tests (29 tests pasando)
 
-- [ ] Crear directorio `tests/` con estructura básica
-- [ ] Tests unitarios para `_compute_oee()` (casos límite OEE)
-- [ ] Tests para `downtime_calculator.py` (gap analysis edge cases)
-- [ ] Tests para `FilterEngine.validate_input()`
-- [ ] Tests para `WidgetEngine` (auto-discovery, widget desconocido)
+- [X] Crear directorio `tests/` con estructura básica — vive en `tests/unit/`
+- [X] Tests unitarios para `_compute_oee()` (casos límite OEE)
+- [X] Tests para `downtime_calculator.py` (gap analysis edge cases)
+- [X] Tests para `FilterEngine.validate_input()`
+- [X] Tests para `QueryBuilder` (queries con particiones, filtros, cursores)
+- [X] Configurar `pytest` + `pytest-asyncio`
 - [ ] Tests de integración para el pipeline completo (`DashboardOrchestrator.execute()`)
-- [ ] Configurar `pytest` + `pytest-asyncio` + fixtures de DB
+- [ ] `WidgetEngine` coverage (auto-discovery, widget desconocido)
 
 ### Migrations
 
@@ -61,9 +62,9 @@ Tareas pendientes por prioridad. Estado al **25 Febrero 2026**.
 
 ### Scripts de Deploy
 
-- [ ] `scripts/init_db.py` — inicialización + seed de datos
-- [ ] `scripts/setup_production.sh` — setup de entorno producción
-- [ ] `passenger_wsgi.py` para cPanel deployment
+- [X] `scripts/init_db.py` — inicialización + seed de datos
+- [X] `scripts/setup_production.sh` — setup de entorno producción
+- [X] `passenger_wsgi.py` para cPanel deployment
 
 ### Bug conocido
 
@@ -163,12 +164,13 @@ Tareas pendientes por prioridad. Estado al **25 Febrero 2026**.
 | Paquete | Uso Previsto | Acción |
 |---------|-------------|--------|
 | `pyjwt` | JWT auth para FastAPI | Implementar JWT middleware |
-| `slowapi` | Rate limiting | Activar en endpoints críticos |
 | `apscheduler` | Background tasks | Activar downtime auto-calc |
 | `flask-wtf` | CSRF protection | Activar `CSRFProtect(app)` |
 | `alembic` | DB migrations | Inicializar con `alembic init` |
 | `bleach` | XSS sanitization | Aplicar en inputs de usuario |
 | `cryptography` | Crypto utilities | Evaluar necesidad real |
+
+> `slowapi` → ya no se usa; rate limiting implementado con `RateLimitMiddleware` custom.
 
 ---
 
@@ -176,11 +178,11 @@ Tareas pendientes por prioridad. Estado al **25 Febrero 2026**.
 
 | Directorio | Estado | Propósito |
 |------------|--------|-----------|
-| `new_app/utils/` | Existe pero vacío | Utilidades compartidas |
+| `new_app/utils/` | Existe | Utilidades compartidas |
 | `new_app/static/js/modules/` | Existe pero vacío | Módulos JS |
-| `tests/` | No existe | Tests unitarios e integración |
-| `migrations/` | No existe | Alembic migrations |
+| `tests/unit/` | ✅ Existe, 29 tests | Tests unitarios |
+| `migrations/` | Existe (Alembic esqueleto) | Alembic migrations |
 
 ---
 
-_Última actualización: 25 Febrero 2026. Ver [README.md](README.md) para estado general._
+_Última actualización: 4 Marzo 2026. Ver [README.md](README.md) para estado general._

@@ -1,21 +1,28 @@
 """
 Dashboard endpoint schemas — request/response Pydantic models.
+
+DashboardDataRequest has ``extra='allow'`` so newly added filter params
+are accepted transparently without code changes. The actual filter param
+extraction (build_filter_dict) discovers active params from FilterEngine
+at request time, making the system fully generic.
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DashboardDataRequest(BaseModel):
     """
     Request body for POST /dashboard/data.
 
-    All filter params are optional — the orchestrator applies defaults
-    via FilterEngine where needed.
+    extra='allow': accepts any additional filter params from newly added
+    filter classes without requiring changes to this file.
     """
+
+    model_config = ConfigDict(extra="allow")
 
     # Layout control
     widget_ids: Optional[List[int]] = Field(

@@ -10,8 +10,15 @@
     {% for opt in f.options %}
     <label class="flex items-center gap-2.5 px-2 py-1.5 rounded-md hover:bg-surface-700/50 cursor-pointer transition-colors group">
       <input type="checkbox" value="{{ opt.value }}"
-        @change="toggleMultiselect('{{ f.param_name }}', {{ opt.value }})"
-        :checked="params.{{ f.param_name }}.includes({{ opt.value }})"
+        :checked="(filterStates['{{ f.param_name }}']?.value || []).includes({{ opt.value }})"
+        @change="
+          const _arr = filterStates['{{ f.param_name }}'].value;
+          const _idx = _arr.indexOf({{ opt.value }});
+          if (_idx === -1) _arr.push({{ opt.value }});
+          else _arr.splice(_idx, 1);
+          const _handler = filterStates['{{ f.param_name }}'].on_change;
+          if (_handler && typeof $data[_handler] === 'function') $data[_handler]();
+        "
         class="w-3.5 h-3.5 rounded border-surface-600 bg-surface-900 text-accent-500
                focus:ring-accent-500/30 focus:ring-offset-0 cursor-pointer">
       <span class="text-sm text-gray-300 group-hover:text-white transition-colors">{{ opt.label }}</span>

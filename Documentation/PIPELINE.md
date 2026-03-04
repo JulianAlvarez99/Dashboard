@@ -112,16 +112,18 @@ Flask: routes/dashboard.py → index()
   │
   ├── _enrich_widgets(widgets_data)
   │     └── para cada widget en widgets_data:
-  │           layout = WIDGET_LAYOUT.get(widget["widget_name"])
-  │             # config/widget_layout.py (dict estático en memoria)
+  │           cls = WidgetEngine.get_class(widget["widget_name"])
+  │             # importa dinámicamente la clase del widget
   │           widget.update({
-  │             "tab":       layout["tab"],        # "produccion" | "oee"
-  │             "col_span":  layout["col_span"],   # 1-4
-  │             "order":     layout["order"],
-  │             "render":    widget_cls.render,    # "kpi" | "chart" | "table"
-  │             "chart_type": widget_cls.chart_type,
-  │             "downtime_only": layout["downtime_only"],
+  │             "tab":          cls.tab,         # atributo de clase
+  │             "col_span":     cls.col_span,    # 1-4
+  │             "order":        cls.order,
+  │             "render":       cls.render,     # "kpi" | "chart" | "table"
+  │             "chart_type":   cls.chart_type,
+  │             "downtime_only": cls.downtime_only,
   │           })
+  │     # js_inline de los widgets es recopilado en widget_inline_js
+  │     # e inyectado en el template como window.WidgetChartBuilders
   │
   └── render_template("dashboard/index.html",
           user, filters, widgets, tenant_id, role,
@@ -314,7 +316,7 @@ pipeline.py → DashboardOrchestrator.execute()
   │               │   WHERE tenant_id=X AND role=Y AND is_visible=1
   │               ├── metadata_cache.get_widget_catalog()
   │               │   → dict[widget_id, {widget_name, ...}]
-  │               ├── WIDGET_LAYOUT[widget_name] → { tab, col_span, downtime_only }
+  │               ├── WidgetEngine.get_class(widget_name) ↔ { tab, col_span, downtime_only }
   │               └── retorna ([class_names], widget_catalog)
   │                     e.g. ["KpiTotalProduction", "ProductionTimeChart",
   │                            "DowntimeTable", "KpiOee", ...]
@@ -741,42 +743,34 @@ DashboardOrchestrator._renderTabCharts(ctx, "produccion")
         │
         └── para cada chartWidget:
               ChartRenderer.render(
-                  chartType   = "line_chart",
+                  canvasId    = "chart-5",
+                  widgetName  = "ProductionTimeChart",
                   widgetData  = ctx.widgetResults["5"],
-                  chartInstances,
-                  isMultiLine = false,
-                  mode        = "line"
+                  params      = ctx.params,
+                  chartInstances
               )
                 │
-                ├── canvasId = "chart-5"
                 ├── canvas = document.getElementById("chart-5")
                 │
                 ├── [si canvas no visible] → retry hasta 10 veces (60ms cada uno)
                 │
-                ├── ChartConfigBuilder.getConfig("line_chart", data, resetBtn, isMultiLine, "line")
-                │     └── buildLineConfig(data, resetBtn, isMultiLine, "line")
-                │           ├── curveType = data.curve_type   → "smooth"
-                │           ├── stacked   = false
-                │           ├── labels    = data.labels        → ["10:00", "11:00"...]
-                │           ├── datasets  = data.datasets      → [{label, data, color}]
-                │           │
-                │           ├── buildZoomPlugin(resetBtn)
-                │           │     → { pan: {enabled}, zoom: {wheel, pinch}, limits }
-                │           │
-                │           ├── buildDowntimeAnnotations(data.downtime_events)
-                │           │     └── para cada evt:
-                │           │           vtype = evt.visual_type
-                │           │           bg/bdr/lc/lb = colores según vtype:
-                │           │             "db_confirmed"   → verde  (CSS vars)
-                │           │             "db_unconfirmed" → naranja
-                │           │             "calculated"     → rojo
-                │           │           annotations["dt_0"] = {
-                │           │             type: 'box', xMin, xMax,
-                │           │             backgroundColor: bg,
-                │           │             label: { content: "✓ 15min" }
-                │           │           }
-                │           │
-                │           └── retorna config completo Chart.js
+                ├── builder = window.WidgetChartBuilders["ProductionTimeChart"]
+                │     └── registrado por el atributo js_inline del widget Python
+                │           (inyectado en el HTML antes de chart-renderer.js)
+                │
+                ├── config = builder(data, params, ChartUtils)
+                │     │     (ChartUtils = helpers de chart-config.js)
+                │     │
+                │     ├── data.labels, data.datasets, data.curve_type
+                │     ├── ChartUtils._curveProps(data.curve_type)
+                │     ├── ChartUtils.buildDowntimeAnnotations(data.downtime_events)
+                │     │     └── para cada evt:
+                │     │           vtype = evt.visual_type
+                │     │           bg/bdr = colores según vtype:
+                │     │             "db_confirmed"   → verde (CSS vars)
+                │     │             "db_unconfirmed" → naranja
+                │     │             "calculated"     → rojo
+                │     └── ChartUtils._zoomOptions(true)
                 │
                 ├── new Chart(canvas.getContext('2d'), config)
                 │     → Chart.js renderiza el gráfico en el canvas
@@ -850,7 +844,7 @@ DashboardOrchestrator.applyFilters(ctx)
 ```
 FASE 1  Login           routes/auth.py → core/auth.py → core/jwt_utils.py
 FASE 2  HTML Shell      routes/dashboard.py → api/v1/layout.py
-                        → api/v1/filters.py → config/widget_layout.py
+                        → api/v1/filters.py → WidgetEngine (class attrs)
 FASE 3  JS Init         static/js/dashboard-app.js
 FASE 4  Filtros UI      static/js/dashboard-app.js (Alpine x-model)
 FASE 5  Validación      static/js/dashboard-orchestrator.js

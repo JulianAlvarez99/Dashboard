@@ -118,7 +118,21 @@ def _compute_oee(ctx: WidgetContext) -> Dict[str, Any]:
 class KpiOee(BaseWidget):
     required_columns = ["area_type", "detected_at", "line_id"]
     default_config   = {}
-    render           = "kpi_oee"
+
+    # ── Render ──────────────────────────────────────────────
+    render       = "kpi_oee"
+    chart_type   = ""
+    chart_height = "250px"
+
+    # ── Layout ──────────────────────────────────────────────
+    tab          = "oee"
+    col_span     = 1
+    row_span     = 1
+    order        = 0
+    downtime_only = False
+
+    # ── JS ──────────────────────────────────────────────────
+    js_inline = None
 
     def process(self) -> WidgetResult:
         calc = _compute_oee(self.ctx)

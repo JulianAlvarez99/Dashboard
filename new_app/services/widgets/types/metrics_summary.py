@@ -10,7 +10,21 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 class MetricsSummary(BaseWidget):
     required_columns = ["detected_at", "area_type", "line_id", "product_name", "product_weight"]
     default_config   = {}
-    render           = "summary"
+
+    # ── Render ──────────────────────────────────────────────
+    render       = "summary"
+    chart_type   = ""
+    chart_height = "250px"
+
+    # ── Layout ──────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 2
+    row_span     = 2
+    order        = 15
+    downtime_only = False
+
+    # ── JS ──────────────────────────────────────────────────
+    js_inline = None
 
     def process(self) -> WidgetResult:
         df = self.df

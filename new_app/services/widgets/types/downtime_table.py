@@ -31,7 +31,21 @@ _COLUMNS = [
 class DowntimeTable(BaseWidget):
     required_columns = []
     default_config   = {}
-    render           = "table"
+
+    # ── Render ──────────────────────────────────────────────
+    render       = "table"
+    chart_type   = ""
+    chart_height = "250px"
+
+    # ── Layout ──────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 3
+    row_span     = 2
+    order        = 14
+    downtime_only = True
+
+    # ── JS ──────────────────────────────────────────────────
+    js_inline = None
 
     def process(self) -> WidgetResult:
         dt_df = self.downtime_df

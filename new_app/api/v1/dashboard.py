@@ -66,6 +66,10 @@ async def get_dashboard_data(
       4. Execute all widgets via WidgetEngine.
       5. Return unified JSON response.
     """
+    # DEBUG: See what Pydantic parsed
+    dump = request.model_dump()
+    print(f"[ENDPOINT] request.model_dump()={dump}")
+    
     # tenant_id and role come from the validated JWT — never from the body
     tenant_id = ctx.tenant_id
     role = ctx.role

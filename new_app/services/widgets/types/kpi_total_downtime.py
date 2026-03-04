@@ -6,7 +6,21 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 class KpiTotalDowntime(BaseWidget):
     required_columns = []
     default_config   = {}
-    render           = "kpi"
+
+    # ── Render ──────────────────────────────────────────────
+    render       = "kpi"
+    chart_type   = ""
+    chart_height = "250px"
+
+    # ── Layout ──────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 1
+    row_span     = 1
+    order        = 9
+    downtime_only = True
+
+    # ── JS ──────────────────────────────────────────────────
+    js_inline = None
 
     def process(self) -> WidgetResult:
         dt = self.downtime_df

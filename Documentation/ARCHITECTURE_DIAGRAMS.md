@@ -2,7 +2,7 @@
 
 Diagramas técnicos actualizados del sistema.
 
-**Última actualización:** 25 Febrero 2026
+**Última actualización:** 4 Marzo 2026
 **Módulo:** `new_app/` · **Entry point:** `run_new.py`
 
 ---
@@ -137,7 +137,8 @@ POST /api/v1/dashboard/data
 |  WidgetResolver.resolve(tenant_id, role)         |
 |  +- widget_ids explicitos --> catalog lookup     |
 |  +- sin widget_ids --> LayoutService             |
-|    +- lee WIDGET_LAYOUT (config/widget_layout.py)|
+|    +- WidgetEngine.get_class(name) por c/widget  |
+|    +- lee cls.tab, cls.downtime_only, cls.order  |
 |    +- filtra por tab + downtime_only + role      |
 |  +- retorna [class_names] (e.g. "KpiOee")        |
 +--------------------------------------------------+
@@ -316,27 +317,37 @@ DataBroker.resolve(widget_names, master_df)
 
 ### Widget Layout Config
 
+El layout está **en la propia clase del widget** — no en ningún dict externo.
+`widget_layout.py` solo exporta dos constantes globales:
+
 ```python
 # config/widget_layout.py
-WIDGET_LAYOUT = {
-    "KpiOee": {
-        "tab":           "overview",
-        "col_span":      1,
-        "row_span":      1,
-        "order":         1,
-        "downtime_only": False,
-    },
-    "DowntimeTable": {
-        "tab":           "downtime",
-        "col_span":      4,
-        "row_span":      2,
-        "order":         1,
-        "downtime_only": True,   # Solo si hay datos de downtime
-    },
-    ...
-}
-GRID_COLUMNS = 4
+GRID_COLUMNS: int = 4      # columnas del CSS grid
+SHOW_OEE_TAB: bool = False # feature flag de OEE
 ```
+
+Cada widget tiene sus propios atributos de clase:
+
+```python
+class KpiOee(BaseWidget):
+    tab           = "oee"
+    col_span      = 1
+    row_span      = 1
+    order         = 0
+    downtime_only = False
+    render        = "kpi_oee"
+
+class DowntimeTable(BaseWidget):
+    tab           = "produccion"
+    col_span      = 3
+    row_span      = 2
+    order         = 14
+    downtime_only = True   # Solo si hay datos de downtime
+    render        = "table"
+```
+
+`WidgetEngine.get_class("KpiOee")` importa dinámicamente la clase
+y lee estos atributos sin ningún registro externo.
 
 ---
 
@@ -563,14 +574,22 @@ class BaseFilter(ABC):
 +--------------v-------------------+
 |       chart-renderer.js          |
 |  ChartRenderer singleton         |
-|  +- buildLineConfig()            |
-|  +- buildBarConfig()             |
-|  +- buildPieConfig()             |
-|  +- buildScatterConfig()         |
-|  +- _zoomOptions()               |
-|  +- _buildDowntimeAnnotations()  |
-|  +- render(canvasId, config)     |
+|  +- render(canvasId, widgetName, data, params)
+|  +- busca WidgetChartBuilders[widgetName]
+|  +- llama builder(data, params, utils) → config
+|  +- new Chart(canvas, config)    |
+|  (utils = helpers de chart-config.js)
 +--------------+-------------------+
+               |
++--------------v-------------------+
+|       chart-config.js            |
+|  Utilidades compartidas:         |
+|  +- _cssVar() → CSS variables    |
+|  +- _curveProps()                |
+|  +- _zoomOptions()               |
+|  +- buildDowntimeAnnotations()   |
+|  +- _tooltipDefaults()           |
++----------------------------------+
                |
 +--------------v-------------------+
 |   dashboard-orchestrator.js      |
@@ -633,10 +652,10 @@ Dashboard/
         table_resolver.py     detection_line_{name} lookup
         line_resolver.py      resolucion de line_ids
       config/
-        layout_service.py     lee WIDGET_LAYOUT, filtra por rol
+        layout_service.py     lee widget class attrs, filtra por rol
     config/
-      widget_layout.py        WIDGET_LAYOUT dict (tab, col_span, etc.)
-      external_apis.yml       configuracion APIs externas
+      widget_layout.py           # GRID_COLUMNS + SHOW_OEE_TAB (solo constants)
+      external_apis.yml          # configuracion APIs externas
     routes/
       auth.py                 rutas Flask de autenticacion
       dashboard.py            rutas Flask del dashboard
@@ -647,15 +666,15 @@ Dashboard/
       dashboard-app.js
       api-client.js
       data-engine.js
-      chart-renderer.js
-      chart-config.js
+      chart-renderer.js         # render() usa WidgetChartBuilders registry
+      chart-config.js            # utilidades compartidas (_cssVar, _zoomOptions, etc.)
       dashboard-orchestrator.js
     templates/
-      base.html
+      base.html                  # incluye bloque inline de WidgetChartBuilders
       auth/login.html
       dashboard/ (partials por tipo de widget)
 ```
 
 ---
 
-_Diagramas basados en el estado real del código en `new_app/`. Última actualización: 25 Febrero 2026._
+_Diagramas basados en el estado real del código en `new_app/`. Última actualización: 4 Marzo 2026._

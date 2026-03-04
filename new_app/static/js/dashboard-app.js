@@ -22,7 +22,12 @@ function dashboardApp() {
 
   const filters = config.filters || [];
   const widgets = config.widgets || [];
-  const lineOptions = config.lineOptions || [];
+  // Derive line options from the filter config (options are embedded server-side).
+  // Falls back to config.lineOptions for backward compatibility.
+  const _lineFilterCfg = filters.find(function(f) { return f.param_name === 'line_id'; });
+  const lineOptions = (_lineFilterCfg && Array.isArray(_lineFilterCfg.options) && _lineFilterCfg.options.length > 0)
+    ? _lineFilterCfg.options
+    : (config.lineOptions || []);
 
   // ── Build widget metadata map {widget_id → widget info} ────
   const widgetMeta = {};
@@ -30,29 +35,40 @@ function dashboardApp() {
     if (w && w.widget_id) widgetMeta[w.widget_id] = w;
   });
 
-  // ── Build initial params from filter configs ──────────────
-  const initialParams = {
-    daterange: {
-      start_date: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10),
-      end_date: new Date().toISOString().slice(0, 10),
-      start_time: '00:00',
-      end_time: '23:59',
-    },
-  };
-
+  // ── Build filterStates from filter configs ────────────────
+  const filterStates = {};
   filters.forEach(function (f) {
-    if (f.filter_type === 'daterange') return;
-    if (f.filter_type === 'multiselect') {
-      initialParams[f.param_name] = f.default_value || [];
-    } else if (f.filter_type === 'toggle') {
-      initialParams[f.param_name] = f.default_value !== undefined ? f.default_value : false;
-    } else if (f.filter_type === 'number') {
-      initialParams[f.param_name] = f.default_value !== undefined ? f.default_value : null;
-    } else {
-      initialParams[f.param_name] = f.default_value !== undefined && f.default_value !== null
-        ? f.default_value
-        : null;
+    let initialValue;
+    switch (f.filter_type) {
+      case 'daterange':
+        initialValue = f.default_value || {
+          start_date: new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10),
+          end_date:   new Date().toISOString().slice(0, 10),
+          start_time: '00:00',
+          end_time:   '23:59',
+        };
+        break;
+      case 'multiselect':
+        initialValue = Array.isArray(f.default_value) ? f.default_value : [];
+        break;
+      case 'toggle':
+        initialValue = f.default_value !== undefined ? f.default_value : false;
+        break;
+      case 'number':
+        initialValue = f.default_value !== undefined ? f.default_value : null;
+        break;
+      default:
+        initialValue = (f.default_value !== null && f.default_value !== undefined)
+          ? f.default_value : null;
     }
+    filterStates[f.param_name] = {
+      value:      initialValue,
+      type:       f.filter_type,
+      serialize:  (f.js_behavior && f.js_behavior.serialize)  || 'raw',
+      include_if: (f.js_behavior && f.js_behavior.include_if) || 'truthy',
+      on_change:  (f.js_behavior && f.js_behavior.on_change)  || '',
+      options:    f.options || [],
+    };
   });
 
   // ── Alpine State ───────────────────────────────────────────
@@ -69,9 +85,19 @@ function dashboardApp() {
     tenantId: config.tenantId || null,
     role: config.role || 'ADMIN',
 
-    // Filter params
-    params: JSON.parse(JSON.stringify(initialParams)),
-    _initialParams: initialParams,
+    // ── filterStates: single source of truth for all filter values ──
+    filterStates: JSON.parse(JSON.stringify(filterStates)),
+    _initialFilterStates: filterStates,
+
+    // ── Backward-compatible proxy: params.X reads still work ──
+    // Write via: this.filterStates['X'].value = newValue
+    get params() {
+      const p = {};
+      for (const [key, fs] of Object.entries(this.filterStates)) {
+        p[key] = fs.value;
+      }
+      return p;
+    },
 
     // Multi-line group state
     isMultiLine: false,

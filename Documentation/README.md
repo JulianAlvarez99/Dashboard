@@ -116,7 +116,7 @@ Dashboard/
 │   │   └── dashboard.py            # Render index
 │   │
 │   ├── config/
-│   │   ├── widget_layout.py        # Layout: tab, col_span, order
+│   │   ├── widget_layout.py        # GRID_COLUMNS + SHOW_OEE_TAB (solo constantes)
 │   │   └── external_apis.yml       # Configuración APIs externas
 │   │
 │   ├── services/

@@ -1,5 +1,6 @@
 """System endpoints — health check, cache info, cache refresh."""
 
+import logging
 import secrets
 from typing import Optional
 
@@ -7,6 +8,8 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 
 from new_app.core.cache import metadata_cache
 from new_app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/system", tags=["system"])
 
@@ -64,6 +67,16 @@ async def cache_refresh(
         await metadata_cache.refresh(db_name)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+    # Invalidate dynamic Pydantic model so it rebuilds from fresh filter metadata
+    try:
+        from new_app.services.filters.engine import filter_engine
+        from new_app.api.v1.schemas.dynamic_request import invalidate_model_cache
+        filter_engine.clear_instance_cache()
+        invalidate_model_cache()
+    except Exception as exc:
+        logger.warning("[cache/refresh] Could not invalidate filter caches: %s", exc)
+
     return {
         "status": "refreshed",
         "info": metadata_cache.get_cache_info(),

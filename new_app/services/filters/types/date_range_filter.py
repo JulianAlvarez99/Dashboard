@@ -31,6 +31,32 @@ class DateRangeFilter(InputFilter):
         "default_end_time": "23:59",
     }
 
+    # ── Frontend contract ────────────────────────────
+    pydantic_type = "Dict[str,str]"
+    js_behavior   = {
+        "serialize":  "daterange",
+        "include_if": "not_null",
+        "on_change":  "",
+    }
+    js_inline = """\
+    validateEndDate() {
+        const dr = this.filterStates['daterange']?.value;
+        if (!dr) return;
+        if (dr.start_date && dr.end_date && dr.start_date > dr.end_date) {
+            dr.end_date = dr.start_date;
+        }
+        this.validateEndTime();
+    },
+    validateEndTime() {
+        const dr = this.filterStates['daterange']?.value;
+        if (!dr) return;
+        if (dr.start_date === dr.end_date && dr.start_time && dr.end_time) {
+            if (dr.start_time > dr.end_time) {
+                dr.end_time = dr.start_time;
+            }
+        }
+    }"""
+
     def get_default(self) -> Dict[str, str]:
         ui = self.config.ui_config
         days_back = 7

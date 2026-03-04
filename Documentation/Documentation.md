@@ -425,14 +425,34 @@ Después de merge, se enriquece con `line_name`, `line_code` del cache, y se con
 
 ### ChartRenderer (`chart-renderer.js`)
 
-Singleton que centraliza toda la creación de gráficos Chart.js. Métodos principales:
+Singleton que centraliza toda la creación de gráficos Chart.js.
 
-| Método | Tipo de gráfico | Plugins activos |
-|--------|-----------------|-----------------|
-| `buildLineConfig()` | Line chart | zoom, annotation (downtime) |
-| `buildBarConfig()` | Bar chart | zoom (si multi-dataset) |
-| `buildPieConfig()` | Doughnut | — |
-| `buildScatterConfig()` | Scatter | zoom |
+El renderer **no conoce los tipos** de gráfico de antemano. Usa el registry global `WidgetChartBuilders` donde cada widget de tipo `chart` registra su propio builder via el atributo `js_inline`:
+
+```javascript
+// Cada widget chart registra su builder en js_inline:
+window.WidgetChartBuilders['ProductionTimeChart'] = function(data, params, utils) {
+  return { type: 'line', data: {...}, options: {...} };
+};
+
+// chart-renderer.js:
+render(canvasId, widgetName, data, params) {
+  const builder = window.WidgetChartBuilders[widgetName];
+  if (!builder) { console.warn('No builder for', widgetName); return; }
+  const config = builder(data, params, ChartUtils);
+  new Chart(document.getElementById(canvasId), config);
+}
+```
+
+`utils` / `ChartUtils` expone helpers de `chart-config.js`:
+
+| Helper | Descripción |
+|--------|-------------|
+| `_cssVar(name)` | Lee variable CSS del tema |
+| `_curveProps(type)` | Opciones de curva: smooth/linear/step |
+| `_zoomOptions(enabled)` | Config zoom/pan Chart.js |
+| `buildDowntimeAnnotations(events)` | Anotaciones de paradas |
+| `_tooltipDefaults()` | Config de tooltip por defecto |
 
 ### Zoom y Pan
 

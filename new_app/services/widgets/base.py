@@ -4,6 +4,12 @@ BaseWidget — Abstract base class for all widgets.
 Single Responsibility: define the contract that every widget must follow.
 Widgets are self-describing via class attributes — no external registry needed.
 
+Each widget is completely self-contained in its .py file:
+  - Data requirements (required_columns, default_config)
+  - Rendering behavior (render, chart_type, chart_height)
+  - Layout (tab, col_span, row_span, order, downtime_only)
+  - JS chart config (js_inline for chart widgets)
+
 Auto-discovery pattern::
 
     DB: widget_catalog.widget_name = "KpiTotalProduction"
@@ -13,17 +19,18 @@ Auto-discovery pattern::
     class KpiTotalProduction(BaseWidget):
         required_columns = ["area_type"]   # data requirements
         render           = "kpi"           # frontend render type
+        tab              = "produccion"    # layout
         ...
         def process(self) -> WidgetResult: ...
 
-Layout (tab, col_span, order) lives in ``config/widget_layout.py``.
+Adding a new widget = 1 file + 1 DB INSERT. Zero additional files.
 """
 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Type
 
 import pandas as pd
 
@@ -86,17 +93,28 @@ class BaseWidget(ABC):
       - ``process()`` → WidgetResult
 
     Class attributes (override in each subclass):
-      required_columns → list of DF columns the widget needs (Data Scoping)
-      default_config   → default config dict passed via self.ctx.config
-      render           → frontend partial type: "kpi"|"kpi_oee"|"chart"|
-                         "table"|"indicator"|"summary"|"feed"|"unknown"
-      chart_type       → only for render="chart": "line_chart"|"bar_chart"|
-                         "pie_chart"|"comparison_bar"|"scatter_chart"
-      chart_height     → CSS height of canvas (only for render="chart")
 
-    Layout attributes (tab, col_span, order, downtime_only) live in
-    ``config/widget_layout.py`` — kept separate so visual positioning
-    can change without touching widget logic.
+      Data requirements:
+        required_columns → list of DF columns the widget needs (Data Scoping)
+        default_config   → default config dict passed via self.ctx.config
+
+      Rendering behavior:
+        render           → frontend partial type: "kpi"|"kpi_oee"|"chart"|
+                           "table"|"indicator"|"summary"|"feed"|"unknown"
+        chart_type       → only for render="chart": "line_chart"|"bar_chart"|
+                           "pie_chart"|"comparison_bar"|"scatter_chart"
+        chart_height     → CSS height of canvas (only for render="chart")
+
+      Layout (replaces widget_layout.py):
+        tab              → "produccion" | "oee" tab where widget appears
+        col_span         → 1-4 grid columns the widget spans
+        row_span         → 1-2 grid rows the widget spans
+        order            → numeric order in the grid
+        downtime_only    → hide in multi-line mode
+
+      JS inline (for chart widgets):
+        js_inline        → JS string that registers buildConfig in
+                           WidgetChartBuilders (or None for non-chart)
     """
 
     # ── Data requirements (override in subclass) ─────────────────
@@ -108,8 +126,39 @@ class BaseWidget(ABC):
     chart_type:   str = ""
     chart_height: str = "250px"
 
+    # ── Layout (replaces widget_layout.py) ───────────────────────
+    # These attributes are the source of truth for visual positioning.
+    # The widget knows where it lives — no external dict lookup needed.
+    tab:          str  = "produccion"  # "produccion" | "oee"
+    col_span:     int  = 1             # 1–4 (grid de 4 columnas)
+    row_span:     int  = 1             # 1–2 filas
+    order:        int  = 0             # orden en el grid
+    downtime_only: bool = False        # ocultar en modo multi-línea
+
+    # ── JS inline (Chart.js config + handlers) ───────────────────
+    # For chart widgets: registers buildConfig in WidgetChartBuilders.
+    # For non-chart widgets: None.
+    js_inline: ClassVar[Optional[str]] = None
+
     def __init__(self, ctx: WidgetContext) -> None:
         self.ctx = ctx
+
+    @classmethod
+    def get_layout(cls) -> Dict[str, Any]:
+        """
+        Return layout metadata as dict — replaces WIDGET_LAYOUT lookup.
+        Called by routes/dashboard.py _enrich_widgets().
+        """
+        return {
+            "tab":           cls.tab,
+            "col_span":      cls.col_span,
+            "row_span":      cls.row_span,
+            "order":         cls.order,
+            "downtime_only": cls.downtime_only,
+            "render":        cls.render,
+            "chart_type":    cls.chart_type,
+            "chart_height":  cls.chart_height,
+        }
 
     @abstractmethod
     def process(self) -> WidgetResult:
@@ -164,18 +213,26 @@ class BaseWidget(ABC):
         """Shorthand to build a WidgetResult."""
         return WidgetResult(
             widget_id=self.widget_id,
-            widget_name=self.display_name,
+            widget_name=self.widget_name,  # class name for WidgetChartBuilders lookup
             widget_type=widget_type,
             data=data,
-            metadata={"widget_category": meta.pop("category", widget_type), **meta},
+            metadata={
+                "widget_category": meta.pop("category", widget_type),
+                "display_name": self.display_name,  # human-readable name for UI
+                **meta,
+            },
         )
 
     def _empty(self, widget_type: str) -> WidgetResult:
         """Build a standard empty-data result."""
         return WidgetResult(
             widget_id=self.widget_id,
-            widget_name=self.display_name,
+            widget_name=self.widget_name,  # class name for WidgetChartBuilders lookup
             widget_type=widget_type,
             data=None,
-            metadata={"empty": True, "message": "No hay datos disponibles"},
+            metadata={
+                "empty": True,
+                "message": "No hay datos disponibles",
+                "display_name": self.display_name,
+            },
         )

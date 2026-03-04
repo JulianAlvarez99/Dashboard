@@ -46,9 +46,12 @@ class LineResolver:
         raw = cleaned.get("line_ids")
         if raw:
             if isinstance(raw, list):
-                return [int(x) for x in raw]
-            if isinstance(raw, str):
-                return [int(x.strip()) for x in raw.split(",")]
+                result = [int(x) for x in raw]
+            elif isinstance(raw, str):
+                result = [int(x.strip()) for x in raw.split(",")]
+            else:
+                result = []
+            return result
 
         # ── Single line_id value ─────────────────────────────
         line_id = cleaned.get("line_id")

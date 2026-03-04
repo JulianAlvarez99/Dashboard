@@ -13,7 +13,21 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 class LineStatusIndicator(BaseWidget):
     required_columns = ["line_id", "line_name", "detected_at", "area_type"]
     default_config   = {}
-    render           = "indicator"
+
+    # ── Render ──────────────────────────────────────────────
+    render       = "indicator"
+    chart_type   = ""
+    chart_height = "250px"
+
+    # ── Layout ──────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 1
+    row_span     = 1
+    order        = 10
+    downtime_only = False
+
+    # ── JS ──────────────────────────────────────────────────
+    js_inline = None
 
     def process(self) -> WidgetResult:
         df = self.df

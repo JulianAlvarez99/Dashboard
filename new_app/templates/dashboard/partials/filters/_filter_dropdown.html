@@ -6,11 +6,15 @@
     <i data-lucide="chevron-down-circle" class="w-3.5 h-3.5 text-accent-400/70"></i>
     {{ f.description or f.class_name }}
   </label>
-  <select x-model="params.{{ f.param_name }}"
-    {% if f.param_name == 'line_id' %}@change="onLineChange($event.target.value)"{% endif %}
-    {% if f.param_name == 'curve_type' %}@change="onCurveTypeChange()"{% endif %}
-    {% if f.param_name == 'interval' %}@change="onIntervalChange()"{% endif %}
-    {% if f.param_name == 'shift_id' %}@change="onShiftChange()"{% endif %}
+  <select
+    :value="filterStates['{{ f.param_name }}']?.value"
+    @change="
+      filterStates['{{ f.param_name }}'].value = $event.target.value || null;
+      const _handler = filterStates['{{ f.param_name }}'].on_change;
+      if (_handler && typeof $data[_handler] === 'function') {
+        $data[_handler]($event.target.value);
+      }
+    "
     class="w-full px-3 py-2.5 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white
            focus:ring-2 focus:ring-accent-500/30 focus:border-accent-500/50 outline-none
            transition-all cursor-pointer appearance-none"

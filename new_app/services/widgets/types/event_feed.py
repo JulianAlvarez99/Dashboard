@@ -17,7 +17,21 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 class EventFeed(BaseWidget):
     required_columns = []
     default_config   = {"max_items": 50}
-    render           = "feed"
+
+    # ── Render ──────────────────────────────────────────────────
+    render       = "feed"
+    chart_type   = ""
+    chart_height = "250px"
+
+    # ── Layout ──────────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 4
+    row_span     = 2
+    order        = 16
+    downtime_only = False
+
+    # ── JS ──────────────────────────────────────────────────────
+    js_inline = None
 
     def process(self) -> WidgetResult:
         max_items = self.ctx.config.get("max_items", 50)

@@ -48,9 +48,10 @@
 | `tab` | `"produccion"` | `"produccion"` \| `"oee"` |
 | `col_span` | `1` | 1–4 columnas del grid |
 | `row_span` | `1` | 1–2 filas (opcional) |
-| `order` | `18` | Orden en el grid (ver los existentes en widget_layout.py) |
-| `required_columns` | `["area_type", "detected_at"]` | Columnas del DataFrame que necesita |
+| `order` | `18` | Orden en el grid (ver los existentes en cada widget) |
 | `downtime_only` | `False` | `True` para ocultar en modo multi-línea |
+| `required_columns` | `["area_type", "detected_at"]` | Columnas del DataFrame que necesita |
+| `js_inline` | `None` | Bloque JS del builder Chart.js (solo si `render="chart"`) |
 | `display_name` | `"Tasa de Rechazo"` | Texto legible para la DB |
 | `description` | `"Porcentaje de unidades rechazadas"` | Descripción en widget_catalog |
 
@@ -86,10 +87,12 @@
 """{NombreClase} — {descripción breve}."""
 from __future__ import annotations
 
-from new_app.services.filters.types.dropdown import DropdownFilter
+from typing import Any, Dict, List, Optional
+
+from new_app.services.filters.base import FilterOption, OptionsFilter
 
 
-class {NombreClase}(DropdownFilter):
+class {NombreClase}(OptionsFilter):
     """{Docstring}"""
 
     filter_type    = "{filter_type}"
@@ -106,10 +109,32 @@ class {NombreClase}(DropdownFilter):
         ]
     }
 
-    def to_sql_clause(self, value):
+    # ── Frontend contract ─────────────────────────
+    pydantic_type = "str"
+    js_behavior   = {"serialize": "str", "include_if": "always", "on_change": ""}
+    js_inline     = None
+
+    def _load_options(
+        self,
+        parent_values: Optional[Dict[str, Any]] = None,
+    ) -> List[FilterOption]:
+        static = self.config.ui_config.get("static_options", [])
+        return [FilterOption(value=o["value"], label=o["label"]) for o in static]
+
+    def validate(self, value: Any) -> bool:
+        if value is None or value == "":
+            return not self.config.required
+        opts = self.get_options()
+        return any(str(o.value) == str(value) for o in opts)
+
+    def get_default(self) -> Any:
+        return self.config.default_value
+
+    def to_sql_clause(self, value: Any) -> Optional[tuple[str, dict]]:
         if not value:
-            return None, {}
-        return "{columna_sql} = :{param_name}", {"{param_name}": value}
+            return None
+        col = self.config.param_name
+        return f"{col} = :{col}", {col: value}
 ```
 
 **Plantilla para filtro que carga opciones desde MetadataCache:**
@@ -120,11 +145,10 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 from new_app.core.cache import metadata_cache
-from new_app.services.filters.base import FilterOption
-from new_app.services.filters.types.dropdown import DropdownFilter
+from new_app.services.filters.base import FilterOption, OptionsFilter
 
 
-class {NombreClase}(DropdownFilter):
+class {NombreClase}(OptionsFilter):
     """{Docstring}"""
 
     filter_type    = "dropdown"
@@ -136,6 +160,11 @@ class {NombreClase}(DropdownFilter):
     depends_on     = None   # o "line_id" para cascade
     ui_config      = {}
 
+    # ── Frontend contract ─────────────────────────
+    pydantic_type = "Any"
+    js_behavior   = {"serialize": "raw", "include_if": "truthy", "on_change": ""}
+    js_inline     = None
+
     def _load_options(
         self,
         parent_values: Optional[Dict[str, Any]] = None,
@@ -146,10 +175,20 @@ class {NombreClase}(DropdownFilter):
             for k, v in items.items()
         ]
 
-    def to_sql_clause(self, value):
+    def validate(self, value: Any) -> bool:
+        if value is None or value == "":
+            return not self.config.required
+        opts = self.get_options()
+        return any(o.value == value or str(o.value) == str(value) for o in opts)
+
+    def get_default(self) -> Any:
+        return self.config.default_value
+
+    def to_sql_clause(self, value: Any) -> Optional[tuple[str, dict]]:
         if not value:
-            return None, {}
-        return "{columna_sql} = :{param_name}", {"{param_name}": value}
+            return None
+        col = self.config.param_name
+        return f"{col} = :{col}", {col: value}
 ```
 
 ---
@@ -307,17 +346,47 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 class {NombreClase}(BaseWidget):
 
-    # Columnas del DataFrame maestro que este widget necesita
-    # (Data Scoping — solo se pasan estas columnas al widget)
+    # ── Layout del grid (posición y visibilidad) ──────────────
+    tab           = "{tab}"          # "produccion" | "oee"
+    col_span      = {col_span}       # 1–4
+    row_span      = {row_span}       # 1–2 (omitir si es 1)
+    order         = {order}          # único: buscar el último en los tipos existentes
+    downtime_only = {downtime_only}  # True si ocultar en multi-línea
+
+    # ── Renderizado ─────────────────────────────────────────
     required_columns = ["{col1}", "{col2}"]
+    default_config   = {}
+    render           = "{render}"      # "kpi" | "chart" | "table" | etc.
+    chart_type       = "{chart_type}"  # "" si no es chart
+    chart_height     = "{chart_height}"
 
-    # Config por defecto (accesible via self.ctx.config)
-    default_config = {}
-
-    # Tipo de renderizado en el frontend
-    render     = "{render}"      # "kpi" | "chart" | "table" | "ranking" | etc.
-    chart_type = "{chart_type}"  # solo si render = "chart"
-    chart_height = "{chart_height}"
+    # ── js_inline: solo si render = "chart" ───────────────────
+    # Omitir completamente si render != "chart"
+    js_inline = """
+(function() {
+  window.WidgetChartBuilders = window.WidgetChartBuilders || {};
+  window.WidgetChartBuilders['{NombreClase}'] = function(data, params, utils) {
+    // data: payload retornado por process()
+    // params: filtros activos del dashboard
+    // utils: helpers de chart-config.js (_cssVar, _curveProps, buildDowntimeAnnotations, etc.)
+    return {
+      type: '{chart_js_type}',   // 'line' | 'bar' | 'pie' | 'scatter'
+      data: {
+        labels: data.labels || [],
+        datasets: [/* ... */],
+      },
+      options: {
+        responsive: true,
+        // ... opciones Chart.js
+        plugins: {
+          annotation: { annotations: utils.buildDowntimeAnnotations(data.downtime_events || []) },
+        },
+        ...utils._zoomOptions(true),
+      },
+    };
+  };
+})();
+"""
 
     def process(self) -> WidgetResult:
         df = self.df  # DataFrame ya filtrado a required_columns
@@ -369,33 +438,7 @@ VALUES ('{NombreClase}', '{display_name}', '{description}', 1);
 
 ---
 
-### Paso 3 — Agregar al layout de widgets
-
-**Archivo:** `new_app/config/widget_layout.py`
-
-Agregar una entrada al dict `WIDGET_LAYOUT`. Ver los `order` existentes para
-asignar el siguiente disponible:
-
-```python
-WIDGET_LAYOUT: dict[str, dict] = {
-    # ...widgets existentes...
-
-    "{NombreClase}": {
-        "tab":          "{tab}",          # "produccion" | "oee"
-        "col_span":     {col_span},       # 1–4
-        "row_span":     {row_span},       # 1–2 (omitir si es 1)
-        "order":        {order},          # siguiente disponible
-        "render":       "{render}",
-        "chart_type":   "{chart_type}",   # "" si no es chart
-        "chart_height": "{chart_height}",
-        # "downtime_only": True,          # descomentar si ocultar en multi-línea
-    },
-}
-```
-
----
-
-### Paso 4 — Asignar al `dashboard_template` en DB (DB Tenant)
+### Paso 3 — Asignar al `dashboard_template` en DB
 
 El template del dashboard tiene un `layout_config` JSON con los `widget_ids`
 habilitados para cada tenant/rol. Agregar el `widget_id` del Paso 2:
@@ -410,16 +453,18 @@ SET layout_config = JSON_SET(layout_config, '$.widgets', JSON_ARRAY(..., {widget
 WHERE id = {template_id};
 ```
 
+> El layout (tab, col_span, order, etc.) ya fue declarado **directamente en la clase**
+> en el Paso 1. No se necesita ningún archivo de configuración externo.
+
 ---
 
 ### ✅ Checklist de Widget
 
 | # | Archivo | Acción | Crítico |
 |---|---------|--------|---------|
-| 1 | `services/widgets/types/{nombre}.py` | Crear clase con `process()` | ✅ |
+| 1 | `services/widgets/types/{nombre}.py` | Crear clase con layout attrs, `process()`, y `js_inline` si es chart | ✅ |
 | 2 | DB Global `widget_catalog` | `INSERT` con `widget_name` | ✅ |
-| 3 | `config/widget_layout.py` → `WIDGET_LAYOUT` | Agregar entrada con tab/col_span/order | ✅ |
-| 4 | DB Tenant `dashboard_template` | Agregar `widget_id` al layout | ✅ |
+| 3 | DB Tenant `dashboard_template` | Agregar `widget_id` al layout | ✅ |
 
 ---
 
@@ -459,8 +504,10 @@ Usuario selecciona valor en UI
 ```
 Pipeline ejecuta
     → WidgetEngine descubre {nombre_clase}.py              [Paso 1]
-    → DataBroker slicee df a required_columns
+    → DataBroker slicea df a required_columns
     → {NombreClase}(ctx).process() → WidgetResult
-    → ResponseAssembler incluye widget_id                  [Paso 4]
+    → ResponseAssembler incluye widget_id                  [Paso 3]
     → Frontend renderiza con template _widget_{render}.html
+    → ChartRenderer busca WidgetChartBuilders['{NombreClase}']
+      y llama al builder registrado en js_inline           [Paso 1 — solo charts]
 ```

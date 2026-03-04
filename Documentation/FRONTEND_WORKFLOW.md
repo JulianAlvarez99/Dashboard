@@ -80,8 +80,9 @@ A continuación se detalla exactamente qué funciona y qué API se ejecuta secue
    - Extrae el `tenant_id` y `role` de la sesión del usuario.
    - Ejecuta `_fetch_layout(api_base, tenant_id, role)` → llama internamente a **`GET /api/v1/layout/config?tenant_id=X&role=Y`**. Esto lee la base MySQL `dashboard_template` y retorna IDs habilitados.
    - Ejecuta `_fetch_filters(api_base, enabled_filter_ids)` → llama a **`GET /api/v1/filters/?filter_ids=X,Y...`**.
-   - Ejecuta `_enrich_widgets(widgets_data)` → Cruza cada nombre de widget con `WIDGET_LAYOUT` en `new_app/config/widget_layout.py` para obtener estilo de grilla (`col_span`).
-4. **Jinja2 Render (`index.html`)**: El HTML se construye. El layout se convierte en DOM y las variables se incrustan en `<script type="application/json" id="dashboard-config">`.
+   - Ejecuta `_enrich_widgets(widgets_data)` → Para cada widget usa `WidgetEngine.get_class(name)` para leer los atributos de layout directamente de la clase Python (`col_span`, `tab`, `order`, etc.).
+   - Recopila `widget_inline_js` = lista de bloques `js_inline` de los widgets del layout y los pasa al template.
+5. **Jinja2 Render (`index.html`)**: El HTML se construye. Los bloques `js_inline` se inyectan como `window.WidgetChartBuilders = {}` antes de `chart-renderer.js`. El layout se convierte en DOM y las variables se incrustan en `<script type="application/json" id="dashboard-config">`.
 
 ### 4.2 Inicialización Javascript
 1. **`dashboardApp.init()` (Alpine.js)**:
@@ -103,9 +104,11 @@ A continuación se detalla exactamente qué funciona y qué API se ejecuta secue
    - Se reciben `widgetResults`, `_rawData`, `_rawDowntime`.
    - Se destruyen gráficos viejos con `ChartRenderer.destroyAll()`.
 4. **Pintado en Canvas (`ChartRenderer.render()`)**:
-   - `_renderAllCharts` usa `CHART_TYPE_MAP` para mapear el widget (Ej: `ProductionTimeChart` -> `line_chart`).
-   - Llama a `ChartRenderer.render('line_chart', data...)`.
-   - `_configBuilders['line_chart']` ejecuta `buildLineConfig()` devolviendo el dict que la librería Chart.js necesita para renderizar líneas con tooltips interpolados, barras o puntos de dispersión de ChartJS interno.
+   - `_renderAllCharts` itera los `widgetResults` y llama a `ChartRenderer.render(canvasId, widgetName, data, params)`.
+   - `chart-renderer.js` busca `window.WidgetChartBuilders[widgetName]` (builder registrado por el `js_inline` del widget).
+   - Llama al builder con `(data, params, utils)` donde `utils` expone helpers de `chart-config.js`.
+   - El builder retorna la config completa de Chart.js y el renderer crea la instancia.
+   - Si no encuentra el builder, registra un warning en consola y omite el widget.
 
 ---
 

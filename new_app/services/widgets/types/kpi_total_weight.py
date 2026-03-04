@@ -6,7 +6,21 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 class KpiTotalWeight(BaseWidget):
     required_columns = ["area_type", "product_weight"]
     default_config   = {"unit": "kg"}
-    render           = "kpi"
+
+    # ── Render ──────────────────────────────────────────────
+    render       = "kpi"
+    chart_type   = ""
+    chart_height = "250px"
+
+    # ── Layout ──────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 1
+    row_span     = 1
+    order        = 8
+    downtime_only = False
+
+    # ── JS ──────────────────────────────────────────────────
+    js_inline = None
 
     def process(self) -> WidgetResult:
         df = self.df

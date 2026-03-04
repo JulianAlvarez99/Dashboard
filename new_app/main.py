@@ -22,7 +22,6 @@ from new_app.core.config import settings
 from new_app.core.database import db_manager
 from new_app.core.fastapi_limiter import RateLimitMiddleware
 from new_app.api.v1 import api_router
-from new_app.config.widget_layout import validate_layout_consistency
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +34,6 @@ async def lifespan(app: FastAPI):
     """
     logger.info("Starting Camet Analytics API")
     logger.info("MetadataCache will load after first tenant login")
-
-    # Validate layout consistency at startup — fail fast on config errors
-    validate_layout_consistency()
 
     yield
 

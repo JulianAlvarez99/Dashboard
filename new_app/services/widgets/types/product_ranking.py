@@ -10,7 +10,21 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 class ProductRanking(BaseWidget):
     required_columns = ["product_name", "product_code", "product_color", "product_weight", "area_type"]
     default_config   = {}
-    render           = "table"
+
+    # ── Render ──────────────────────────────────────────────
+    render       = "table"
+    chart_type   = ""
+    chart_height = "250px"
+
+    # ── Layout ──────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 1
+    row_span     = 2
+    order        = 6
+    downtime_only = False
+
+    # ── JS ──────────────────────────────────────────────────
+    js_inline = None
 
     def process(self) -> WidgetResult:
         df = self.df

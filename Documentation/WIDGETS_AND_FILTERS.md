@@ -2,7 +2,7 @@
 
 Cómo funciona el sistema, cómo se procesan los datos, y cómo **agregar nuevos widgets y filtros** usando el patrón auto-discovery.
 
-**Última actualización:** 25 Febrero 2026
+**Última actualización:** 4 Marzo 2026
 
 ---
 
@@ -54,28 +54,60 @@ class WidgetContext:
 @dataclass
 class WidgetResult:
     widget_id:   int
-    widget_name: str
-    widget_type: str        # "kpi" | "kpi_oee" | "chart" | "table" | etc.
-    data:        Any        # Payload JSON para el frontend
-    metadata:    Dict       # Info adicional (vacío, error, categoría, etc.)
+    widget_name: str   # Nombre de la CLASE Python (ej. "KpiTotalProduction")
+                       # ← Usado por WidgetChartBuilders para lookup en JS
+    widget_type: str   # "kpi" | "kpi_oee" | "chart" | "table" | etc.
+    data:        Any   # Payload JSON para el frontend
+    metadata:    Dict  # Info adicional (display_name, empty, category, etc.)
 
     def to_dict(self) -> Dict: ...
 ```
+
+> **Importante:** `widget_name` es el **nombre de la clase Python** (`self.widget_name`),
+> no el nombre legible de la DB. El nombre legible (`display_name`) va dentro de `metadata`.
+> Esto permite que el frontend localice el builder en `WidgetChartBuilders[widget_name]`.
 
 #### `BaseWidget` — Clase abstracta
 
 ```python
 class BaseWidget(ABC):
-    # ── Atributos de clase que DEBES sobreescribir ──────────────
+    # ── Atributos de LAYOUT (definen posición en el grid) ───────
+    tab:          str  = "produccion"   # "produccion" | "oee"
+    col_span:     int  = 1              # 1–4 columnas del grid
+    row_span:     int  = 1              # 1–2 filas
+    order:        int  = 99             # Orden de aparición
+    downtime_only: bool = False         # Ocultar en modo multi-línea
+
+    # ── Atributos de RENDERIZADO ─────────────────────────────────
     required_columns: List[str] = []    # Columnas del DF que necesitas
     default_config:   Dict      = {}    # Config por defecto
     render:       str = "kpi"           # Tipo de renderizado frontend
     chart_type:   str = ""              # Solo para render="chart"
     chart_height: str = "250px"         # Altura del canvas
 
+    # ── js_inline (solo widgets chart) ──────────────────────────
+    # Bloque JavaScript que registra el builder de Chart.js
+    # Se inyecta en el HTML antes de chart-renderer.js
+    # El builder se registra en WidgetChartBuilders[ClassName]
+    js_inline: Optional[str] = None
+
     # ── Método obligatorio ──────────────────────────────────────
     @abstractmethod
     def process(self) -> WidgetResult: ...
+
+    # ── Layout helper ───────────────────────────────────────────
+    def get_layout(self) -> dict:
+        """Retorna los atributos de layout como dict para el template."""
+        return {
+            "tab":          self.tab,
+            "col_span":     self.col_span,
+            "row_span":     self.row_span,
+            "order":        self.order,
+            "downtime_only": self.downtime_only,
+            "render":       self.render,
+            "chart_type":   self.chart_type,
+            "chart_height": self.chart_height,
+        }
 
     # ── Propiedades útiles ──────────────────────────────────────
     @property
@@ -89,6 +121,9 @@ class BaseWidget(ABC):
     def _result(self, widget_type, data, **meta) -> WidgetResult: ...
     def _empty(self, widget_type) -> WidgetResult: ...
 ```
+
+> **Principio:** Cada widget es autónomo — su clase define tanto la lógica de negocio
+> como su posición en el grid. No existe ningún registro externo de layout.
 
 ### 2.2 Tipos de `render`
 
@@ -144,7 +179,7 @@ class BaseWidget(ABC):
 
 ### 2.5 Cómo Agregar un Widget Nuevo
 
-#### Paso 1: Crear el archivo de la clase
+#### Paso 1: Crear el archivo de la clase (con layout inline)
 
 **`new_app/services/widgets/types/mi_nuevo_widget.py`**
 
@@ -158,15 +193,19 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 
 
 class MiNuevoWidget(BaseWidget):
-    # ── Qué columnas del DataFrame necesito ──────────────────────
+    # ── Layout del grid (posición y visibilidad) ──────────────────
+    tab          = "produccion"  # "produccion" | "oee"
+    col_span     = 1             # 1–4 columnas
+    row_span     = 1             # 1–2 filas
+    order        = 20            # Orden de aparición (único)
+    downtime_only = False        # True → ocultar en modo multi-línea
+
+    # ── Renderizado ───────────────────────────────────────────────
     required_columns = ["detected_at", "area_type", "product_name"]
-
-    # ── Config por defecto (accesible desde self.ctx.config) ─────
-    default_config = {"top_n": 10}
-
-    # ── Tipo de renderizado en el frontend ───────────────────────
-    render     = "kpi"          # o "chart", "table", "ranking", etc.
-    chart_type = ""             # Solo si render="chart"
+    default_config   = {"top_n": 10}
+    render           = "kpi"     # o "chart", "table", "ranking", etc.
+    chart_type       = ""        # Solo si render="chart"
+    chart_height     = "250px"
 
     def process(self) -> WidgetResult:
         df = self.df  # DataFrame ya filtrado a required_columns
@@ -174,27 +213,55 @@ class MiNuevoWidget(BaseWidget):
         if df.empty:
             return self._empty(self.render)
 
-        # --- tu lógica aquí ---
         valor = len(df)
-        top_n = self.ctx.config.get("top_n", 10)
-
         data = {
             "value": valor,
             "label": "Mi Métrica",
             "unit": "uds",
         }
-
-        return self._result(
-            widget_type=self.render,
-            data=data,
-            category="produccion",
-        )
+        return self._result(widget_type=self.render, data=data, category="produccion")
 ```
 
-**Regla de naming:** El nombre del archivo debe ser exactamente el `CamelCase→snake_case` del nombre de la clase:
+**Regla de naming:** El nombre del archivo es exactamente el `CamelCase→snake_case` del nombre de la clase:
 - `MiNuevoWidget` → `mi_nuevo_widget.py`
 - `KpiTotalProduction` → `kpi_total_production.py`
 - `ProductionTimeChart` → `production_time_chart.py`
+
+**Para widgets de tipo `chart`**, agregar también el atributo `js_inline` que registra el builder de Chart.js en el registry global `WidgetChartBuilders`. Esto se inyecta en el HTML antes de `chart-renderer.js`:
+
+```python
+class MiChartWidget(BaseWidget):
+    tab      = "produccion"
+    col_span = 2
+    order    = 21
+    render   = "chart"
+    chart_type = "bar_chart"
+
+    js_inline = """
+(function() {
+  window.WidgetChartBuilders = window.WidgetChartBuilders || {};
+  window.WidgetChartBuilders['MiChartWidget'] = function(data, params, utils) {
+    return {
+      type: 'bar',
+      data: {
+        labels: data.labels || [],
+        datasets: [{
+          label: 'Mi Dataset',
+          data: data.values || [],
+          backgroundColor: utils._cssVar('--color-primary'),
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } },
+      }
+    };
+  };
+})();
+"""
+
+    def process(self) -> WidgetResult: ...
+```
 
 #### Paso 2: Registrar en la tabla `widget_catalog` (DB Global)
 
@@ -205,32 +272,24 @@ VALUES ('MiNuevoWidget', 'Mi Nuevo Widget', 'Descripción del widget', 1);
 
 El campo `widget_name` debe coincidir **exactamente** con el nombre de la clase Python.
 
-#### Paso 3: Agregar al layout (Python)
-
-**`new_app/config/widget_layout.py`**
-
-```python
-WIDGET_LAYOUT: dict[str, dict] = {
-    # ... widgets existentes ...
-
-    "MiNuevoWidget": {
-        "tab": "produccion",   # "produccion" | "oee"
-        "col_span": 1,         # 1-4 columnas del grid
-        "row_span": 1,         # 1-2 filas (opcional, default 1)
-        "order": 20,           # Orden de aparición
-        # "downtime_only": True  # ← Descomenta para ocultarlo en multi-línea
-    },
-}
-```
-
-#### Paso 4: Asignar al dashboard_template en DB
+#### Paso 3: Asignar al `dashboard_template` en DB
 
 ```sql
--- Agregar el widget_id al layout_config del template correspondiente
 -- dashboard_template.layout_config es un JSON con los widget_ids habilitados
+UPDATE dashboard_template
+SET layout_config = JSON_SET(layout_config, '$.widgets', JSON_ARRAY(..., {widget_id}))
+WHERE id = {template_id};
 ```
 
 ¡Listo! El `WidgetEngine` lo descubrirá automáticamente al ejecutar el pipeline.
+
+**Checklist mínimo:**
+
+| # | Archivo / DB | Acción |
+|---|-------------|--------|
+| 1 | `services/widgets/types/mi_nuevo_widget.py` | Crear clase con layout attrs + `process()` |
+| 2 | DB Global `widget_catalog` | `INSERT` con `widget_name` |
+| 3 | DB Tenant `dashboard_template` | Agregar `widget_id` al layout |
 
 ---
 
@@ -553,10 +612,13 @@ filter_list = filter_engine.resolve_all()
            "widgets": {
              "1": {
                "widget_id": 1,
-               "widget_name": "Total Producción",
+               "widget_name": "KpiTotalProduction",   ← nombre de clase Python
                "widget_type": "kpi",
                "data": {"value": 1250, "unit": "uds", "label": "Total"},
-               "metadata": {}
+               "metadata": {
+                 "display_name": "Total Producción",  ← nombre legible de la DB
+                 "category": "produccion"
+               }
              },
              ...
            },
@@ -581,10 +643,14 @@ filter_list = filter_engine.resolve_all()
   "widgets": {
     "<widget_id>": {
       "widget_id": 1,
-      "widget_name": "Total Producción",
+      "widget_name": "KpiTotalProduction",
       "widget_type": "kpi",
       "data": { ... },
-      "metadata": { "empty": false, "category": "produccion" }
+      "metadata": {
+        "empty": false,
+        "category": "produccion",
+        "display_name": "Total Producción"
+      }
     }
   },
   "metadata": {
@@ -668,26 +734,54 @@ filter_list = filter_engine.resolve_all()
 
 ---
 
-## 7. Layout Visual (config/widget_layout.py)
+## 7. Layout Visual (atributos de clase en cada widget)
 
-Controla el posicionamiento en el grid, **separado de la lógica de negocio**.
+El layout está **colocado directamente en la clase del widget**,
+nunca en un dict externo. Cada widget es completamente autónomo:
 
 ```python
-WIDGET_LAYOUT: dict[str, dict] = {
-    "KpiOee": {
-        "tab": "oee",        # "produccion" | "oee"
-        "col_span": 1,       # 1-4 (grid de 4 columnas)
-        "row_span": 1,       # 1-2 (opcional)
-        "order": 0,          # orden en el grid
-        # "downtime_only": True  # ocultar cuando is_multi_line=True
-    },
-}
-
-GRID_COLUMNS: int = 4        # columnas del CSS grid
-SHOW_OEE_TAB: bool = False   # mostrar/ocultar la pestaña OEE
+class KpiOee(BaseWidget):
+    tab          = "oee"      # "produccion" | "oee"
+    col_span     = 1          # 1-4 (grid de 4 columnas)
+    row_span     = 1          # 1-2 (opcional, default 1)
+    order        = 0          # orden en el grid (único por tab)
+    downtime_only = False     # True → ocultar cuando is_multi_line=True
+    render       = "kpi_oee"
+    ...
 ```
 
-**`downtime_only: True`** → el widget se oculta automáticamente cuando el usuario consulta múltiples líneas simultáneamente (`is_multi_line = True`). Útil para widgets que solo tienen sentido para una línea concreta (scatter, tabla de paradas, etc.).
+`new_app/config/widget_layout.py` ahora solo exporta dos constantes:
+
+```python
+GRID_COLUMNS: int = 4        # columnas del CSS grid (usado en template)
+SHOW_OEE_TAB: bool = False   # mostrar/ocultar la pestaña OEE (env flag)
+```
+
+**`downtime_only = True`** → el widget se oculta automáticamente cuando el usuario consulta múltiples líneas simultáneamente (`is_multi_line = True`). Útil para widgets que solo tienen sentido para una línea concreta (scatter, tabla de paradas, etc.).
+
+### Sistema de gráficos Chart.js (WidgetChartBuilders)
+
+Cada widget de tipo `chart` registra su propio builder en el registry global JavaScript `WidgetChartBuilders` mediante el atributo `js_inline`. El template inyecta todos estos bloques antes de cargar `chart-renderer.js`:
+
+```html
+<!-- Injected by routes/dashboard.py -->
+<script>
+  window.WidgetChartBuilders = {};
+  // ProductionTimeChart.js_inline
+  // ProductDistributionChart.js_inline
+  // ...
+</script>
+<script src="chart-renderer.js"></script>
+```
+
+`chart-renderer.js` llama a `WidgetChartBuilders[widgetName](data, params, utils)` para construir la configuración de Chart.js. `utils` expone helpers de `chart-config.js` (`_cssVar`, `_curveProps`, `buildDowntimeAnnotations`, etc.).
+
+**`chart-config.js`** — Solo utilidades compartidas (no builders de chart type específicos):
+- `_cssVar(name)` — lee variables CSS del tema
+- `_curveProps(curve_type)` — opciones de curva smooth/linear/step
+- `_zoomOptions(enabled)` — configuración zoom/pan
+- `buildDowntimeAnnotations(events)` — anotaciones de paradas
+- `_tooltipDefaults()` — config de tooltip por defecto
 
 ---
 

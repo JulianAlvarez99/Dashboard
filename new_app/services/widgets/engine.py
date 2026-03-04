@@ -238,6 +238,43 @@ class WidgetEngine:
             "metadata": {"error": True, "message": error},
         }
 
+    def get_class(self, class_name: str) -> Optional[Type[BaseWidget]]:
+        """
+        Return the widget class for a given class_name.
+
+        Used by _enrich_widgets() in routes/dashboard.py to read
+        layout attributes without instantiating the widget.
+        """
+        return self._resolve_class(class_name)
+
+    def get_js_inline_blocks(self, widget_names: List[str]) -> str:
+        """
+        Collect all non-None js_inline blocks from the given widgets.
+
+        Returns a single JS string ready to inject in the template.
+        Deduplicates in case the same class appears twice.
+        Each block is wrapped in a try/catch for silent error isolation.
+        """
+        seen: set = set()
+        blocks: List[str] = []
+
+        for name in widget_names:
+            if name in seen:
+                continue
+            seen.add(name)
+            cls = self._resolve_class(name)
+            if cls is None or not cls.js_inline:
+                continue
+            block = cls.js_inline.strip()
+            # Wrap in try/catch to isolate widget JS errors
+            safe_block = (
+                f"try {{\n{block}\n}}"
+                f" catch(e) {{ console.error('[{name}] js_inline error:', e); }}"
+            )
+            blocks.append(safe_block)
+
+        return "\n\n".join(blocks)
+
 
 # ── Singleton ────────────────────────────────────────────────────
 widget_engine = WidgetEngine()

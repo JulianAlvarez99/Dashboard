@@ -8,9 +8,50 @@ from new_app.services.widgets.base import BaseWidget, WidgetResult
 class ProductDistributionChart(BaseWidget):
     required_columns = ["product_name", "product_color", "product_weight"]
     default_config   = {}
+
+    # ── Render ──────────────────────────────────────────────────
     render           = "chart"
     chart_type       = "pie_chart"
-    chart_height     = "320px"   # taller to fit more table rows
+    chart_height     = "320px"
+
+    # ── Layout ──────────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 3
+    row_span     = 2
+    order        = 5
+    downtime_only = False
+
+    # ── JS ──────────────────────────────────────────────────────
+    js_inline = """
+WidgetChartBuilders['ProductDistributionChart'] = {
+    zoomable: false,
+    toggleable: false,
+    buildConfig: function(data, options) {
+        return {
+            type: 'doughnut',
+            data: {
+                labels: data.labels || [],
+                datasets: (data.datasets || []).map(function(ds) {
+                    return {
+                        data: ds.data || [],
+                        backgroundColor: ds.backgroundColor || ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'],
+                        borderWidth: 2,
+                        borderColor: '#0F172A'
+                    };
+                })
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: '#94a3b8', padding: 12, font: { size: 11 } } },
+                    tooltip: ChartConfigBuilder._tooltipDefaults()
+                }
+            }
+        };
+    }
+};
+"""
 
     def process(self) -> WidgetResult:
         df = self.df

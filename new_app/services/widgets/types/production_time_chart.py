@@ -29,9 +29,117 @@ from new_app.services.widgets.helpers import (
 class ProductionTimeChart(BaseWidget):
     required_columns = ["detected_at", "area_type", "line_id", "product_name", "product_color"]
     default_config   = {"curve_type": "smooth"}
-    render           = "chart"
-    chart_type       = "line_chart"
-    chart_height     = "600px"
+
+    # ── Render ──────────────────────────────────────────────────
+    render       = "chart"
+    chart_type   = "line_chart"
+    chart_height = "600px"
+
+    # ── Layout ──────────────────────────────────────────────────
+    tab          = "produccion"
+    col_span     = 4
+    row_span     = 2
+    order        = 4
+    downtime_only = False
+
+    # ── JS ──────────────────────────────────────────────────────
+    js_inline = """
+WidgetChartBuilders['ProductionTimeChart'] = {
+    zoomable: true,
+    toggleable: true,
+    buildConfig: function(data, options) {
+        var resetBtn = options.resetBtn;
+        var isMultiLine = options.isMultiLine;
+        var mode = options.mode || 'line';
+        var asBar = mode === 'bar';
+        var curveType = data.curve_type || 'smooth';
+        var curve = ChartConfigBuilder._curveProps(curveType);
+        var stacked = curveType === 'stacked';
+        var classDetails = data.class_details || {};
+        var multi = (data.datasets || []).length > 1;
+        var dtEvts = data.downtime_events || [];
+        var showDt = data.show_downtime !== false;
+        var dtAnnot = (isMultiLine || !showDt) ? {} : ChartConfigBuilder.buildDowntimeAnnotations(dtEvts);
+
+        var lineColors = [
+            [ChartConfigBuilder._cssVar('--chart-line-1', '#22c55e'), ChartConfigBuilder._cssVar('--chart-line-bg-1', 'rgba(34,197,94,0.08)')],
+            [ChartConfigBuilder._cssVar('--chart-line-2', '#38bdf8'), ChartConfigBuilder._cssVar('--chart-line-bg-2', 'rgba(56,189,248,0.08)')],
+            [ChartConfigBuilder._cssVar('--chart-line-3', '#fbbf24'), ChartConfigBuilder._cssVar('--chart-line-bg-3', 'rgba(251,191,36,0.08)')],
+            [ChartConfigBuilder._cssVar('--chart-line-4', '#f87171'), ChartConfigBuilder._cssVar('--chart-line-bg-4', 'rgba(248,113,113,0.08)')],
+            [ChartConfigBuilder._cssVar('--chart-line-5', '#a78bfa'), ChartConfigBuilder._cssVar('--chart-line-bg-5', 'rgba(167,139,250,0.08)')]
+        ];
+        var gridColor = ChartConfigBuilder._cssVar('--chart-grid', 'rgba(148,163,184,0.08)');
+        var tickColor = ChartConfigBuilder._cssVar('--chart-tick', '#94a3b8');
+
+        var datasets = (data.datasets || []).map(function(ds, i) {
+            var colors = lineColors[i % lineColors.length];
+            var borderColor = ds.borderColor || colors[0];
+            var bgColor = ds.backgroundColor || colors[1];
+            if (asBar) {
+                return {
+                    label: ds.label || 'Producción',
+                    data: ds.data || [],
+                    backgroundColor: borderColor.startsWith('#') ? borderColor + 'CC' : borderColor,
+                    borderColor: borderColor,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    borderSkipped: false
+                };
+            }
+            return {
+                label: ds.label || 'Producción',
+                data: ds.data || [],
+                borderColor: borderColor,
+                backgroundColor: stacked ? bgColor : bgColor,
+                fill: stacked ? 'origin' : (ds.fill !== undefined ? ds.fill : false),
+                tension: curve.tension,
+                stepped: curve.stepped,
+                pointRadius: 2,
+                pointHoverRadius: 6,
+                borderWidth: 2
+            };
+        });
+
+        var tooltipCallbacks = {
+            afterBody: function(items) {
+                if (!items.length) return '';
+                var lbl = items[0].label;
+                var detail = classDetails[lbl];
+                if (!detail) return '';
+                var lines = ['─── Clases ───'];
+                Object.entries(detail)
+                    .sort(function(a, b) { return b[1] - a[1]; })
+                    .forEach(function(entry) { lines.push('  ' + entry[0] + ': ' + entry[1]); });
+                return lines;
+            }
+        };
+
+        return {
+            type: asBar ? 'bar' : 'line',
+            data: { labels: data.labels || [], datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: asBar ? { mode: 'index', intersect: false } : { mode: 'nearest', intersect: true },
+                plugins: {
+                    legend: {
+                        display: multi,
+                        position: 'top',
+                        labels: { color: tickColor, usePointStyle: true, pointStyle: asBar ? 'rect' : 'circle', padding: 16, font: { size: 11 } }
+                    },
+                    tooltip: Object.assign({}, ChartConfigBuilder._tooltipDefaults(), { callbacks: tooltipCallbacks }),
+                    annotation: Object.keys(dtAnnot).length > 0 ? { annotations: dtAnnot } : false,
+                    zoom: ChartConfigBuilder._zoomOptions(resetBtn)
+                },
+                scales: {
+                    x: { stacked: asBar ? false : stacked, grid: { color: gridColor, display: !asBar }, ticks: { color: tickColor, maxTicksLimit: 14, font: { size: 10 } } },
+                    y: { stacked: asBar ? false : stacked, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 } }, beginAtZero: true }
+                }
+            }
+        };
+    }
+};
+"""
 
     def process(self) -> WidgetResult:
         df = self.df
@@ -217,16 +325,15 @@ class ProductionTimeChart(BaseWidget):
         """
         Downtime annotation events for the line chart overlay.
 
-        Reglas de visibilidad:
-          · source='db'         → SIEMPRE visible (independiente de show_downtime)
-          · source='calculated' → solo si show_downtime=True
-        
+        Cuando show_downtime=False se devuelve lista vacía — el toggle
+        oculta todas las marcas (db y calculadas).
+
         Colores por visual_type:
           · 'db_confirmed'   → verde  (registrada con reason_code)
           · 'db_unconfirmed' → naranja (registrada sin reason_code)
           · 'calculated'     → rojo   (gap analysis)
         """
-        if not self.has_downtime:
+        if not self.has_downtime or not show_downtime:
             return []
 
         dt_df = self.downtime_df
@@ -241,10 +348,6 @@ class ProductionTimeChart(BaseWidget):
                 continue
 
             source = evt.get("source", "db")
-
-            # Paradas calculadas solo si el filtro show_downtime está activo
-            if source == "calculated" and not show_downtime:
-                continue
 
             start_idx = find_nearest_label_index(label_list, evt_start)
             end_idx = find_nearest_label_index(label_list, evt_end)

@@ -6,6 +6,51 @@
  * 2. Re-computing data client-side (recomputeFromRaw)
  * 3. Rendering all charts (renderAllCharts)
  */
+
+// ── Serialization helpers (used by _buildRequestBody) ─────────────
+
+/**
+ * Determine whether a filter value should be included in the request body.
+ * @param {*} value
+ * @param {string} includeIf  - 'always' | 'not_null' | 'truthy' | 'array_not_empty'
+ */
+function _shouldInclude(value, includeIf) {
+    switch (includeIf) {
+        case 'always':          return true;
+        case 'not_null':        return value !== null && value !== undefined;
+        case 'array_not_empty': return Array.isArray(value) && value.length > 0;
+        case 'truthy':
+        default:                return !!value;
+    }
+}
+
+/**
+ * Serialize a filter value to the wire format.
+ * @param {*} value
+ * @param {string} serialize  - 'int' | 'str' | 'bool' | 'array_int' | 'array_str' | 'daterange' | 'line_id' | 'raw'
+ * @param {Object} ctx        - Alpine context (unused here but available for extensions)
+ */
+function _serializeValue(value, serialize, ctx) {
+    switch (serialize) {
+        case 'int':        return parseInt(value);
+        case 'str':        return String(value);
+        case 'bool':       return Boolean(value);
+        case 'array_int':  return Array.isArray(value) ? value.map(Number) : [Number(value)];
+        case 'array_str':  return Array.isArray(value) ? value.map(String) : [String(value)];
+        case 'daterange':  return value;           // object {start_date,...} as-is
+        case 'line_id': {
+            if (value === null || value === undefined) return undefined;
+            const _n = parseInt(value);
+            return isNaN(_n) ? String(value) : _n;
+        }
+        case 'not_null':   return value;
+        case 'raw':
+        default:           return value;
+    }
+}
+
+// ── ──────────────────────────────────────────────────────────────
+
 const DashboardOrchestrator = {
 
     /**
@@ -31,6 +76,7 @@ const DashboardOrchestrator = {
             ctx.sidebarOpen = false;
 
             const body = this._buildRequestBody(ctx);
+            console.log('[DEBUG] Request body:', JSON.stringify(body, null, 2));
             const url = ctx.dashboardApiUrl || (ctx.apiBase + '/api/v1/dashboard/data');
             const result = await DashboardAPI.fetchDashboardData(url, body);
             const elapsed = Math.round(performance.now() - startTime);
@@ -54,7 +100,7 @@ const DashboardOrchestrator = {
             ctx.hasData = Object.keys(ctx.widgetResults).length > 0;
             ctx.filtersApplied = true;
 
-            ctx.filterCount = this._countActiveFilters(ctx.params);
+            ctx.filterCount = this._countActiveFilters(ctx.filterStates);
             ctx.lastUpdate = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
 
             this._renderTabCharts(ctx, ctx.activeTab);
@@ -216,11 +262,12 @@ const DashboardOrchestrator = {
         };
     },
 
-    _countActiveFilters(params) {
+    _countActiveFilters(filterStates) {
         let count = 0;
-        for (let k in params) {
-            let v = params[k];
-            if (v !== null && v !== '' && !(Array.isArray(v) && v.length === 0)) count++;
+        for (const [key, fstate] of Object.entries(filterStates)) {
+            const v = fstate.value;
+            if (v !== null && v !== '' && v !== false &&
+                !(Array.isArray(v) && v.length === 0)) count++;
         }
         return count;
     },
@@ -239,37 +286,45 @@ const DashboardOrchestrator = {
     },
 
     _buildRequestBody(ctx) {
-        const body = {
-            tenant_id: ctx.tenantId,
-            role: ctx.role,
-            daterange: ctx.params.daterange || null,
-            interval: ctx.params.interval || 'hour',
-            curve_type: ctx.params.curve_type || 'smooth',
-            include_raw: true
-        };
+        const body = { include_raw: true };
 
-        if (ctx.isMultiLine && ctx.selectedLineGroup) {
-            body.line_ids = ctx.selectedLineGroup.join(',');
-        } else if (ctx.params.line_id) {
-            const val = ctx.params.line_id;
-            const opt = ctx._lineOptions.find(o => String(o.value) === String(val));
-            if (opt && opt.extra && opt.extra.is_group) {
-                body.line_ids = opt.extra.line_ids.join(',');
-            } else {
-                body.line_id = parseInt(val);
+        for (const [param, fstate] of Object.entries(ctx.filterStates)) {
+            try {
+                const val    = fstate.value;
+                const should = _shouldInclude(val, fstate.include_if);
+                if (!should) continue;
+
+                const serialized = _serializeValue(val, fstate.serialize, ctx);
+                if (serialized === undefined) continue;
+
+                // line_id with group value expands to line_ids
+                if (param === 'line_id') {
+                    const lineOpt = ctx._lineOptions.find(
+                        o => String(o.value) === String(val)
+                    );
+                    if (lineOpt && lineOpt.extra && lineOpt.extra.is_group) {
+                        // Send both: line_id for validation, line_ids for query
+                        body.line_id = val;  // "all" or "group_X"
+                        body.line_ids = lineOpt.extra.line_ids.join(',');
+                    } else if (serialized !== undefined) {
+                        body.line_id = serialized;
+                    }
+                } else if (param === 'daterange') {
+                    // daterange is a nested object — send as-is
+                    body.daterange = val;
+                } else {
+                    body[param] = serialized;
+                }
+            } catch (e) {
+                console.error('[buildRequestBody] Error on param', param, e);
             }
         }
 
-        if (ctx.params.product_ids && ctx.params.product_ids.length > 0)
-            body.product_ids = ctx.params.product_ids.map(Number);
-        if (ctx.params.area_ids && ctx.params.area_ids.length > 0)
-            body.area_ids = ctx.params.area_ids.map(Number);
-        if (ctx.params.shift_id)
-            body.shift_id = parseInt(ctx.params.shift_id);
-        if (ctx.params.downtime_threshold != null)
-            body.downtime_threshold = parseInt(ctx.params.downtime_threshold);
-        if (ctx.params.show_downtime)
-            body.show_downtime = true;
+        // Multi-line group override (isMultiLine set by onLineChange)
+        if (ctx.isMultiLine && ctx.selectedLineGroup) {
+            // Keep line_id for backend validation, override line_ids
+            body.line_ids = ctx.selectedLineGroup.join(',');
+        }
 
         return body;
     },
@@ -301,8 +356,16 @@ const DashboardOrchestrator = {
             // Filtrar por tab: si el widget no tiene tab definido, pertenece a 'produccion'
             const widgetTab = meta.tab || 'produccion';
             if (widgetTab !== tab) return;
+
+            const widgetName = meta.widget_name;
             const chartType = meta.chart_type || '';
-            if (!chartType) return;
+
+            // ── Check new registry first, fall back to chart_type ──
+            const hasBuilder = typeof WidgetChartBuilders !== 'undefined'
+                               && !!WidgetChartBuilders[widgetName];
+            const isChart = hasBuilder || !!chartType;
+            if (!isChart) return;
+
             tabCharts.push({ chartType, widgetData: wd, wid });
         });
 
