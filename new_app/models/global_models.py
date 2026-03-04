@@ -106,15 +106,20 @@ class UserLogin(GlobalBase):
 class AuditLog(GlobalBase):
     """Security / action audit log.
 
-    ``user_id = 0`` is the convention for anonymous/unknown users
-    (e.g. a login attempt where the username was not found in the DB).
-    This avoids a migration to make user_id nullable.
+    ``user_id`` is nullable to support anonymous/unknown users (e.g. a
+    login attempt where the username was not found in the DB).
+    ``attempted_username`` captures the raw username string supplied by
+    the client on failed-authentication events where no ``user_id`` exists.
     """
     __tablename__ = "audit_log"
 
     log_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(
-        BigInteger, ForeignKey("user.user_id"), nullable=False
+    user_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey("user.user_id"), nullable=True
+    )
+    attempted_username: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True,
+        comment="Raw username supplied on failed-auth events (no user_id)",
     )
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     ip_address: Mapped[str] = mapped_column(String(45), nullable=False)

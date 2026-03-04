@@ -37,7 +37,24 @@ class CacheEntry:
 
 class MetadataCache:
     """
-    Singleton in-memory cache.
+    Singleton in-memory cache — **single-tenant per process** model.
+
+    Design notes
+    ------------
+    This application is deployed on cPanel/Phusion Passenger where each
+    worker process serves **one tenant at a time** (the tenant is bound
+    to the process when the user logs in and warms the cache).  Because
+    of this architecture:
+
+    * The cache stores data for exactly **one tenant DB** at a time.
+    * ``current_tenant`` tracks which ``db_name`` is loaded.
+    * A cache miss or tenant switch triggers a full ``load_all()`` reload.
+    * No tenant isolation or namespacing is needed at the key level.
+    * Thread-safety is provided by an ``asyncio.Lock`` for async callers;
+      sync callers (Flask routes) must never call ``load_all()`` directly
+      — they interact only with the already-loaded read-only getters.
+    * Global reference data (widget_catalog) is shared across all tenants
+      and is loaded once alongside tenant metadata.
 
     Usage::
 
@@ -93,6 +110,9 @@ class MetadataCache:
         """
         Load every reference table into memory.
 
+        Tenant and global metadata use separate DB sessions — they are
+        fetched concurrently with asyncio.gather() to halve cold-start time.
+
         Args:
             db_name: Tenant database name. If ``None`` the default
                      tenant DB from .env is used.
@@ -100,8 +120,10 @@ class MetadataCache:
         async with self._lock:
             self._cache.clear()  # wipe stale data from previous tenant
             self._current_tenant = db_name
-            await self._load_tenant_metadata(db_name)
-            await self._load_global_metadata()
+            await asyncio.gather(
+                self._load_tenant_metadata(db_name),
+                self._load_global_metadata(),
+            )
 
     async def _load_tenant_metadata(self, db_name: Optional[str] = None) -> None:
         ctx = (

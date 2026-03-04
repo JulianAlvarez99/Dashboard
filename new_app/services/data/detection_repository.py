@@ -234,7 +234,7 @@ class DetectionRepository:
             row = result.first()
             return row[0] if row else 0
         except Exception as exc:
-            logger.error(f"[DetectionRepo] Count error on {table_name}: {exc}")
+            logger.error("[DetectionRepo] Count error on %s: %s", table_name, exc)
             return 0
 
     # ─────────────────────────────────────────────────────────────

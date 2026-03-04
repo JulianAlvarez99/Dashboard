@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 from new_app.core.database import db_manager
 from new_app.api.v1.dependencies import (
     TenantContext,
+    require_role,
     require_tenant,
     resolve_line_ids_from_cleaned,
 )
@@ -38,29 +39,8 @@ from new_app.services.data.table_resolver import table_resolver
 router = APIRouter(prefix="/detections", tags=["detections"])
 
 
-# ── Pydantic models ──────────────────────────────────────────────
-
-class DetectionQueryRequest(BaseModel):
-    """Body for POST /detections/query."""
-    line_ids: Optional[List[int]] = Field(
-        None, description="Explicit line IDs. If null, uses line_id param."
-    )
-    line_id: Optional[Any] = Field(
-        None, description="Single line ID, 'all', or 'group_X'."
-    )
-    daterange: Optional[Dict[str, str]] = Field(
-        None,
-        description="Date range: {start_date, end_date, start_time?, end_time?}",
-    )
-    shift_id: Optional[int] = None
-    area_ids: Optional[List[int]] = None
-    product_ids: Optional[List[int]] = None
-    interval: Optional[str] = "hour"
-
-
-class DetectionCountResponse(BaseModel):
-    total: int
-    per_line: Dict[int, int]
+# Schemas imported from the schemas package to keep this module thin
+from new_app.api.v1.schemas import DetectionCountResponse, DetectionQueryRequest  # noqa: E402
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -78,7 +58,7 @@ def _build_cleaned(req: DetectionQueryRequest) -> Dict[str, Any]:
 @router.post("/query")
 async def query_detections(
     req: DetectionQueryRequest,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER")),
 ):
     """
     Fetch enriched detections for the given filters.
@@ -110,7 +90,7 @@ async def query_detections(
 @router.get("/{line_id}")
 async def get_line_detections(
     line_id: int,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER")),
     start_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     end_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     start_time: Optional[str] = Query(None, description="HH:MM"),
@@ -167,7 +147,7 @@ async def get_line_detections(
 @router.post("/count")
 async def count_detections(
     req: DetectionQueryRequest,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER")),
 ):
     """
     Return detection counts per line without fetching rows.
@@ -188,7 +168,7 @@ async def count_detections(
 @router.post("/summary")
 async def detection_summary(
     req: DetectionQueryRequest,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER")),
 ):
     """
     Return detection summary with counts by area_type.
@@ -209,7 +189,7 @@ async def detection_summary(
 @router.post("/export")
 async def export_detections(
     req: DetectionQueryRequest,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER")),
     format: str = Query("csv", description="Export format: csv | xlsx"),
 ):
     """
@@ -255,7 +235,7 @@ async def export_detections(
 @router.post("/partitions/ensure/{line_id}")
 async def ensure_partitions(
     line_id: int,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN")),
     months_ahead: int = Query(3, ge=1, le=24),
 ):
     """
@@ -289,7 +269,7 @@ async def ensure_partitions(
 @router.get("/partitions/{line_id}")
 async def list_partitions(
     line_id: int,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER")),
 ):
     """
     List existing partitions on a detection table.

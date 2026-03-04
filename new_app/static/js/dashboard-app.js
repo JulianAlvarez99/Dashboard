@@ -30,15 +30,6 @@ function dashboardApp() {
     if (w && w.widget_id) widgetMeta[w.widget_id] = w;
   });
 
-  // ── Chart type map from widget class → chart_type ──────────
-  const CHART_TYPE_MAP = {
-    'ProductionTimeChart': 'line_chart',
-    'AreaDetectionChart': 'bar_chart',
-    'ProductDistributionChart': 'pie_chart',
-    'EntryOutputCompareChart': 'comparison_bar',
-    'ScatterChart': 'scatter_chart',
-  };
-
   // ── Build initial params from filter configs ──────────────
   const initialParams = {
     daterange: {
@@ -100,7 +91,8 @@ function dashboardApp() {
     // ── Globals tracked for Orchestrator bounds ──
     _lineOptions: lineOptions,
     _widgetMeta: widgetMeta,
-    _CHART_TYPE_MAP: CHART_TYPE_MAP,
+    // chart_type is now read from meta.chart_type (widget_layout backend data)
+    // — the local CHART_TYPE_MAP constant has been removed (T-13)
 
     // ── Raw data buffers (Etapa 3 — client-side re-aggregation) ──
     _rawData: null,

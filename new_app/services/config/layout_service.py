@@ -25,6 +25,10 @@ Usage::
 
 from __future__ import annotations
 
+import logging
+
+_log = logging.getLogger(__name__)
+
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
@@ -133,7 +137,7 @@ class LayoutService:
                     description=data["description"],
                 ))
             else:
-                print(f"[LayoutService] WARN: widget_id={wid} not in cache")
+                _log.warning("[LayoutService] widget_id=%s not in cache", wid)
         return resolved
 
     async def get_resolved_layout(

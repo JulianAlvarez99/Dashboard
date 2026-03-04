@@ -55,7 +55,6 @@ WIDGET_LAYOUT: dict[str, dict] = {
     "KpiTotalWeight":           {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 8,  "render": "kpi",       "chart_type": "",             "chart_height": "250px"},
     "KpiTotalDowntime":         {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 9,  "render": "kpi",       "chart_type": "",             "chart_height": "250px", "downtime_only": True},
     "LineStatusIndicator":      {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 10, "render": "indicator", "chart_type": "",             "chart_height": "250px"},
-    "KpiRejectedRate":          {"tab": "produccion", "col_span": 1, "row_span": 1, "order": 17, "render": "kpi",       "chart_type": "",             "chart_height": "250px"},
     "AreaDetectionChart":       {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 11, "render": "chart",     "chart_type": "bar_chart",    "chart_height": "280px"},
     "EntryOutputCompareChart":  {"tab": "produccion", "col_span": 4, "row_span": 2, "order": 12, "render": "chart",     "chart_type": "comparison_bar","chart_height": "400px"},
     "ScatterChart":             {"tab": "produccion", "col_span": 2, "row_span": 2, "order": 13, "render": "chart",     "chart_type": "scatter_chart","chart_height": "300px",  "downtime_only": True},

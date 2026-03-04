@@ -51,7 +51,7 @@ def _resolve_filter_class(class_name: str) -> Optional[Type[BaseFilter]]:
             f"as a BaseFilter subclass"
         )
     except ImportError as exc:
-        logger.error(f"[FilterEngine] Cannot import {full_path}: {exc}")
+        logger.error("[FilterEngine] Cannot import %s: %s", full_path, exc)
     return None
 
 

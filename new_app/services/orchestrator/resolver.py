@@ -69,7 +69,7 @@ def _ids_to_names(
         if info:
             names.append(info["widget_name"])
         else:
-            logger.warning(f"[WidgetResolver] widget_id={wid} not in catalog")
+            logger.warning("[WidgetResolver] widget_id=%s not in catalog", wid)
     return names
 
 

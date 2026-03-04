@@ -172,7 +172,7 @@ class ExternalAPIService:
         if time.monotonic() > entry.expires_at:
             del self._cache[api_id]
             return None
-        logger.debug(f"[ExternalAPIService] Cache hit for '{api_id}'")
+        logger.debug("[ExternalAPIService] Cache hit for '%s'", api_id)
         return entry.data
 
     def _set_cached(self, api_id: str, result: APIResult, ttl: int) -> None:

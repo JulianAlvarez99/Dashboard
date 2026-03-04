@@ -132,7 +132,7 @@ class PartitionManager:
                     session, table_name, part_name, boundary_value
                 )
             created.append(part_name)
-            logger.info(f"[Partition] Created {part_name} on {table_name}")
+            logger.info("[Partition] Created %s on %s", part_name, table_name)
 
         return created
 

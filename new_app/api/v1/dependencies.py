@@ -111,6 +111,32 @@ def require_tenant(
     )
 
 
+def require_role(*allowed_roles: str):
+    """
+    Dependency factory: verify that the JWT role is in the allowed set.
+
+    Usage::
+
+        @router.get("/admin-only")
+        async def admin_endpoint(ctx: TenantContext = Depends(require_role("ADMIN"))):
+            ...
+
+    Returns the validated ``TenantContext`` so callers can still use it.
+    Raises HTTP 403 if the role is not authorised.
+    """
+    def _checker(ctx: TenantContext = Depends(require_tenant)) -> TenantContext:
+        if ctx.role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    f"Role '{ctx.role}' is not authorized for this endpoint. "
+                    f"Required: {list(allowed_roles)}"
+                ),
+            )
+        return ctx
+    return _checker
+
+
 def resolve_line_ids_from_cleaned(cleaned: Dict[str, Any]) -> List[int]:
     """
     Resolve line IDs from a cleaned filter dict.

@@ -25,10 +25,12 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from typing import Any, Dict, List, Optional
 
+from new_app.core.database import db_manager
 from new_app.services.data.detection_service import detection_service
 from new_app.services.data.downtime_service import downtime_service
 from new_app.services.data.line_resolver import line_resolver
@@ -48,7 +50,8 @@ class DashboardOrchestrator:
 
     ``execute()`` flow:
       validate → resolve lines → resolve widgets
-      → fetch detections → fetch downtime → execute widgets → assemble
+      → fetch detections + db-downtime in parallel
+      → gap analysis → execute widgets → assemble
     """
 
     # ─────────────────────────────────────────────────────────
@@ -57,24 +60,27 @@ class DashboardOrchestrator:
 
     async def execute(
         self,
-        session,
+        session,  # kept for API compatibility but no longer used directly
         user_params: Dict[str, Any],
         tenant_id: int,
         role: str,
         widget_ids: Optional[List[int]] = None,
         include_raw: bool = False,
+        db_name: str = "",
     ) -> Dict[str, Any]:
         """
         Full dashboard execution pipeline.
 
         Args:
-            session:      Active async DB session (tenant).
+            session:      Active async DB session (kept for API compatibility;
+                          pipeline now opens its own sessions internally).
             user_params:  Raw filter values from the frontend.
             tenant_id:    Current tenant ID (for layout resolution).
             role:         User role (for layout resolution).
             widget_ids:   Explicit widget IDs (bypasses layout lookup).
             include_raw:  If True, include raw detection + downtime rows
                           in the response for client-side re-aggregation.
+            db_name:      Tenant database name (resolved from JWT at call site).
 
         Returns:
             ``{"widgets": {...}, "metadata": {...}, "raw_data": [...]}``
@@ -100,9 +106,13 @@ class DashboardOrchestrator:
                 "No widgets configured for this layout",
             )
 
-        # Phase 6.2 — Build data context
+        # Phase 6.2 — Build data context (parallel DB fetches)
         ctx = await _build_context(
-            session, cleaned, line_ids, widget_names, widget_catalog,
+            db_name=db_name,
+            cleaned=cleaned,
+            line_ids=line_ids,
+            widget_names=widget_names,
+            widget_catalog=widget_catalog,
         )
 
         # Phase 6.4 — Execute widgets & assemble
@@ -120,10 +130,11 @@ class DashboardOrchestrator:
 
     async def execute_quick(
         self,
-        session,
+        session,  # kept for API compatibility
         cleaned: Dict[str, Any],
         widget_names: List[str],
         include_raw: bool = False,
+        db_name: str = "",
     ) -> Dict[str, Any]:
         """
         Simplified pipeline — skips validation and layout resolution.
@@ -140,7 +151,11 @@ class DashboardOrchestrator:
         widget_catalog = metadata_cache.get_widget_catalog()
 
         ctx = await _build_context(
-            session, cleaned, line_ids, widget_names, widget_catalog,
+            db_name=db_name,
+            cleaned=cleaned,
+            line_ids=line_ids,
+            widget_names=widget_names,
+            widget_catalog=widget_catalog,
         )
 
         widgets_result = _execute_widgets(ctx)
@@ -177,37 +192,61 @@ def _validate_filters(user_params: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def _build_context(
-    session,
+    db_name: str,
     cleaned: Dict[str, Any],
     line_ids: List[int],
     widget_names: List[str],
     widget_catalog: Dict[int, Dict[str, Any]],
 ) -> DashboardContext:
     """
-    Phase 6.2 — Fetch enriched detections + unified downtime.
+    Phase 6.2 — Fetch enriched detections + DB downtime in parallel.
 
-    Both data pipelines run sequentially (downtime needs detections
-    for gap calculation).
+    Detections and DB-recorded downtime are fetched concurrently using
+    two independent sessions (asyncio.gather), then gap analysis runs
+    on the detection result.  This removes the sequential DB fetch
+    bottleneck when downtime tables are large.
     """
-    detections_df = await detection_service.get_enriched_detections(
-        session=session,
-        line_ids=line_ids,
-        cleaned=cleaned,
+    threshold_override = cleaned.get("downtime_threshold")
+
+    async def _fetch_detections():
+        async with db_manager.get_tenant_session_by_name(db_name) as session:
+            return await detection_service.get_enriched_detections(
+                session=session,
+                line_ids=line_ids,
+                cleaned=cleaned,
+            )
+
+    async def _fetch_db_downtime():
+        async with db_manager.get_tenant_session_by_name(db_name) as session:
+            return await downtime_service.get_db_downtime_only(
+                session=session,
+                line_ids=line_ids,
+                cleaned=cleaned,
+            )
+
+    detections_df, db_downtime_df = await asyncio.gather(
+        _fetch_detections(),
+        _fetch_db_downtime(),
     )
 
-    downtime_df = await downtime_service.get_downtime(
-        session=session,
-        line_ids=line_ids,
-        cleaned=cleaned,
-        detections_df=detections_df,
-        threshold_override=cleaned.get("downtime_threshold"),
+    # Gap analysis requires detections — runs after the parallel fetch
+    from new_app.services.data.downtime_calculator import (
+        calculate_gap_downtimes,
+        remove_overlapping,
     )
+    calc_df = downtime_service._calculate_gap_events(
+        detections_df, line_ids, threshold_override,
+    )
+    from new_app.services.data.downtime_service import downtime_service as ds
+    if not calc_df.empty and not db_downtime_df.empty:
+        from new_app.services.data.downtime_calculator import remove_overlapping
+        calc_df = remove_overlapping(calc_df, db_downtime_df)
+
+    downtime_df = ds._merge_and_enrich(db_downtime_df, calc_df)
 
     logger.info(
-        f"[Orchestrator] Data context: "
-        f"{len(detections_df)} detections, "
-        f"{len(downtime_df)} downtime events, "
-        f"{len(line_ids)} lines"
+        "[Orchestrator] Data context: %d detections, %d downtime events, %d lines",
+        len(detections_df), len(downtime_df), len(line_ids),
     )
 
     return DashboardContext(

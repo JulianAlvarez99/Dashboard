@@ -124,7 +124,7 @@ const DashboardOrchestrator = {
             if (!wd || !wd.data) return;
             const meta = ctx._widgetMeta[parseInt(wid)] || ctx._widgetMeta[wid];
             if (!meta) return;
-            const chartType = ctx._CHART_TYPE_MAP[meta.widget_name];
+            const chartType = meta.chart_type;
             if (chartType) {
                 chartWidgets.push({ chartType: chartType, widgetData: wd, wid });
             }
@@ -287,7 +287,6 @@ const DashboardOrchestrator = {
         }
 
         const widgetMeta = ctx._widgetMeta || {};
-        const chartTypeMap = ctx._CHART_TYPE_MAP || {};
         const isMulti = ctx.isMultiLine;
         const instances = ctx.chartInstances;
         const modes = ctx.chartModes || {};
@@ -302,7 +301,7 @@ const DashboardOrchestrator = {
             // Filtrar por tab: si el widget no tiene tab definido, pertenece a 'produccion'
             const widgetTab = meta.tab || 'produccion';
             if (widgetTab !== tab) return;
-            const chartType = chartTypeMap[meta.widget_name] || chartTypeMap[wid];
+            const chartType = meta.chart_type || '';
             if (!chartType) return;
             tabCharts.push({ chartType, widgetData: wd, wid });
         });

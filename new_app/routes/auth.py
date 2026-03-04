@@ -45,6 +45,33 @@ def login_required(f):
     return decorated
 
 
+def role_required(*roles: str):
+    """
+    Decorator (Flask): verify the session user has one of the required roles.
+
+    Must be applied **after** a route decorator and combines with
+    ``login_required`` — unauthenticated requests are redirected to login.
+
+    Usage::
+
+        @dashboard_bp.route("/admin")
+        @role_required("ADMIN", "MANAGER")
+        def admin_view():
+            ...
+    """
+    def decorator(f):
+        @wraps(f)
+        @login_required
+        def decorated_function(*args, **kwargs):
+            user = get_current_user()
+            if not user or user.get("role") not in roles:
+                flash("No tiene permisos para acceder a esta sección.", "error")
+                return redirect(url_for("dashboard.index"))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
 def get_current_user() -> dict | None:
     """Return ``session["user"]`` or ``None``."""
     return session.get("user")
@@ -75,7 +102,8 @@ def _warmup_cache(db_name: str, api_internal_key: str, api_base_url: str,
     slow FastAPI start-up does not permanently break the first session.
     """
     url = f"{api_base_url}/api/v1/system/cache/load/{db_name}"
-    max_retries = 5
+    max_retries = 3
+    delays = [1, 2, 4]  # seconds — short schedule, no need for deep back-off
     for attempt in range(1, max_retries + 1):
         try:
             resp = httpx.post(
@@ -113,7 +141,7 @@ def _warmup_cache(db_name: str, api_internal_key: str, api_base_url: str,
                 db_name, attempt, max_retries, exc,
             )
         if attempt < max_retries:
-            time.sleep(2 ** attempt)  # 2, 4, 8, 16 s
+            time.sleep(delays[attempt - 1])  # 1, 2 s (index 0-based)
     logger.error("[AUTH] Cache warm-up exhausted %d retries for '%s'", max_retries, db_name)
 
 

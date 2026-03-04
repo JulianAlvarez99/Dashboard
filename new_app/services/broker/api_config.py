@@ -115,7 +115,7 @@ class APIConfigLoader:
         try:
             raw = yaml.safe_load(self._config_path.read_text(encoding="utf-8"))
         except yaml.YAMLError as exc:
-            logger.error(f"[APIConfig] YAML parse error: {exc}")
+            logger.error("[APIConfig] YAML parse error: %s", exc)
             self._loaded = True
             return
 

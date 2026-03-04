@@ -32,6 +32,7 @@ from __future__ import annotations
 import atexit
 import logging
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -51,6 +52,22 @@ logger = logging.getLogger("passenger_wsgi")
 # ── FastAPI subprocess ────────────────────────────────────────────
 
 _fastapi_proc: subprocess.Popen | None = None
+
+
+def _wait_for_fastapi(port: str, timeout: float = 15.0) -> bool:
+    """
+    Poll TCP port until uvicorn is accepting connections or timeout elapses.
+
+    Returns True when the port responds, False if timeout is reached.
+    """
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", int(port)), timeout=0.5):
+                return True
+        except OSError:
+            time.sleep(0.3)
+    return False
 
 
 def _start_fastapi() -> None:
@@ -90,14 +107,21 @@ def _start_fastapi() -> None:
         stderr=sys.stderr,
     )
 
-    # Give uvicorn a moment to bind the port before Flask starts
-    time.sleep(1.5)
-    if _fastapi_proc.poll() is not None:
+    # Poll until uvicorn is accepting connections (up to 15 s)
+    if not _wait_for_fastapi(api_port, timeout=15.0):
+        logger.error(
+            "FastAPI did not respond within 15s — Flask starting anyway. "
+            "Check cPanel error logs for uvicorn output."
+        )
+    elif _fastapi_proc.poll() is not None:
         raise RuntimeError(
             f"FastAPI (uvicorn) failed to start — exit code {_fastapi_proc.returncode}"
         )
-
-    logger.info("FastAPI backend running on http://127.0.0.1:%s (PID %d)", api_port, _fastapi_proc.pid)
+    else:
+        logger.info(
+            "FastAPI backend ready on http://127.0.0.1:%s (PID %d)",
+            api_port, _fastapi_proc.pid,
+        )
 
 
 def _stop_fastapi() -> None:

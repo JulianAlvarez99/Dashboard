@@ -64,7 +64,7 @@ class LineResolver:
         try:
             return [int(line_id)]
         except (ValueError, TypeError):
-            logger.warning(f"[LineResolver] Cannot parse line_id={line_id}")
+            logger.warning("[LineResolver] Cannot parse line_id=%s", line_id)
             return metadata_cache.get_active_line_ids()
 
     # ─────────────────────────────────────────────────────────────

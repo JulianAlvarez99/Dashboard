@@ -22,98 +22,19 @@ from pydantic import BaseModel, Field
 
 from new_app.core.cache import metadata_cache
 from new_app.core.database import db_manager
-from new_app.api.v1.dependencies import TenantContext, require_tenant
+from new_app.api.v1.dependencies import TenantContext, require_role, require_tenant
 from new_app.services.orchestrator import dashboard_orchestrator
 from new_app.utils.request_helpers import build_filter_dict
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
-# ── Pydantic request/response models ────────────────────────────
-
-class DashboardDataRequest(BaseModel):
-    """
-    Request body for POST /dashboard/data.
-
-    All filter params are optional — the orchestrator applies defaults
-    via FilterEngine where needed.
-    """
-    # Layout control
-    widget_ids: Optional[List[int]] = Field(
-        None,
-        description=(
-            "Explicit widget IDs to render. "
-            "If null, uses the layout_config for the user's role."
-        ),
-    )
-
-    # Filter params (match FilterEngine param_names)
-    line_id: Optional[Any] = Field(
-        None, description="Single line: int, 'all', or 'group_X'.",
-    )
-    line_ids: Optional[str] = Field(
-        None, description="Comma-separated line IDs.",
-    )
-    daterange: Optional[Dict[str, str]] = Field(
-        None,
-        description=(
-            "Date range: {start_date, end_date, start_time?, end_time?}"
-        ),
-    )
-    shift_id: Optional[int] = None
-    area_ids: Optional[List[int]] = None
-    product_ids: Optional[List[int]] = None
-    interval: Optional[str] = Field("hour", description="Grouping interval.")
-    curve_type: Optional[str] = Field("smooth", description="Chart curve type.")
-    downtime_threshold: Optional[int] = Field(
-        None, description="Override downtime gap threshold (seconds).",
-    )
-    show_downtime: Optional[bool] = Field(
-        False, description="Include downtime overlay on charts.",
-    )
-    charts: Optional[Dict[str, str]] = Field(
-        None, description="Base64 encoded chart images (dict mapping widget_id to base64 string).",
-    )
-
-    # Auth context — DEPRECATED: these fields are ignored.
-    # tenant_id and role are always taken from the validated JWT (TenantContext).
-    # Kept for backwards compatibility with external clients only.
-    tenant_id: Optional[int] = Field(
-        None, description="[DEPRECATED] Ignored. Tenant is resolved from JWT.",
-    )
-    role: Optional[str] = Field(
-        None, description="[DEPRECATED] Ignored. Role is resolved from JWT.",
-    )
-
-    # Raw data mode (for client-side re-aggregation without re-query)
-    include_raw: bool = Field(
-        False,
-        description=(
-            "When True, includes raw_data (detections) and raw_downtime "
-            "arrays in the response so the frontend can re-aggregate by "
-            "shift/interval/product without a new DB query."
-        ),
-    )
-
-
-class DashboardMetadataResponse(BaseModel):
-    """Metadata portion of the dashboard response."""
-    total_detections: int = 0
-    total_downtime_events: int = 0
-    lines_queried: List[int] = []
-    is_multi_line: bool = False
-    widget_count: int = 0
-    period: Dict[str, str] = {}
-    interval: str = "hour"
-    elapsed_seconds: float = 0
-    timestamp: str = ""
-    error: Optional[str] = None
-
-
-class DashboardDataResponse(BaseModel):
-    """Complete dashboard response."""
-    widgets: Dict[str, Any]
-    metadata: DashboardMetadataResponse
+# Schemas imported from the schemas package to keep this module thin
+from new_app.api.v1.schemas import (  # noqa: E402
+    DashboardDataRequest,
+    DashboardDataResponse,
+    DashboardMetadataResponse,
+)
 
 
 # ── Helpers ──────────────────────────────────────────────────────
@@ -133,7 +54,7 @@ def _extract_user_params(req: DashboardDataRequest) -> Dict[str, Any]:
 @router.post("/data", response_model=DashboardDataResponse)
 async def get_dashboard_data(
     request: DashboardDataRequest,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER", "OPERATOR")),
 ):
     """
     Master dashboard endpoint — the "Apply Filters" button hits this.
@@ -152,15 +73,15 @@ async def get_dashboard_data(
 
     t_start = _time.perf_counter()
 
-    async with db_manager.get_tenant_session_by_name(ctx.db_name) as session:
-        result = await dashboard_orchestrator.execute(
-            session=session,
-            user_params=user_params,
-            tenant_id=tenant_id,
-            role=role,
-            widget_ids=request.widget_ids,
-            include_raw=request.include_raw,
-        )
+    result = await dashboard_orchestrator.execute(
+        session=None,
+        user_params=user_params,
+        tenant_id=tenant_id,
+        role=role,
+        widget_ids=request.widget_ids,
+        include_raw=request.include_raw,
+        db_name=ctx.db_name,
+    )
 
     duration_ms = int((_time.perf_counter() - t_start) * 1000)
 
@@ -186,7 +107,7 @@ async def get_dashboard_data(
 
 @router.get("/data")
 async def get_dashboard_data_get(
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER", "OPERATOR")),
     widget_ids: Optional[str] = Query(
         None, description="Comma-separated widget IDs",
     ),
@@ -253,14 +174,14 @@ async def get_dashboard_data_get(
     tid = ctx.tenant_id
     user_role = ctx.role
 
-    async with db_manager.get_tenant_session_by_name(ctx.db_name) as session:
-        result = await dashboard_orchestrator.execute(
-            session=session,
-            user_params=user_params,
-            tenant_id=tid,
-            role=user_role,
-            widget_ids=parsed_widget_ids,
-        )
+    result = await dashboard_orchestrator.execute(
+        session=None,
+        user_params=user_params,
+        tenant_id=tid,
+        role=user_role,
+        widget_ids=parsed_widget_ids,
+        db_name=ctx.db_name,
+    )
 
     return result
 
@@ -268,7 +189,7 @@ async def get_dashboard_data_get(
 @router.post("/preview")
 async def preview_widgets(
     request: DashboardDataRequest,
-    ctx: TenantContext = Depends(require_tenant),
+    ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER")),
 ):
     """
     Preview specific widgets — for testing or widget configuration.
@@ -305,12 +226,12 @@ async def preview_widgets(
             detail="None of the specified widget_ids exist in the catalog",
         )
 
-    async with db_manager.get_tenant_session_by_name(ctx.db_name) as session:
-        result = await dashboard_orchestrator.execute_quick(
-            session=session,
-            cleaned=cleaned,
-            widget_names=widget_names,
-        )
+    result = await dashboard_orchestrator.execute_quick(
+        session=None,
+        cleaned=cleaned,
+        widget_names=widget_names,
+        db_name=ctx.db_name,
+    )
 
     return result
 
@@ -319,19 +240,19 @@ from fastapi.responses import Response as FastAPIResponse
 @router.post("/export/pdf")
 async def export_dashboard_pdf(
     request: DashboardDataRequest,
-    tenant_ctx: TenantContext = Depends(require_tenant),
+    tenant_ctx: TenantContext = Depends(require_role("ADMIN", "MANAGER")),
 ):
     """Exportar el dashboard actual a PDF."""
     # Reutiliza el mismo pipeline que /dashboard/data
-    async with db_manager.get_tenant_session_by_name(tenant_ctx.db_name) as session:
-        result = await dashboard_orchestrator.execute(
-            session=session,
-            user_params=build_filter_dict(request),
-            tenant_id=tenant_ctx.tenant_id,
-            role=tenant_ctx.role,
-            widget_ids=request.widget_ids,
-            include_raw=request.include_raw,
-        )
+    result = await dashboard_orchestrator.execute(
+        session=None,
+        user_params=build_filter_dict(request),
+        tenant_id=tenant_ctx.tenant_id,
+        role=tenant_ctx.role,
+        widget_ids=request.widget_ids,
+        include_raw=request.include_raw,
+        db_name=tenant_ctx.db_name,
+    )
 
     from new_app.services.data.export import to_pdf_bytes
     import pandas as pd

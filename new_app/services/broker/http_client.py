@@ -200,7 +200,7 @@ class HTTPClient:
     @staticmethod
     def _error_result(api_id: str, error: str, status: int) -> APIResult:
         """Build a standardized error result dict."""
-        logger.error(f"[HTTPClient] {api_id}: {error}")
+        logger.error("[HTTPClient] %s: %s", api_id, error)
         return {
             "ok": False,
             "error": error,
