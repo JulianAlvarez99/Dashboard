@@ -2,7 +2,7 @@
 
 Cómo funciona el sistema, cómo se procesan los datos, y cómo **agregar nuevos widgets y filtros** usando el patrón auto-discovery.
 
-**Última actualización:** 4 Marzo 2026
+**Última actualización:** 5 Marzo 2026
 
 ---
 
@@ -343,6 +343,9 @@ class FilterConfig:
     options_source: Optional[str] = None   # clave en MetadataCache
     depends_on:     Optional[str] = None   # cascade: param_name del padre
     ui_config:      Dict = field(default_factory=dict)
+    pydantic_type:  str = "Any"            # tipo del campo en DashboardDataRequest
+    js_behavior:    Dict = ...             # {serialize, include_if, on_change}
+    js_validation:  Optional[Dict] = None  # reglas de validación browser (ver §3.4)
 ```
 
 #### `BaseFilter` — Clase abstracta
@@ -358,6 +361,12 @@ class BaseFilter(ABC):
     required       : bool = False
     depends_on     : Optional[str] = None
     ui_config      : Dict = {}
+
+    # ── Contrato frontend (auto-propagados, no editar otros archivos) ──
+    pydantic_type : str            = "Any"   # tipo campo en DashboardDataRequest
+    js_behavior   : Dict[str,str]  = {...}   # serialize / include_if / on_change
+    js_inline     : Optional[str]  = None    # JS inyectado en el HTML (on_change, etc.)
+    js_validation : Optional[Dict] = None    # reglas de validación browser
 
     # ── Métodos obligatorios ────────────────────────────────────
     @abstractmethod
@@ -427,6 +436,12 @@ class MiFiltro(OptionsFilter):
     depends_on     = None              # o "line_id" para cascade
     ui_config      = {}
 
+    # ── Contrato frontend ───────────────────────────────────────
+    pydantic_type = "Any"              # auto-genera campo en DashboardDataRequest
+    js_behavior   = {"serialize": "raw", "include_if": "truthy", "on_change": ""}
+    js_inline     = None
+    js_validation = None              # ej. {"required": True} / {"enum": ["a","b"]}
+
     def validate(self, value: Any) -> bool:
         """True si el valor es válido."""
         return value is None or isinstance(value, int)
@@ -459,6 +474,12 @@ class MiFiltroNumerico(InputFilter):
     default_value = 30
     required      = False
 
+    # ── Contrato frontend ─────────────────────────────────────
+    pydantic_type = "int"
+    js_behavior   = {"serialize": "int", "include_if": "not_null", "on_change": ""}
+    js_inline     = None
+    js_validation = {"min": 0, "min_msg": "Debe ser un número positivo"}
+
     def validate(self, value: Any) -> bool:
         return value is None or (isinstance(value, int) and value > 0)
 
@@ -484,38 +505,17 @@ VALUES ('ProductionLineFilter', '{"groups": [{"alias": "Zona A", "line_ids": [1,
 
 El `layout_config.filters` del template debe incluir el `filter_id` del nuevo filtro.
 
-#### Paso 4: Agregar el campo al modelo Pydantic
+> **⚡ No editar `dynamic_request.py`, `request_helpers.py` ni `_buildRequestBody`/`_validateParamsLocally` en JS.**
+> El modelo Pydantic, el mapping de parámetros y la serialización/validación frontend
+> se auto-configuran a partir de `pydantic_type`, `js_behavior` y `js_validation`
+> declarados en la clase. Ver §3.1 para detalle de cada atributo.
 
-**`new_app/api/v1/dashboard.py`**
-
-```python
-class DashboardDataRequest(BaseModel):
-    # ...existing fields...
-    mi_param: Optional[TuTipo] = None   # ← agregar el nuevo campo
-```
-
-Sin este paso, aunque el frontend envíe el valor, **Pydantic lo descarta silenciosamente** antes de que llegue al endpoint.
-
-#### Paso 5: Mapearlo en `build_filter_dict()`
-
-**`new_app/utils/request_helpers.py`**
-
-```python
-def build_filter_dict(req) -> Dict[str, Any]:
-    mapping = {
-        # ...existing fields...
-        "mi_param": "mi_param",   # ← agregar aquí
-    }
-```
-
-Sin este paso, el valor llega al endpoint pero **nunca entra al `FilterEngine`**.
-
-#### Paso 6: Implementar `to_sql_clause()` en la clase
+#### Paso 4: Implementar `to_sql_clause()` en la clase
 
 Si la clase base no genera la cláusula SQL automáticamente, agregarla explícitamente:
 
 ```python
-class MiFiltro(DropdownFilter):
+class MiFiltro(OptionsFilter):
     # ...
 
     def to_sql_clause(self, value):
@@ -528,18 +528,19 @@ Sin este paso, el valor llega al `FilterEngine` pero **no genera ninguna condici
 
 ---
 
-> ⚠️ **Trampa frecuente:** El auto-discovery hace que el filtro **aparezca en la UI** con solo crear el archivo `.py` y registrarlo en la DB. Esto lleva a pensar que está funcionando, cuando en realidad los pasos 4, 5 y 6 son los que conectan la selección del usuario con la query a la base de datos. Un filtro sin esos tres pasos es **decorativo**.
+> ⚠️ **Trampa frecuente:** El auto-discovery hace que el filtro **aparezca en la UI** con solo crear el archivo `.py` y registrarlo en la DB. Esto lleva a pensar que está funcionando, cuando en realidad el Paso 4 (`to_sql_clause`) es el que conecta la selección del usuario con la query. Un filtro sin `to_sql_clause` es **decorativo**.
 >
 > El flujo completo de un parámetro es:
 > ```
-> Alpine params.mi_param
->     → body HTTP (solo si _buildRequestBody lo incluye)
->     → DashboardDataRequest.mi_param (solo si el campo Pydantic existe)
->     → build_filter_dict() (solo si está en el mapping)
+> filterStates['mi_param'].value
+>     → _buildRequestBody(): serializa según js_behavior          [auto]
+>     → DashboardDataRequest.mi_param (campo auto-generado)       [auto]
+>     → build_filter_dict() → cleaned['mi_param']                [auto]
 >     → FilterEngine
->     → to_sql_clause() → WHERE mi_columna = :mi_param
+>     → to_sql_clause() → WHERE mi_columna = :mi_param           [Paso 4]
 > ```
-> Si cualquier eslabón falta, el filtro no tiene efecto.
+> Los eslabones marcados `[auto]` se configuran declarando `pydantic_type` y
+> `js_behavior` en la clase — ningún otro archivo necesita editarse.
 
 ¡Listo! El `FilterEngine` lo descubrirá automáticamente.
 

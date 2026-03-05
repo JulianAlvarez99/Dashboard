@@ -63,8 +63,8 @@ const DashboardOrchestrator = {
         const startTime = performance.now();
 
         try {
-            const normalizedParams = this._normalizeParams(ctx.params);
-            const valResult = this._validateParamsLocally(normalizedParams);
+            const normalizedParams = this._normalizeParams(ctx.filterStates);
+            const valResult = this._validateParamsLocally(normalizedParams, ctx.filterStates);
 
             if (!valResult.valid) {
                 console.warn('[Filters] Validation errors:', valResult.errors);
@@ -128,19 +128,20 @@ const DashboardOrchestrator = {
         let rows = ctx._rawData.slice();
         let dt = ctx._rawDowntime ? ctx._rawDowntime.slice() : [];
 
-        const shiftId = ctx.params.shift_id ? String(ctx.params.shift_id) : null;
+        const shiftId = ctx.filterStates['shift_id']?.value
+            ? String(ctx.filterStates['shift_id'].value) : null;
         if (shiftId && ctx._shiftWindows[shiftId]) {
             const win = ctx._shiftWindows[shiftId];
             rows = DashboardDataEngine.sliceByShiftWindow(rows, win);
             dt = DashboardDataEngine.sliceDowntimeByWindow(dt, win);
         }
 
-        const pids = (ctx.params.product_ids || []).map(Number);
+        const pids = (ctx.filterStates['product_ids']?.value || []).map(Number);
         if (pids.length > 0) {
             rows = rows.filter(r => pids.indexOf(Number(r.product_id)) !== -1);
         }
 
-        const interval = ctx.params.interval || 'hour';
+        const interval = ctx.filterStates['interval']?.value || 'hour';
         const shiftInfo = shiftId ? ctx._shiftWindows[shiftId] : null;
 
         Object.keys(ctx.widgetResults).forEach(wid => {
@@ -195,11 +196,11 @@ const DashboardOrchestrator = {
 
     // ─── Private Helpers ───────────────────────────────────────────
 
-    _normalizeParams(params) {
-        const out = JSON.parse(JSON.stringify(params));
-        for (let k in out) {
-            if (k === 'daterange') continue;
-            if (out[k] === '') out[k] = null;
+    _normalizeParams(filterStates) {
+        const out = {};
+        for (const [key, fs] of Object.entries(filterStates)) {
+            const v = fs.value;
+            out[key] = (key !== 'daterange' && v === '') ? null : v;
         }
         return out;
     },
@@ -218,41 +219,48 @@ const DashboardOrchestrator = {
      * @param {Object} params - Parámetros normalizados
      * @returns {{ valid: boolean, errors: Object }}
      */
-    _validateParamsLocally(params) {
+    _validateParamsLocally(params, filterStates) {
         const errors = {};
 
-        // Regla 1: daterange obligatorio con start_date y end_date
-        const dr = params.daterange;
-        if (!dr || typeof dr !== 'object') {
-            errors['daterange'] = 'El rango de fechas es obligatorio';
-        } else {
-            if (!dr.start_date || !/^\d{4}-\d{2}-\d{2}$/.test(dr.start_date)) {
-                errors['daterange'] = 'Fecha de inicio inválida (formato YYYY-MM-DD)';
-            } else if (!dr.end_date || !/^\d{4}-\d{2}-\d{2}$/.test(dr.end_date)) {
-                errors['daterange'] = 'Fecha de fin inválida (formato YYYY-MM-DD)';
-            } else if (dr.start_date > dr.end_date) {
-                errors['daterange'] = 'La fecha de inicio debe ser anterior a la fecha de fin';
+        for (const [param, fstate] of Object.entries(filterStates)) {
+            const rules = fstate.validation;
+            if (!rules) continue;
+
+            const val = params[param];
+
+            // type: daterange — multi-field object validation
+            if (rules.type === 'daterange') {
+                const dr = val;
+                if (!dr || typeof dr !== 'object') {
+                    errors[param] = 'El rango de fechas es obligatorio';
+                } else if (!dr.start_date || !/^\d{4}-\d{2}-\d{2}$/.test(dr.start_date)) {
+                    errors[param] = 'Fecha de inicio inválida (formato YYYY-MM-DD)';
+                } else if (!dr.end_date || !/^\d{4}-\d{2}-\d{2}$/.test(dr.end_date)) {
+                    errors[param] = 'Fecha de fin inválida (formato YYYY-MM-DD)';
+                } else if (dr.start_date > dr.end_date) {
+                    errors[param] = 'La fecha de inicio debe ser anterior a la fecha de fin';
+                }
+                continue;
             }
-        }
+            // required check
+            if (rules.required) {
+                if (val === null || val === undefined || val === '') {
+                    errors[param] = rules.required_msg || `El campo ${param} es obligatorio`;
+                    continue;
+                }
+            }
+            if (val === null || val === undefined) continue;
 
-        // Regla 2: line_id obligatorio (null o vacío no permitido)
-        const lid = params.line_id;
-        if (lid === null || lid === undefined || lid === '') {
-            errors['line_id'] = 'Seleccioná una línea de producción';
-        }
-
-        // Regla 3: interval debe ser uno de los valores conocidos
-        const validIntervals = ['minute', '15min', 'hour', 'day', 'week', 'month'];
-        if (params.interval && !validIntervals.includes(params.interval)) {
-            errors['interval'] = `Intervalo inválido: ${params.interval}`;
-        }
-
-        // Regla 4: downtime_threshold si está presente debe ser número positivo
-        const dt = params.downtime_threshold;
-        if (dt !== null && dt !== undefined) {
-            const parsed = Number(dt);
-            if (isNaN(parsed) || parsed < 0) {
-                errors['downtime_threshold'] = 'El umbral de parada debe ser un número positivo';
+            // enum check
+            if (rules.enum && !rules.enum.includes(val)) {
+                errors[param] = rules.enum_msg || `Valor inválido: ${val}`;
+            }
+            // min (number)
+            if (rules.min !== undefined) {
+                const parsed = Number(val);
+                if (isNaN(parsed) || parsed < rules.min) {
+                    errors[param] = rules.min_msg || `Debe ser un número mayor o igual a ${rules.min}`;
+                }
             }
         }
 

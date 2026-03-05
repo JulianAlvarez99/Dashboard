@@ -31,6 +31,7 @@ class DowntimeThresholdFilter(InputFilter):
         "on_change":  "",
     }
     js_inline     = None
+    js_validation = {"min": 0, "min_msg": "El umbral de parada debe ser un número positivo"}
 
     # ── Validate / Default ────────────────────────────────────
 

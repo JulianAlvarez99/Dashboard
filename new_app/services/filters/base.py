@@ -64,6 +64,7 @@ class FilterConfig:
         "include_if": "truthy",
         "on_change": "",
     })
+    js_validation: Optional[Dict[str, Any]] = None
 
     # ── Serialization ──
 
@@ -83,6 +84,7 @@ class FilterConfig:
             "ui_config": self.ui_config,
             "pydantic_type": self.pydantic_type,
             "js_behavior": self.js_behavior,
+            "js_validation": self.js_validation,
         }
 
 
@@ -124,13 +126,14 @@ class BaseFilter(ABC):
     ui_config      : Dict[str, Any]    = {}
 
     # ── Frontend contract (Fase 1 — filter_refactor_plan) ────
-    pydantic_type : str           = "Any"
-    js_behavior   : Dict[str,str] = {
+    pydantic_type : str                      = "Any"
+    js_behavior   : Dict[str,str]            = {
         "serialize":  "raw",
         "include_if": "truthy",
         "on_change":  "",
     }
-    js_inline     : Optional[str] = None
+    js_inline     : Optional[str]            = None
+    js_validation : Optional[Dict[str, Any]] = None
 
     def __init__(self, config: FilterConfig) -> None:
         self.config = config

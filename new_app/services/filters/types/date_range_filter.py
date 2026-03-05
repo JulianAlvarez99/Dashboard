@@ -38,6 +38,7 @@ class DateRangeFilter(InputFilter):
         "include_if": "not_null",
         "on_change":  "",
     }
+    js_validation = {"required": True, "type": "daterange"}
     js_inline = """\
     validateEndDate() {
         const dr = this.filterStates['daterange']?.value;
@@ -59,7 +60,7 @@ class DateRangeFilter(InputFilter):
 
     def get_default(self) -> Dict[str, str]:
         ui = self.config.ui_config
-        days_back = 7
+        days_back = 1
         end = date.today()
         start = end - timedelta(days=days_back)
         return {

@@ -17,7 +17,7 @@ class IntervalFilter(OptionsFilter):
     filter_type    = "dropdown"
     param_name     = "interval"
     options_source = None
-    default_value  = "hour"
+    default_value  = "15min"
     placeholder    = None
     required       = True
     depends_on     = None
@@ -39,6 +39,7 @@ class IntervalFilter(OptionsFilter):
         "include_if": "always",
         "on_change":  "onIntervalChange",
     }
+    js_validation = {"enum": ["minute", "15min", "hour", "day", "week", "month"]}
     js_inline = """\
     onIntervalChange() {
         if (!this.hasData) return;

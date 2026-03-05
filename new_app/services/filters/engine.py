@@ -140,6 +140,7 @@ class FilterEngine:
                 ui_config=dict(cls.ui_config),  # copy, not shared ref
                 pydantic_type=cls.pydantic_type,           # Fase 1
                 js_behavior=dict(cls.js_behavior),         # Fase 1 (copy)
+                js_validation=dict(cls.js_validation) if cls.js_validation else None,
             )
 
             instance = cls(config)

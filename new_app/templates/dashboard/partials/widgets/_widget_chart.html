@@ -9,7 +9,7 @@ Data shape: { labels?, datasets, curve_type?, class_details?, summary? }
   {# ── Widget title row + line/bar toggle (only for production timeline) ── #}
   <div class="flex items-center justify-between mb-3">
     <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider"
-      x-text="widgetResults['{{ wid }}']?.widget_name"></h3>
+      x-text="widgetResults['{{ wid }}']?.metadata?.display_name || widgetResults['{{ wid }}']?.widget_name"></h3>
 
     {% if chart_type == 'line_chart' %}
     {# Line ⇄ Bar toggle — only visible when data is loaded #}

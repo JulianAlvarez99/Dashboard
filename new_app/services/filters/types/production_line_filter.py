@@ -32,6 +32,7 @@ class ProductionLineFilter(OptionsFilter):
         "include_if": "truthy",
         "on_change":  "onLineChange",
     }
+    js_validation = {"required": True, "required_msg": "Seleccioná una línea de producción"}
     js_inline = """\
     async onLineChange(rawValue) {
         const opt = this._lineOptions.find(o => String(o.value) === String(rawValue));

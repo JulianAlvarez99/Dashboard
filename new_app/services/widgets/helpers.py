@@ -17,6 +17,36 @@ from new_app.core.cache import metadata_cache
 
 # ── Scheduling / shift helpers ───────────────────────────────────
 
+def calculate_queried_minutes(cleaned: Dict[str, Any]) -> float:
+    """
+    Exact duration of the queried time window in minutes.
+
+    Combines date and time parts from the ``daterange`` filter to produce
+    a precise start-to-end delta.  Returns 0.0 if the daterange is missing.
+    """
+    daterange = cleaned.get("daterange")
+    if not daterange or not isinstance(daterange, dict):
+        return 0.0
+    sd = daterange.get("start_date")
+    ed = daterange.get("end_date")
+    if not sd or not ed:
+        return 0.0
+
+    from datetime import datetime as dt_type
+    try:
+        start_time = daterange.get("start_time", "00:00") or "00:00"
+        end_time   = daterange.get("end_time",   "23:59") or "23:59"
+        # Normalise to HH:MM
+        st = start_time[:5]
+        et = end_time[:5]
+        start_dt = dt_type.fromisoformat(f"{sd}T{st}")
+        end_dt   = dt_type.fromisoformat(f"{ed}T{et}")
+        delta_min = (end_dt - start_dt).total_seconds() / 60.0
+        return max(0.0, delta_min)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 def calculate_scheduled_minutes(cleaned: Dict[str, Any]) -> float:
     """
     Total scheduled production time in minutes.

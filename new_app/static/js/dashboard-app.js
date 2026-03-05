@@ -68,6 +68,7 @@ function dashboardApp() {
       include_if: (f.js_behavior && f.js_behavior.include_if) || 'truthy',
       on_change:  (f.js_behavior && f.js_behavior.on_change)  || '',
       options:    f.options || [],
+      validation: f.js_validation || null,
     };
   });
 
@@ -88,16 +89,6 @@ function dashboardApp() {
     // ── filterStates: single source of truth for all filter values ──
     filterStates: JSON.parse(JSON.stringify(filterStates)),
     _initialFilterStates: filterStates,
-
-    // ── Backward-compatible proxy: params.X reads still work ──
-    // Write via: this.filterStates['X'].value = newValue
-    get params() {
-      const p = {};
-      for (const [key, fs] of Object.entries(this.filterStates)) {
-        p[key] = fs.value;
-      }
-      return p;
-    },
 
     // Multi-line group state
     isMultiLine: false,

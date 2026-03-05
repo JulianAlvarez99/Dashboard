@@ -23,7 +23,8 @@
 | `static_options` | `[{"value": "high", "label": "Alta"}, ...]` | Solo si `options_source = None` |
 | `depends_on` | `None` | `param_name` del filtro padre (cascade), o `None` |
 | `tipo_sql` | `"priority = :priority"` | Cláusula SQL que genera |
-| `tipo_python` | `Optional[str]` | Tipo del campo en Pydantic |
+| `pydantic_type` | `"str"` | Tipo Pydantic del campo (`"str"` \| `"int"` \| `"bool"` \| `"Any"` \| `"List[int]"`) — declarado en la clase |
+| `js_validation` | `None` | Reglas de validación browser. Ver tabla más abajo. `None` para filtros sin restricciones. |
 
 **Clases base disponibles:**
 
@@ -113,6 +114,7 @@ class {NombreClase}(OptionsFilter):
     pydantic_type = "str"
     js_behavior   = {"serialize": "str", "include_if": "always", "on_change": ""}
     js_inline     = None
+    js_validation = None  # o ej. {"required": True} / {"enum": ["a","b"]} / {"min": 0}
 
     def _load_options(
         self,
@@ -164,6 +166,7 @@ class {NombreClase}(OptionsFilter):
     pydantic_type = "Any"
     js_behavior   = {"serialize": "raw", "include_if": "truthy", "on_change": ""}
     js_inline     = None
+    js_validation = None  # o ej. {"required": True} / {"enum": ["a","b"]} / {"min": 0}
 
     def _load_options(
         self,
@@ -203,95 +206,63 @@ VALUES ('{NombreClase}', NULL, 1);
 ```
 
 > `filter_name` debe coincidir **exactamente** con el nombre de la clase Python.
-> Anotar el `filter_id` generado — se necesita en el Paso 7.
+> Anotar el `filter_id` generado — se necesita en el Paso 4.
 
 ---
 
-### Paso 3 — Agregar el campo al modelo Pydantic
+> **⚡ Los pasos 3, 4 y 5 del flujo clásico YA NO EXISTEN.**
+>
+> - El modelo Pydantic (`DashboardDataRequest`) se construye **dinámicamente** en
+>   `new_app/api/v1/schemas/dynamic_request.py` a partir del `pydantic_type` declarado
+>   en cada clase de filtro. No editar ese archivo.
+> - `build_filter_dict()` descubre los `param_name`s automáticamente desde
+>   `filter_engine.get_all_classes()`. No editar `request_helpers.py`.
+> - `_buildRequestBody()` en JS itera `ctx.filterStates` usando los atributos
+>   `js_behavior` de cada clase de filtro. No agregar código en
+>   `dashboard-orchestrator.js`.
+> - `_validateParamsLocally()` en JS lee `filterStates[param].validation` (propagado
+>   desde `js_validation` de la clase). No agregar código en `dashboard-orchestrator.js`.
+>
+> **Lo que controla el comportamiento frontend/backend está 100% en los atributos
+> `pydantic_type`, `js_behavior`, `js_inline` y `js_validation` declarados en el Paso 1.**
 
-**Archivo:** `new_app/api/v1/dashboard.py`
+---
 
-Agregar dentro de la clase `DashboardDataRequest`, junto a los demás filter params:
+### Paso 3 — Declarar `js_validation` en la clase del filtro (si aplica)
+
+**Archivo:** `new_app/services/filters/types/{nombre_clase_snake}.py` — el mismo del Paso 1.
+
+Solo si el filtro necesita validación en el browser antes de enviar la query.
+Agregar el atributo `js_validation` en la sección «Frontend contract»:
 
 ```python
-class DashboardDataRequest(BaseModel):
-    # ...campos existentes...
-    {param_name}: Optional[{tipo_python}] = None
+# ── Frontend contract ─────────────────────────
+pydantic_type = "str"
+js_behavior   = {"serialize": "str", "include_if": "always", "on_change": ""}
+js_inline     = None
+js_validation = {"required": True, "required_msg": "Este campo es obligatorio"}
 ```
 
-> **Por qué:** Sin este campo, Pydantic descarta silenciosamente el valor
-> antes de que llegue al endpoint. El frontend puede enviarlo, pero el backend
-> nunca lo ve.
+**Reglas disponibles** (se pueden combinar en el mismo dict):
+
+| Clave | Tipo | Efecto |
+|---|---|---|
+| `required` | `True` | Error si el valor es `null`, `undefined` o `""` |
+| `required_msg` | `str` | Mensaje de error personalizado para `required` |
+| `enum` | `list` | Error si el valor no está en la lista |
+| `enum_msg` | `str` | Mensaje personalizado para `enum` |
+| `min` | `number` | Error si el valor numérico es menor que este |
+| `min_msg` | `str` | Mensaje personalizado para `min` |
+| `type: "daterange"` | especial | Valida el objeto `{start_date, end_date}` completo |
+
+> **No editar `dashboard-orchestrator.js`.** `_validateParamsLocally()` ya itera
+> `filterStates` genéricamente y aplica estas reglas de forma automática.
+>
+> Omitir `js_validation` (o dejarlo `None`) para filtros opcionales sin restricciones.
 
 ---
 
-### Paso 4 — Agregar el campo al mapping de `build_filter_dict()`
-
-**Archivo:** `new_app/utils/request_helpers.py`
-
-Dentro de la función `build_filter_dict`, agregar al dict `mapping`:
-
-```python
-mapping = {
-    # ...campos existentes...
-    "{param_name}": "{param_name}",
-}
-```
-
-> **Por qué:** Sin este mapping, el valor llega al endpoint pero nunca
-> entra al `FilterEngine` ni llega a las queries SQL.
-
----
-
-### Paso 5 — Incluir el parámetro en `_buildRequestBody()` del frontend
-
-**Archivo:** `new_app/static/js/dashboard-orchestrator.js`
-
-Dentro del método `_buildRequestBody(ctx)`, agregar el param al body que se envía:
-
-```javascript
-// Para un dropdown simple (string o int):
-if (ctx.params.{param_name})
-    body.{param_name} = ctx.params.{param_name};
-
-// Para un multiselect (array):
-if (ctx.params.{param_name} && ctx.params.{param_name}.length > 0)
-    body.{param_name} = ctx.params.{param_name};
-
-// Para un número:
-if (ctx.params.{param_name} != null)
-    body.{param_name} = parseInt(ctx.params.{param_name});
-
-// Para un booleano (toggle):
-if (ctx.params.{param_name})
-    body.{param_name} = true;
-```
-
-> **Por qué:** Sin esto, el valor nunca sale del frontend — el body HTTP
-> va sin ese campo.
-
----
-
-### Paso 6 — Agregar validación local en `_validateParamsLocally()` (si aplica)
-
-**Archivo:** `new_app/static/js/dashboard-orchestrator.js`
-
-Solo si el filtro tiene reglas de validación en el browser (ej. valores válidos,
-formato, rango). Agregar una nueva "Regla" dentro del método `_validateParamsLocally`:
-
-```javascript
-// Regla N: {nombre_param} debe ser uno de los valores válidos
-const valid{Nombre} = ['val1', 'val2', 'val3'];
-if (params.{param_name} && !valid{Nombre}.includes(params.{param_name})) {
-    errors['{param_name}'] = `Valor inválido: ${params.{param_name}}`;
-}
-```
-
-> Omitir este paso para filtros opcionales sin restricciones de formato.
-
----
-
-### Paso 7 — Asignar el filtro al `dashboard_template` en DB
+### Paso 4 — Asignar el filtro al `dashboard_template` en DB
 
 El template del dashboard tiene un `layout_config` JSON que define qué filtros
 están activos. Agregar el `filter_id` (obtenido en el Paso 2) al array `filters`:
@@ -312,13 +283,12 @@ WHERE id = {template_id};
 
 | # | Archivo | Acción | Crítico |
 |---|---------|--------|---------|
-| 1 | `services/filters/types/{nombre}.py` | Crear clase con `param_name`, `to_sql_clause` | ✅ |
+| 1 | `services/filters/types/{nombre}.py` | Crear clase con `pydantic_type`, `js_behavior`, `js_validation`, `to_sql_clause` | ✅ |
 | 2 | DB `filter` | `INSERT` con `filter_name` | ✅ |
-| 3 | `api/v1/dashboard.py` → `DashboardDataRequest` | Agregar campo Pydantic | ✅ |
-| 4 | `utils/request_helpers.py` → `build_filter_dict` | Agregar al mapping | ✅ |
-| 5 | `static/js/dashboard-orchestrator.js` → `_buildRequestBody` | Incluir en body HTTP | ✅ |
-| 6 | `static/js/dashboard-orchestrator.js` → `_validateParamsLocally` | Validación local (si aplica) | ⚠️ |
-| 7 | DB `dashboard_template` | Agregar `filter_id` al layout | ✅ |
+| 3 | `services/filters/types/{nombre}.py` → `js_validation` | Declarar reglas de validación browser (si aplica) | ⚠️ |
+| 4 | DB `dashboard_template` | Agregar `filter_id` al layout | ✅ |
+
+> **No editar:** `api/v1/schemas/dynamic_request.py`, `utils/request_helpers.py`, `_buildRequestBody` ni `_validateParamsLocally` en JS — se auto-configuran desde los atributos de la clase.
 
 ---
 
@@ -475,8 +445,8 @@ WHERE id = {template_id};
 ```
 NombreClase   →  nombre_clase.py   (archivo)
 NombreClase   →  nombre_clase      (clave en DB widget_name / filter_name)
-param_name    →  ctx.params.{param_name}  (Alpine.js)
-param_name    →  body.{param_name}        (HTTP body)
+param_name    →  ctx.filterStates['{param_name}'].value  (Alpine.js / JS)
+param_name    →  body.{param_name}        (HTTP body, auto-serializado)
 param_name    →  req.{param_name}         (Pydantic)
 param_name    →  cleaned["{param_name}"]  (FilterEngine)
 ```
@@ -489,11 +459,11 @@ param_name    →  cleaned["{param_name}"]  (FilterEngine)
 
 ```
 Usuario selecciona valor en UI
-    → Alpine: ctx.params.{param_name} = valor
-    → _buildRequestBody(): body.{param_name} = valor       [Paso 5]
+    → Alpine: ctx.filterStates['{param_name}'].value = valor
+    → _buildRequestBody(): serializa según js_behavior.serialize/include_if  [auto]
     → HTTP POST body
-    → DashboardDataRequest.{param_name}                    [Paso 3]
-    → build_filter_dict() → cleaned["{param_name}"]        [Paso 4]
+    → DashboardDataRequest.{param_name}  (campo auto-generado por pydantic_type)  [auto]
+    → build_filter_dict() → cleaned['{param_name}']  (auto via get_all_classes)  [auto]
     → FilterEngine.validate_input() → cleaned
     → {NombreClase}.to_sql_clause(valor)                   [Paso 1]
     → WHERE {columna} = :{param_name}
