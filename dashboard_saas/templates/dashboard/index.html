@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Camet Analytics{% endblock %}
+
+{% block head %}
+<!-- Dashboard-specific CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block body %}
+<div x-data="dashboardApp()" x-init="init()" x-cloak class="flex flex-col h-screen overflow-hidden">
+
+    <!-- ═══════════════ HEADER ═══════════════ -->
+    <header class="flex items-center justify-between px-6 py-3 bg-surface-900 border-b border-surface-700/60 shrink-0">
+        <!-- Left: Logo + App name -->
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                <i data-lucide="bar-chart-3" class="w-5 h-5 text-accent"></i>
+            </div>
+            <h1 class="text-lg font-semibold text-white tracking-tight">Camet Analytics</h1>
+        </div>
+
+        <!-- Right: Controls -->
+        <div class="flex items-center gap-3">
+            <!-- Mobile sidebar toggle -->
+            <button @click="sidebarOpen = !sidebarOpen"
+                class="lg:hidden p-2 rounded-lg hover:bg-surface-800 transition-colors" aria-label="Toggle filtros">
+                <i data-lucide="menu" class="w-5 h-5 text-gray-400"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══════════════ MAIN LAYOUT ═══════════════ -->
+    <div class="flex flex-1 overflow-hidden">
+
+        <!-- ── SIDEBAR (filtros) ──────────────────────────────────── -->
+        <!-- Mobile overlay -->
+        <div class="sidebar-overlay" :class="{ active: sidebarOpen }" @click="sidebarOpen = false">
+        </div>
+
+        <aside
+            class="w-72 lg:w-64 bg-surface-900 border-r border-surface-700/60 overflow-y-auto shrink-0 flex flex-col transition-transform duration-200"
+            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+
+            <!-- Sidebar header -->
+            <div class="p-4 border-b border-surface-700/40">
+                <div class="flex items-center gap-2 text-sm font-medium text-gray-300">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                    <span>Filtros</span>
+                </div>
+            </div>
+
+            <!-- ── Filter controls (rendered dynamically from server data) ── -->
+            <div class="flex-1 p-4 space-y-4">
+
+                <!-- Loop through each filter passed from the server -->
+                <template x-for="filter in filters" :key="filter.filter_id">
+                    <div class="filter-group">
+
+                        <!-- Dropdown filter -->
+                        <template x-if="filter.filter_type === 'dropdown'">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider"
+                                    x-text="filter.description || filter.filter_name"></label>
+                                <select class="w-full px-3 py-2 bg-surface-800 border border-surface-700 rounded-lg
+                                           text-sm text-white focus:border-accent focus:ring-1 focus:ring-accent
+                                           transition-colors cursor-pointer" x-model="filterStates[filter.param_name]"
+                                    @change="onFilterChange(filter.param_name, $event.target.value)">
+                                    <option value="" x-text="filter.placeholder || 'Seleccionar...'"></option>
+                                    <template x-for="opt in filter.options" :key="opt.value">
+                                        <option :value="opt.value" x-text="opt.label"></option>
+                                    </template>
+                                </select>
+                            </div>
+                        </template>
+
+                        <!-- Toggle filter (for future use) -->
+                        <template x-if="filter.filter_type === 'toggle'">
+                            <div class="flex items-center justify-between">
+                                <label class="text-sm text-gray-300"
+                                    x-text="filter.ui_config?.label || filter.description"></label>
+                                <input type="checkbox"
+                                    class="rounded border-surface-600 bg-surface-800 text-accent focus:ring-accent"
+                                    x-model="filterStates[filter.param_name]"
+                                    @change="onFilterChange(filter.param_name, $event.target.checked)">
+                            </div>
+                        </template>
+
+                    </div>
+                </template>
+
+                <!-- No filters message -->
+                <template x-if="filters.length === 0">
+                    <div class="flex flex-col items-center justify-center h-full text-center py-8">
+                        <div class="w-12 h-12 rounded-full bg-surface-800 flex items-center justify-center mb-3">
+                            <i data-lucide="filter" class="w-6 h-6 text-surface-600"></i>
+                        </div>
+                        <p class="text-sm text-surface-600">No hay filtros disponibles</p>
+                    </div>
+                </template>
+            </div>
+
+            <!-- ── Apply button ── -->
+            <div class="p-4 border-t border-surface-700/40">
+                <button @click="applyFilters()" :disabled="loading" class="w-full px-4 py-2.5 bg-accent hover:bg-accent/90 disabled:bg-surface-700
+                           disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg
+                           transition-colors flex items-center justify-center gap-2">
+                    <template x-if="loading">
+                        <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"
+                                stroke-dasharray="31.42" stroke-dashoffset="10"></circle>
+                        </svg>
+                    </template>
+                    <span x-text="loading ? 'Consultando...' : 'Aplicar filtros'"></span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ── MAIN CONTENT ───────────────────────────────────────── -->
+        <main class="flex-1 overflow-y-auto p-4 lg:p-6">
+
+            <!-- Status bar -->
+            <div class="mb-4 flex items-center justify-between">
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <template x-if="lastQueryInfo">
+                        <span>
+                            <span class="text-green-400" x-text="lastQueryInfo.row_count"></span> registros |
+                            <span x-text="lastQueryInfo.tables_queried.join(', ')"></span>
+                        </span>
+                    </template>
+                    <template x-if="!lastQueryInfo">
+                        <span>Seleccione filtros y presione "Aplicar filtros"</span>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Widget grid -->
+            <!-- <div class="widget-grid" style="grid-template-columns: repeat(4, 1fr);"> -->
+
+            <!-- Discovered widgets (placeholders for now) -->
+            <!-- <template x-for="widget in widgets" :key="widget.widget_id">
+                    <div class="widget-cell bg-surface-900 rounded-xl border border-surface-700/50 p-4
+                                hover:border-[rgba(var(--widget-card-hover-rgb),0.28)] transition-colors"
+                        :style="`grid-column: span ${widget.col_span}`">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="w-2 h-2 rounded-full bg-surface-600"></div>
+                            <span class="text-xs font-medium text-gray-400 uppercase tracking-wider"
+                                x-text="widget.widget_name"></span>
+                        </div>
+                        <div class="text-sm text-surface-600 italic">Widget pendiente</div>
+                    </div>
+                </template> -->
+
+            <!-- No widgets info -->
+            <!-- <template x-if="widgets.length === 0">
+                    <div class="col-span-4 flex flex-col items-center justify-center min-h-[200px]
+                                bg-surface-900 rounded-xl border border-surface-700/50 p-6">
+                        <i data-lucide="layout-grid" class="w-8 h-8 text-surface-600 mb-2"></i>
+                        <p class="text-sm text-surface-600">No hay widgets registrados</p>
+                    </div>
+                </template>
+            </div> -->
+
+            <!-- Raw data preview (for debugging in Phase 3) -->
+            <template x-if="rawData.length > 0">
+                <div class="mt-6 bg-surface-900 rounded-xl border border-surface-700/50 p-4">
+                    <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4"></i>
+                        Datos crudos (preview)
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-gray-400">
+                            <thead>
+                                <tr class="border-b border-surface-700">
+                                    <th class="px-3 py-2 text-left">detection_id</th>
+                                    <th class="px-3 py-2 text-left">detected_at</th>
+                                    <th class="px-3 py-2 text-left">area_id</th>
+                                    <th class="px-3 py-2 text-left">product_id</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="row in rawData.slice(0, 20)" :key="row.detection_id">
+                                    <tr class="border-b border-surface-800 hover:bg-surface-800/50">
+                                        <td class="px-3 py-1.5" x-text="row.detection_id"></td>
+                                        <td class="px-3 py-1.5" x-text="row.detected_at"></td>
+                                        <td class="px-3 py-1.5" x-text="row.area_id"></td>
+                                        <td class="px-3 py-1.5" x-text="row.product_id"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <template x-if="rawData.length > 20">
+                            <p class="text-xs text-surface-600 mt-2 text-center">
+                                Mostrando 20 de <span x-text="rawData.length"></span> registros
+                            </p>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<!-- Pass server config to JS via JSON block -->
+<script type="application/json" id="dashboard-config">
+{
+  "apiBase": {{ api_base_url | tojson | safe }},
+  "filters": {{ filters | tojson | safe }},
+  "widgets": {{ widgets | tojson | safe if widgets else '[]' }}
+}
+</script>
+<!-- Filter JS files (auto-loaded per filter) -->
+{% for f in filters %}
+<script src="{{ url_for('static', filename='js/filters/' + f.js_file) }}"></script>
+{% endfor %}
+<!-- Dashboard Alpine.js component -->
+<script src="{{ url_for('static', filename='js/dashboard-app.js') }}"></script>
+{% endblock %}
