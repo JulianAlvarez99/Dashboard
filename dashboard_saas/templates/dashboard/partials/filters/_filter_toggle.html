@@ -1,0 +1,9 @@
+{# ── Toggle Filter ──
+Expects: filter (from x-for loop in index.html)
+Renders a checkbox toggle with label.
+#}
+<div class="flex items-center justify-between">
+    <label class="text-sm text-gray-300" x-text="filter.ui_config?.label || filter.description"></label>
+    <input type="checkbox" class="rounded border-surface-600 bg-surface-800 text-accent focus:ring-accent"
+        x-model="filterStates[filter.param_name]" @change="onFilterChange(filter.param_name, $event.target.checked)">
+</div>

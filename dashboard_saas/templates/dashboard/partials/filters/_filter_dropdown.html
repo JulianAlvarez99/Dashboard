@@ -1,0 +1,17 @@
+{# ── Dropdown Filter ──
+Expects: filter (from x-for loop in index.html)
+Renders a <select> with options from the server.
+    #}
+    <div>
+        <label class="block text-xs font-medium text-gray-400 mb-1.5 uppercase tracking-wider"
+            x-text="filter.description || filter.filter_name"></label>
+        <select class="w-full px-3 py-2 bg-surface-800 border border-surface-700 rounded-lg
+                   text-sm text-white focus:border-accent focus:ring-1 focus:ring-accent
+                   transition-colors cursor-pointer" x-model="filterStates[filter.param_name]"
+            @change="onFilterChange(filter.param_name, $event.target.value)">
+            <option value="" x-text="filter.placeholder || 'Seleccionar...'"></option>
+            <template x-for="opt in filter.options" :key="opt.value">
+                <option :value="opt.value" x-text="opt.label"></option>
+            </template>
+        </select>
+    </div>

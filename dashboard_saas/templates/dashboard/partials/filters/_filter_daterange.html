@@ -1,0 +1,69 @@
+{# ── DateRange Filter ──
+Expects: filter (from x-for loop in index.html)
+Renders date + optional time inputs with cross-validation constraints.
+
+Validación visual:
+- :max en fecha inicio → no permite elegir una fecha mayor que la fecha fin
+- :min en fecha fin → no permite elegir una fecha menor que la fecha inicio
+- El JS handler (date_range_filter.js) corrige automáticamente horarios incoherentes
+#}
+<div class="space-y-2">
+    <label class="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+        <i data-lucide="calendar-range" class="w-3.5 h-3.5 text-accent/70"></i>
+        <span x-text="filter.description || 'Rango de Fechas'"></span>
+    </label>
+
+    <!-- Fila de fechas -->
+    <div class="grid grid-cols-2 gap-2">
+        <!-- Fecha inicio -->
+        <div>
+            <span class="text-[10px] text-gray-500 mb-0.5 block">Desde</span>
+            <input type="date" :value="filterStates[filter.param_name]?.start_date" @input="
+                    if (!filterStates[filter.param_name]) filterStates[filter.param_name] = {};
+                    filterStates[filter.param_name].start_date = $event.target.value;
+                    onFilterChange(filter.param_name, filterStates[filter.param_name]);
+                " :max="filterStates[filter.param_name]?.end_date || ''"
+                class="w-full px-2.5 py-2 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white
+                       focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all font-mono text-xs">
+        </div>
+        <!-- Fecha fin -->
+        <div>
+            <span class="text-[10px] text-gray-500 mb-0.5 block">Hasta</span>
+            <input type="date" :value="filterStates[filter.param_name]?.end_date" @input="
+                    if (!filterStates[filter.param_name]) filterStates[filter.param_name] = {};
+                    filterStates[filter.param_name].end_date = $event.target.value;
+                    onFilterChange(filter.param_name, filterStates[filter.param_name]);
+                " :min="filterStates[filter.param_name]?.start_date || ''"
+                class="w-full px-2.5 py-2 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white
+                       focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all font-mono text-xs">
+        </div>
+    </div>
+
+    <!-- Fila de horarios (solo si show_time está habilitado en ui_config) -->
+    <template x-if="filter.ui_config?.show_time">
+        <div class="grid grid-cols-2 gap-2">
+            <!-- Hora inicio -->
+            <div>
+                <span class="text-[10px] text-gray-500 mb-0.5 block">Hora inicio</span>
+                <input type="time" :value="filterStates[filter.param_name]?.start_time" @input="
+                        if (!filterStates[filter.param_name]) filterStates[filter.param_name] = {};
+                        filterStates[filter.param_name].start_time = $event.target.value;
+                        onFilterChange(filter.param_name, filterStates[filter.param_name]);
+                    "
+                    class="w-full px-2.5 py-2 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white
+                           focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all font-mono text-xs">
+            </div>
+            <!-- Hora fin -->
+            <div>
+                <span class="text-[10px] text-gray-500 mb-0.5 block">Hora fin</span>
+                <input type="time" :value="filterStates[filter.param_name]?.end_time" @input="
+                        if (!filterStates[filter.param_name]) filterStates[filter.param_name] = {};
+                        filterStates[filter.param_name].end_time = $event.target.value;
+                        onFilterChange(filter.param_name, filterStates[filter.param_name]);
+                    "
+                    class="w-full px-2.5 py-2 bg-surface-800 border border-surface-600 rounded-lg text-sm text-white
+                           focus:ring-2 focus:ring-accent/30 focus:border-accent/50 outline-none transition-all font-mono text-xs">
+            </div>
+        </div>
+    </template>
+</div>

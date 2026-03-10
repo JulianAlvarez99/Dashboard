@@ -136,6 +136,33 @@ class FilterEngine:
         """Serialize all filters for the frontend (template rendering)."""
         return [f.to_dict() for f in self.get_all()]
 
+    def validate_request(self, filter_values: Dict) -> List[str]:
+        """
+        Validate incoming payload against all active filters.
+        Checks for missing required fields or invalid options.
+        Returns a list of error messages (empty if valid).
+        """
+        errors = []
+        for flt in self.get_all():
+            val = filter_values.get(flt.param_name)
+            if not flt.validate(val):
+                name = flt.config.description or flt.param_name
+                errors.append(f"Falta un valor válido para: {name}")
+        return errors
+
+    def get_target_tables(self, filter_values: Dict) -> List[str]:
+        """
+        Ask all filters for target tables and merge the results.
+        If a partition filter (like lines) exists, it will supply the tables.
+        """
+        tables = set()
+        for param_name, value in filter_values.items():
+            flt = self._filters.get(param_name)
+            if flt:
+                for t in flt.get_target_tables(value):
+                    tables.add(t)
+        return list(tables)
+
     def collect_sql_clauses(self, filter_values: Dict) -> tuple:
         """
         Collect SQL clauses from all filters based on user input.
@@ -152,7 +179,7 @@ class FilterEngine:
         for param_name, value in filter_values.items():
             flt = self._filters.get(param_name)
             if flt is None:
-                logger.warning("Unknown filter param: %s — skipping", param_name)
+                # We do not crash if frontend sends extra keys, we just ignore them
                 continue
 
             result = flt.to_sql_clause(value)

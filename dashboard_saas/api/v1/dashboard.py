@@ -59,14 +59,14 @@ async def get_widgets():
 @router.post("/apply-filters", response_model=ApplyFiltersResponse)
 async def apply_filters(request: ApplyFiltersRequest):
     """
-    Apply filters and return raw detection data.
+    Endpoint principal para aplicar filtros y obtener datos crudos.
 
-    Flow:
-    1. Collect SQL clauses from each filter via FilterEngine.
-    2. Resolve the detection table name(s) from the selected line.
-    3. Build the query via QueryBuilder.
-    4. Execute against the tenant DB.
-    5. Return raw rows (no processing — that's Phase 4+).
+    Flujo de ejecución:
+    1. Validation: Valida que los filtros obligatorios estén presentes (agnóstico).
+    2. Table Resolution: Pregunta a los filtros en qué tabla/s debe buscar.
+    3. Clause Collection: Recolecta las condiciones "WHERE" de cada filtro.
+    4. Execution: Ejecuta la/s consulta/s contra la base de datos del cliente.
+    5. Return: Devuelve los registros agrupados para ser pintados o procesados en Frontend.
     """
     from sqlalchemy import text
     from dashboard_saas.services.filters.engine import filter_engine
@@ -74,50 +74,55 @@ async def apply_filters(request: ApplyFiltersRequest):
 
     filter_values = request.filters
 
-    # Validate: need at least line_id
-    if "line_id" not in filter_values:
-        raise HTTPException(status_code=400, detail="line_id is required")
+    # 1. Validación Genérica
+    # Le pasamos el diccionario de valores enviados por el usuario al motor de filtros.
+    # El motor revisará automáticamente qué filtros son 'required' y si falta alguno, devuelve error.
+    validation_errors = filter_engine.validate_request(filter_values)
+    if validation_errors:
+        raise HTTPException(
+            status_code=400, 
+            detail=", ".join(validation_errors)
+        )
 
-    # 1. Collect SQL clauses from the globally loaded filter engine
-    clauses, params = filter_engine.collect_sql_clauses(filter_values)
-
-    # 2. Resolve table names from the line_id value
-    line_filter = filter_engine.get("line_id")
-    if not line_filter:
-        raise HTTPException(status_code=500, detail="ProductionLineFilter not loaded")
-
-    # Get options as dicts for the query builder
-    line_options = [
-        {"value": o.value, "label": o.label, "extra": o.extra}
-        for o in line_filter.get_options()
-    ]
-    table_names = query_builder.resolve_table_names(
-        filter_values["line_id"], line_options
-    )
-
+    # 2. Resolución Dinámica de Tablas
+    # Algunos filtros (como el de Línea de Producción) no aportan un "WHERE", sino que definen la tabla "FROM"
+    # Le preguntamos a todos los filtros si alguno tiene algo que decir sobre a qué tabla debemos buscar.
+    table_names = filter_engine.get_target_tables(filter_values)
     if not table_names:
         raise HTTPException(
             status_code=400,
-            detail=f"Could not resolve table for line_id={filter_values['line_id']}"
+            detail="Faltan filtros que especifiquen qué tablas buscar (ej: Línea)."
         )
 
-    # 3. Build and execute queries (one per table)
+    # 3. Recolección de Cláusulas SQL (WHERE)
+    # Recorremos cada filtro cargado con su valor actual y le pedimos que nos devuelva su pedacito de SQL.
+    # Ej: ("detected_at > :start", {"start": "2024..."})
+    clauses, params = filter_engine.collect_sql_clauses(filter_values)
+
+    # 4. Configuración del Entorno de Base de Datos
     all_rows: List[Dict] = []
+    
+    # 4.1 Buscamos en caché de qué cliente es la sesión actual para saber a qué BD conectarnos
     db_name = metadata_cache.current_tenant
     if not db_name:
         raise HTTPException(status_code=500, detail="No tenant loaded in cache")
 
-    # Remove line_id clause for multi-table queries (already resolved via table name)
-    # Keep it for single table queries (in case table has multi-line data)
     query_clauses = clauses
     query_params = params
 
+    # 5. Iteración y Ejecución de Consultas
+    # Si el usuario eligió un "grupo" de líneas, 'table_names' tendrá múltiples tablas.
+    # El QueryBuilder armará un SELECT por cada tabla distinta y luego iremos uniendo (extend) los resultados.
     for table_name in table_names:
+        # 5.1 Construimos el string de la consulta final ("SELECT ... FROM table WHERE 1=1 AND ...")
         sql, p = query_builder.build_detection_query(table_name, query_clauses, query_params)
 
         try:
+            # 5.2 Obtenemos una sesión sincrónica a la base de datos del cliente
             with db_manager.get_tenant_session(db_name) as session:
+                # 5.3 Ejecutamos mediante text() inyectando los parámetros para evitar SQL Injection
                 result = session.execute(text(sql), p)
+                # 5.4 Convertimos el set de resultados en una lista de diccionarios planos
                 rows = [dict(row) for row in result.mappings().all()]
                 all_rows.extend(rows)
                 logger.info("Queried %s: %d rows", table_name, len(rows))
@@ -125,7 +130,8 @@ async def apply_filters(request: ApplyFiltersRequest):
             logger.error("Query failed for %s: %s", table_name, e, exc_info=True)
             raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
 
-    # Build display query (for debugging/transparency)
+    # 6. Preparar respuesta para transparencia y depuración en Frontend
+    # Generamos de nuevo el SQL de la primera tabla solo para mostrar al usuario qué fue lo que se ejecutó por debajo
     display_sql, _ = query_builder.build_detection_query(
         table_names[0], query_clauses, query_params
     )
@@ -133,8 +139,8 @@ async def apply_filters(request: ApplyFiltersRequest):
     return ApplyFiltersResponse(
         status="ok",
         tables_queried=table_names,
-        query=display_sql,
-        params={k: str(v) for k, v in query_params.items()},
+        query=display_sql,  # El string SQL crudo (ej: "SELECT ... FROM ...")
+        params={k: str(v) for k, v in query_params.items()}, # Los valores formateados
         row_count=len(all_rows),
-        data=all_rows,
+        data=all_rows,      # La lista gigante con los registros sueltos
     )

@@ -28,13 +28,23 @@ def index():
     """
     Render the dashboard page.
 
-    Passes filter and widget data to the template so the frontend
-    can render controls dynamically.
+    PASO 3: Cargando la UI del Dashboard (Flask)
+    Cuando abres la aplicación en el navegador web, este Blueprint atiende
+    la primera solicitud "/" puramente HTML.
     """
-    # Use singletons instead of instantiating engines on every request
+    
+    # PASO 3.1: Rendimiento Máximo (Milisegundos)
+    # Como ya instanciamos los motores (Singletons) tras arrancar el servidor 
+    # y ya procesaron todas sus configuraciones, esto NO requiere consultar base de datos, 
+    # NO lee la red, ni instancia ninguna clase nueva, sólo accede a sus objetos en RAM.
     from dashboard_saas.services.filters.engine import filter_engine
     from dashboard_saas.services.widgets.engine import widget_engine
 
+    # PASO 3.2: Renderizado hacia la Interfaz (Jinja2)
+    # Le mandamos el método get_all_serialized(). Este método simplemente junta todos 
+    # los atributos de la clase de Python del filtro junto con sus opciones, los pasa
+    # a formato Diccionario Nativo dict() de Python, y se los entrega al motor `render_template`.
+    # Allí (en el index.html), Alpine JS convertirá el HTML + Jinja2 en un json funcional para frontend.
     return render_template(
         "dashboard/index.html",
         # Server → template data

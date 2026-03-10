@@ -133,6 +133,44 @@ class ProductionLineFilter(BaseFilter):
             for o in opts
         )
 
+    # ── Table Resolution ────────────────────────────────────────
+
+    def get_target_tables(self, value: Any) -> List[str]:
+        """
+        Detection tables are partitioned by line: detection_line_{line_name}
+        This filter determines WHICH tables are queried based on the line_id/group selected.
+        """
+        if value is None or value == "":
+            return []
+
+        opt = next(
+            (o for o in self.get_options()
+             if o.value == value or str(o.value) == str(value)),
+            None,
+        )
+
+        if not opt:
+            return []
+
+        extra = opt.extra or {}
+
+        # Group → multiple tables
+        if extra.get("is_group"):
+            tables = []
+            lines = metadata_cache.get_production_lines()
+            for lid in extra.get("line_ids", []):
+                line = lines.get(lid)
+                if line:
+                    tables.append(f"detection_line_{line['line_name'].lower()}")
+            return tables
+
+        # Single line → one table
+        line_name = extra.get("line_name")
+        if line_name:
+            return [f"detection_line_{line_name.lower()}"]
+
+        return []
+
     # ── SQL clause ───────────────────────────────────────────────
 
     def to_sql_clause(self, value: Any) -> Optional[Tuple[str, Dict]]:

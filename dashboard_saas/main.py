@@ -22,6 +22,10 @@ def _warmup_cache():
 
     Uses DEFAULT_DB_NAME from .env so the cache is ready
     before any request arrives.
+
+    PASO 1 (Continuación): 
+    Este hilo en segundo plano toma el tenant por defecto de las variables 
+    de entorno y le pide al CacheService que descargue toda su metadata.
     """
     db_name = settings.DEFAULT_DB_NAME
     if not db_name:
@@ -41,7 +45,10 @@ async def lifespan(app: FastAPI):
     """Startup / shutdown hooks."""
     logger.info("Starting Camet Analytics API (Phase 2)")
 
-    # Warmup cache in a background thread (sync DB calls)
+    # PASO 1: El Arranque del Sistema (`main.py`)
+    # Cuando FastAPI se levanta, ejecuta este bloque antes de aceptar peticiones.
+    # Instanciamos un hilo en segundo plano (daemon) para inicializar la caché.
+    # Esto evita bloquear el arranque rápido del servidor web.
     warmup = threading.Thread(target=_warmup_cache, name="cache-warmup", daemon=True)
     warmup.start()
 

@@ -53,6 +53,10 @@ class CacheService:
         metadata_cache.clear()
 
         # ── Load tenant metadata ────────────────────────────────
+        # PASO 2.1: Ejecución de consultas masivas a BD
+        # El CacheService utiliza los repositorios genéricos (`fetch_production_lines`, etc.)
+        # para conectarse a la base de datos de este cliente específico ("db_name")
+        # y guardar la respuesta en su diccionario interno `metadata_cache` (en RAM).
         with db_manager.get_tenant_session(db_name) as session:
             metadata_cache.store("production_lines", MetadataRepository.fetch_production_lines(session))
             metadata_cache.store("areas", MetadataRepository.fetch_areas(session))
@@ -70,6 +74,11 @@ class CacheService:
         metadata_cache.set_tenant(db_name)
 
         # ── Synchronize structural engines ──────────────────────
+        # PASO 2.2: Sincronización Automática con Código Local
+        # Acá ocurre la magia de auto-descubrimiento. En el mismo momento en el que 
+        # acabamos de volcar en memoria variables como "Filter_Name" guardados de la BD,
+        # obligamos a los Singleton (filter_engine, widget_engine) a que lean esos valores de caché.
+        # ¿Para qué? Para que internamente busquen los archivos `.py` asociados y creen sus objetos en memoria.
         try:
             from dashboard_saas.services.filters.engine import filter_engine
             from dashboard_saas.services.widgets.engine import widget_engine

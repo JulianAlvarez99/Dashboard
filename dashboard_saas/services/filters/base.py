@@ -138,6 +138,19 @@ class BaseFilter:
             return not self.required
         return True
 
+    # ── Table Resolution ────────────────────────────────────────
+
+    def get_target_tables(self, value: Any) -> List[str]:
+        """
+        Return the list of database tables that must be queried
+        based on this filter's value.
+
+        By default filters modify the WHERE clause, not the FROM clause,
+        so they return an empty list. Specific filters (like partitions)
+        must override this.
+        """
+        return []
+
     # ── SQL clause generation ───────────────────────────────────
 
     def to_sql_clause(self, value: Any) -> Optional[Tuple[str, Dict]]:
