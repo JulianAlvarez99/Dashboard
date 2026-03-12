@@ -116,3 +116,23 @@ class MetadataRepository:
         rows = result.mappings().all()
         logger.debug("Loaded %d widgets from catalog", len(rows))
         return {row["widget_id"]: dict(row) for row in rows}
+
+    @staticmethod
+    def fetch_dashboard_template(session: Session, tenant_id: int, role_access: str) -> Optional[dict]:
+        """Fetch layout config for a given tenant and role."""
+        result = session.execute(
+            text(
+                "SELECT layout_config FROM dashboard_template "
+                "WHERE tenant_id = :tenant_id AND role_access = :role"
+            ),
+            {"tenant_id": tenant_id, "role": role_access}
+        )
+        row = result.fetchone()
+        if row and row[0]:
+            try:
+                import json
+                return json.loads(row[0]) if isinstance(row[0], str) else row[0]
+            except Exception as e:
+                logger.error("Error parsing layout_config: %s", e)
+                return {}
+        return None

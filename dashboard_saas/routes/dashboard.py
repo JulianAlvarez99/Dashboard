@@ -39,6 +39,25 @@ def index():
     # NO lee la red, ni instancia ninguna clase nueva, sólo accede a sus objetos en RAM.
     from dashboard_saas.services.filters.engine import filter_engine
     from dashboard_saas.services.widgets.engine import widget_engine
+    from dashboard_saas.services.layout_service import layout_service
+
+    # Obtenemos la configuracion de layout_config desde la tabla dashboard_template
+    # Fase 1: hardcoded para el DEFAULT_TENANT_ID cargado en las variables de entorno, rol ADMIN 
+    layout_config = layout_service.get_layout_config(settings.DEFAULT_TENANT_ID, "ADMIN")
+
+    all_filters = filter_engine.get_all_serialized()
+    all_widgets = widget_engine.get_all_serialized()
+
+    if layout_config:
+        allowed_filters = set(layout_config.get("filters", []))
+        allowed_widgets = set(layout_config.get("widgets", []))
+        
+        enabled_filters = [f for f in all_filters if f.get("filter_id") in allowed_filters]
+        enabled_widgets = [w for w in all_widgets if w.get("widget_id") in allowed_widgets]
+    else:
+        # En caso de no existir o fallar, cargamos todos a modo de fallback
+        enabled_filters = all_filters
+        enabled_widgets = all_widgets
 
     # PASO 3.2: Renderizado hacia la Interfaz (Jinja2)
     # Le mandamos el método get_all_serialized(). Este método simplemente junta todos 
@@ -49,6 +68,6 @@ def index():
         "dashboard/index.html",
         # Server → template data
         api_base_url=settings.API_BASE_URL,
-        filters=filter_engine.get_all_serialized(),
-        widgets=widget_engine.get_all_serialized(),
+        filters=enabled_filters,
+        widgets=enabled_widgets,
     )
