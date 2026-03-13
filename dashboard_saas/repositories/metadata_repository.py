@@ -6,7 +6,7 @@ Returns dict-indexed data ready to be stored in MetadataCache.
 """
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session

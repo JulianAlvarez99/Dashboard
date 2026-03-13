@@ -17,7 +17,7 @@ from dashboard_saas.core.cache import metadata_cache
 logger = logging.getLogger(__name__)
 
 # Type alias for (sql_string, bind_params)
-QueryResult = Tuple[str, Dict[str, Any]]
+QueryResult = Tuple[str]
 
 
 class QueryBuilder:
@@ -42,7 +42,6 @@ class QueryBuilder:
         self,
         table_name: str,
         clauses: List[str],
-        params: Dict[str, Any],
     ) -> QueryResult:
         """
         Build a SELECT for a detection table.
@@ -50,7 +49,6 @@ class QueryBuilder:
         Args:
             table_name: e.g. "detection_line_bolsa25kg"
             clauses: list of WHERE clause strings
-            params: merged bind parameters
 
         Returns:
             (sql, params) ready for execution with SQLAlchemy text().
@@ -64,14 +62,13 @@ class QueryBuilder:
 
         sql += " ORDER BY detected_at"
 
-        logger.debug("Built query: %s | params: %s", sql, params)
-        return sql, params
+        logger.debug("Built query: %s", sql)
+        return sql
 
     def build_count_query(
         self,
         table_name: str,
         clauses: List[str],
-        params: Dict[str, Any],
     ) -> QueryResult:
         """Build a COUNT(*) query with the same filters."""
         sql = f"SELECT COUNT(*) AS total FROM {table_name} WHERE 1=1"
@@ -79,7 +76,7 @@ class QueryBuilder:
         for clause in clauses:
             sql += f" AND {clause}"
 
-        return sql, params
+        return sql
 
 
 # ── Singleton ────────────────────────────────────────────────────

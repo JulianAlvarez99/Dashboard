@@ -35,25 +35,6 @@ class ApplyFiltersResponse(BaseModel):
     row_count: int
     data: List[Dict]
 
-
-# ── Filter options ───────────────────────────────────────────────
-
-@router.get("/filters")
-async def get_filters():
-    """
-    Return all active filters, serialized for the frontend.
-    """
-    from dashboard_saas.services.filters.engine import filter_engine
-    return {"filters": filter_engine.get_all_serialized()}
-
-
-@router.get("/widgets")
-async def get_widgets():
-    """Return all discovered widgets (Phase 3: metadata only)."""
-    from dashboard_saas.services.widgets.engine import widget_engine
-    return {"widgets": widget_engine.get_all_serialized()}
-
-
 # ── Apply filters → build query → execute → return raw data ─────
 
 @router.post("/apply-filters", response_model=ApplyFiltersResponse)
@@ -95,9 +76,9 @@ async def apply_filters(request: ApplyFiltersRequest):
         )
 
     # 3. Recolección de Cláusulas SQL (WHERE)
-    # Recorremos cada filtro cargado con su valor actual y le pedimos que nos devuelva su pedacito de SQL.
+    # Recorremos cada filtro cargado con su valor actual y le pedimos que nos devuelva su clausula de SQL.
     # Ej: ("detected_at > :start", {"start": "2024..."})
-    clauses, params = filter_engine.collect_sql_clauses(filter_values)
+    query_clauses, query_params = filter_engine.collect_sql_clauses(filter_values)
 
     # 4. Configuración del Entorno de Base de Datos
     all_rows: List[Dict] = []
@@ -107,21 +88,18 @@ async def apply_filters(request: ApplyFiltersRequest):
     if not db_name:
         raise HTTPException(status_code=500, detail="No tenant loaded in cache")
 
-    query_clauses = clauses
-    query_params = params
-
     # 5. Iteración y Ejecución de Consultas
     # Si el usuario eligió un "grupo" de líneas, 'table_names' tendrá múltiples tablas.
     # El QueryBuilder armará un SELECT por cada tabla distinta y luego iremos uniendo (extend) los resultados.
     for table_name in table_names:
         # 5.1 Construimos el string de la consulta final ("SELECT ... FROM table WHERE 1=1 AND ...")
-        sql, p = query_builder.build_detection_query(table_name, query_clauses, query_params)
+        sql = query_builder.build_detection_query(table_name, query_clauses)
 
         try:
             # 5.2 Obtenemos una sesión sincrónica a la base de datos del cliente
             with db_manager.get_tenant_session(db_name) as session:
                 # 5.3 Ejecutamos mediante text() inyectando los parámetros para evitar SQL Injection
-                result = session.execute(text(sql), p)
+                result = session.execute(text(sql), query_params)
                 # 5.4 Convertimos el set de resultados en una lista de diccionarios planos
                 rows = [dict(row) for row in result.mappings().all()]
                 all_rows.extend(rows)
@@ -132,8 +110,8 @@ async def apply_filters(request: ApplyFiltersRequest):
 
     # 6. Preparar respuesta para transparencia y depuración en Frontend
     # Generamos de nuevo el SQL de la primera tabla solo para mostrar al usuario qué fue lo que se ejecutó por debajo
-    display_sql, _ = query_builder.build_detection_query(
-        table_names[0], query_clauses, query_params
+    display_sql = query_builder.build_detection_query(
+        table_names[0], query_clauses
     )
 
     return ApplyFiltersResponse(

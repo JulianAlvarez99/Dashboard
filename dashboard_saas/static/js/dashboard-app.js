@@ -30,6 +30,7 @@ function dashboardApp() {
 
         // ── Query result ────────────────────────────────────────
         rawData: [],            // Raw DB rows from last query
+        filteredData: null,     // In-memory filtered rows
         lastQueryInfo: null,    // { row_count, tables_queried, query, params }
 
         // ── Line selection metadata (set by filter handler) ─────
@@ -114,6 +115,7 @@ function dashboardApp() {
             // 2. Limpiar estados previos y mostrar icono de carga
             this.loading = true;
             this.rawData = [];
+            this.filteredData = null;
             this.lastQueryInfo = null;
 
             try {

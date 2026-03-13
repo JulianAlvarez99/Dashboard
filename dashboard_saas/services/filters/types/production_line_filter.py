@@ -28,8 +28,8 @@ class ProductionLineFilter(BaseFilter):
     filter_type = "dropdown"
     param_name = "line_id"
     required = True
-    placeholder = "Seleccionar línea"
-    default_value = None
+    placeholder = ""
+    default_value = "all"
     ui_config = {"supports_groups": True}
 
     # ── Options ──────────────────────────────────────────────────
@@ -186,3 +186,7 @@ class ProductionLineFilter(BaseFilter):
             Always None — line filtering is done via table name, not WHERE.
         """
         return None
+
+    def get_default(self) -> Any:
+        """Devuelve el valor por defecto para el filtro de líneas de producción."""
+        return self.default_value

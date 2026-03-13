@@ -39,7 +39,7 @@
         </div>
 
         <aside
-            class="w-72 lg:w-64 bg-surface-900 border-r border-surface-700/60 overflow-y-auto shrink-0 flex flex-col transition-transform duration-200"
+            class="w-72 lg:w-72 bg-surface-900 border-r border-surface-700/60 overflow-y-auto shrink-0 flex flex-col transition-transform duration-200"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
 
             <!-- Sidebar header -->
@@ -108,9 +108,9 @@
             <!-- Status bar -->
             <div class="mb-4 flex items-center justify-between">
                 <div class="flex items-center gap-2 text-sm text-gray-400">
-                    <template x-if="lastQueryInfo">
+                    <template x-if="filteredData || rawData">
                         <span>
-                            <span class="text-green-400" x-text="lastQueryInfo.row_count"></span> registros |
+                            <span class="text-green-400" x-text="(filteredData || rawData).length"></span> registros |
                             <span x-text="lastQueryInfo.tables_queried.join(', ')"></span>
                         </span>
                     </template>
@@ -148,7 +148,7 @@
             </div> -->
 
             <!-- Raw data preview (for debugging in Phase 3) -->
-            <template x-if="rawData.length > 0">
+            <template x-if="(filteredData || rawData).length > 0">
                 <div class="mt-6 bg-surface-900 rounded-xl border border-surface-700/50 p-4">
                     <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
                         <i data-lucide="database" class="w-4 h-4"></i>
@@ -165,7 +165,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <template x-for="row in rawData.slice(0, 20)" :key="row.detection_id">
+                                <template x-for="row in (filteredData || rawData).slice(0, 100)"
+                                    :key="row.detection_id">
                                     <tr class="border-b border-surface-800 hover:bg-surface-800/50">
                                         <td class="px-3 py-1.5" x-text="row.detection_id"></td>
                                         <td class="px-3 py-1.5" x-text="row.detected_at"></td>
@@ -175,9 +176,9 @@
                                 </template>
                             </tbody>
                         </table>
-                        <template x-if="rawData.length > 20">
+                        <template x-if="(filteredData || rawData).length > 100">
                             <p class="text-xs text-surface-600 mt-2 text-center">
-                                Mostrando 20 de <span x-text="rawData.length"></span> registros
+                                Mostrando 100 de <span x-text="(filteredData || rawData).length"></span> registros
                             </p>
                         </template>
                     </div>
